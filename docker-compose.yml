@@ -24,11 +24,18 @@ services:
       PORT: 3001
       DATABASE_URL: postgres://gitarena:gitarena@postgres:5432/gitarena
       CORS_ORIGINS: http://localhost:5173,http://localhost:8080
+      WORKSPACE_IMAGE: alpine/git:2.47.2
+      WORKSPACE_ROOT: /workspace
+      WORKSPACE_SHELL: /bin/sh
+      WORKSPACE_CONTAINER_PREFIX: gitarena-ws
+      WORKSPACE_INIT_COMMAND: mkdir -p /workspace && cd /workspace && exec tail -f /dev/null
     depends_on:
       postgres:
         condition: service_healthy
     ports:
       - "3001:3001"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
     healthcheck:
       test:
         [

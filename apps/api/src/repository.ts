@@ -239,16 +239,17 @@ export class Repository {
   async createSession(userId: string, scenarioId: string): Promise<Session> {
     await this.expireActiveSessions(userId);
 
+    const sessionId = randomUUID();
     const startedAt = new Date();
     const expiresAt = new Date(startedAt.getTime() + 30 * 60 * 1000);
 
     const insert: Session = {
-      id: randomUUID(),
+      id: sessionId,
       userId,
       scenarioId,
       status: "active",
       startedAt: startedAt.toISOString(),
-      wsUrl: `/ws/sessions/${scenarioId}`,
+      wsUrl: `/ws/sessions/${sessionId}`,
       wsToken: randomUUID(),
       expiresAt: expiresAt.toISOString(),
       hintCount: 0

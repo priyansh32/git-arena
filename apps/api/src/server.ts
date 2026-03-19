@@ -1,3 +1,4 @@
+import websocket from "@fastify/websocket";
 import cors from "@fastify/cors";
 import Fastify from "fastify";
 import type {
@@ -10,6 +11,10 @@ import { z } from "zod";
 
 import { loadConfig } from "./config.js";
 import { Repository } from "./repository.js";
+import {
+  WorkspaceManager,
+  WorkspaceProvisionError
+} from "./workspace-manager.js";
 
 const LOCAL_USER_ID = "local-dev-user";
 
@@ -21,8 +26,13 @@ const paramsSchema = z.object({
   id: z.string().min(1)
 });
 
+const wsQuerySchema = z.object({
+  token: z.string().min(1)
+});
+
 const config = loadConfig();
 const repository = new Repository(config.databaseUrl);
+const workspaceManager = new WorkspaceManager(config.workspace);
 
 const app = Fastify({
   logger: {
@@ -34,6 +44,7 @@ await app.register(cors, {
   origin: config.corsOrigins,
   credentials: true
 });
+await app.register(websocket);
 
 app.setErrorHandler((error, _request, reply) => {
   app.log.error(error);
@@ -128,6 +139,20 @@ app.post("/api/v1/sessions", async (request, reply) => {
   }
 
   const session = await repository.createSession(LOCAL_USER_ID, payload.scenarioId);
+  try {
+    await workspaceManager.ensureWorkspace(session);
+  } catch (error) {
+    app.log.error(
+      { error, sessionId: session.id },
+      "Failed to provision workspace container"
+    );
+    await repository.terminateSession(session.id, LOCAL_USER_ID);
+
+    return reply.code(503).send({
+      message: "Unable to provision workspace container. Verify Docker is available."
+    });
+  }
+
   const response: CreateSessionResponse = { session };
 
   return reply.code(201).send(response);
@@ -141,7 +166,119 @@ app.get("/api/v1/sessions/:id", async (request, reply) => {
     return reply.code(404).send({ message: "Session not found" });
   }
 
+  if (session.status === "active" || session.status === "submitted") {
+    try {
+      await workspaceManager.ensureWorkspace(session);
+    } catch (error) {
+      app.log.error(
+        { error, sessionId: session.id },
+        "Failed to ensure workspace container"
+      );
+      return reply.code(503).send({
+        message: "Workspace is unavailable. Retry in a moment."
+      });
+    }
+  }
+
   return { session };
+});
+
+app.get("/ws/sessions/:id", { websocket: true } as any, (connection: any, request: any) => {
+  void (async () => {
+    const { id } = paramsSchema.parse(request.params);
+    const { token } = wsQuerySchema.parse(request.query);
+
+    const session = await repository.getSessionById(id);
+    if (!session || session.userId !== LOCAL_USER_ID) {
+      connection.socket.close(1008, "Session not found");
+      return;
+    }
+
+    if (session.wsToken !== token) {
+      connection.socket.close(1008, "Invalid token");
+      return;
+    }
+
+    if (session.status !== "active" && session.status !== "submitted") {
+      connection.socket.close(1008, "Session is closed");
+      return;
+    }
+
+    try {
+      await workspaceManager.ensureWorkspace(session);
+    } catch (error) {
+      app.log.error(
+        { error, sessionId: session.id },
+        "Failed to ensure workspace before terminal attach"
+      );
+      connection.socket.close(1011, "Workspace unavailable");
+      return;
+    }
+
+    const terminal = workspaceManager.openTerminal(session.id);
+
+    const writeToSocket = (chunk: Buffer): void => {
+      if (connection.socket.readyState === connection.socket.OPEN) {
+        connection.socket.send(chunk.toString("utf8"));
+      }
+    };
+
+    terminal.stdout.on("data", (chunk: Buffer) => {
+      writeToSocket(chunk);
+    });
+
+    terminal.stderr.on("data", (chunk: Buffer) => {
+      writeToSocket(chunk);
+    });
+
+    terminal.on("error", (error) => {
+      app.log.error({ error, sessionId: session.id }, "Terminal process failed");
+      if (connection.socket.readyState === connection.socket.OPEN) {
+        connection.socket.send("\r\n[terminal unavailable]\r\n");
+        connection.socket.close(1011, "Terminal unavailable");
+      }
+    });
+
+    terminal.on("close", () => {
+      if (connection.socket.readyState === connection.socket.OPEN) {
+        connection.socket.close(1000, "Terminal closed");
+      }
+    });
+
+    connection.socket.on("message", (data: any) => {
+      if (!terminal.stdin.writable) {
+        return;
+      }
+
+      if (typeof data === "string") {
+        terminal.stdin.write(data);
+        return;
+      }
+
+      if (Array.isArray(data)) {
+        terminal.stdin.write(Buffer.concat(data));
+        return;
+      }
+
+      if (data instanceof ArrayBuffer) {
+        terminal.stdin.write(Buffer.from(data));
+        return;
+      }
+
+      terminal.stdin.write(data);
+    });
+
+    connection.socket.on("close", () => {
+      if (!terminal.killed) {
+        terminal.kill("SIGKILL");
+      }
+    });
+  })().catch((error) => {
+    app.log.error({ error }, "Websocket session initialization failed");
+    if (connection.socket.readyState === connection.socket.OPEN) {
+      connection.socket.close(1011, "Terminal initialization failed");
+    }
+  });
 });
 
 app.get("/api/v1/sessions/:id/result", async (request, reply) => {
@@ -166,6 +303,14 @@ app.delete("/api/v1/sessions/:id", async (request, reply) => {
 
   if (!terminatedSession) {
     return reply.code(404).send({ message: "Session not found or already closed" });
+  }
+
+  try {
+    await workspaceManager.stopWorkspace(id);
+  } catch (error) {
+    if (!(error instanceof WorkspaceProvisionError)) {
+      app.log.warn({ error, sessionId: id }, "Workspace cleanup failed");
+    }
   }
 
   return { session: terminatedSession };
@@ -200,6 +345,14 @@ app.post("/api/v1/sessions/:id/submit", async (request, reply) => {
     attempt: submitResult.attempt,
     session: submitResult.session
   };
+
+  try {
+    await workspaceManager.stopWorkspace(id);
+  } catch (error) {
+    if (!(error instanceof WorkspaceProvisionError)) {
+      app.log.warn({ error, sessionId: id }, "Workspace cleanup after submit failed");
+    }
+  }
 
   return response;
 });

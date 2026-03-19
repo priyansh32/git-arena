@@ -87,6 +87,8 @@ This is a bootstrap foundation with:
 - Hint + submit + evaluation pipeline (no shell evaluator yet)
 - Attempt history persisted per user
 - Static scenario-authored hints served progressively per session
+- Docker-backed workspace container provisioning per active session
+- Interactive terminal over websocket at session workspace route
 - Dashboard, workspace, result, and history routes
 - Auth intentionally left out for now
 
@@ -107,6 +109,13 @@ This is a bootstrap foundation with:
 - `POST /api/v1/sessions/:id/submit`
 - `GET /api/v1/sessions/:id/result`
 - `GET /api/v1/users/me/history`
+- `WS /ws/sessions/:id?token=<wsToken>`
+
+## Workspace Runtime Notes
+
+- The API provisions one Docker container per active session using the host Docker socket.
+- Container name format: `gitarena-ws-<sessionId>`.
+- `docker-compose.yml` mounts `/var/run/docker.sock` into the API service.
 
 ## Notes
 

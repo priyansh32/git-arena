@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, lazy, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import type { Scenario, Session } from "@gitarena/shared";
 
@@ -9,6 +9,11 @@ import {
   submitSession,
   terminateSession
 } from "../api/client";
+
+const SessionTerminal = lazy(async () => {
+  const mod = await import("../components/SessionTerminal");
+  return { default: mod.SessionTerminal };
+});
 
 function getRemainingLabel(expiresAt: string): string {
   const remainingMs = new Date(expiresAt).getTime() - Date.now();
@@ -81,6 +86,9 @@ export function SessionWorkspacePage() {
 
     return `${session.status} • ${remaining} • hints: ${session.hintCount}`;
   }, [remaining, session]);
+
+  const isWorkspaceLive =
+    session?.status === "active" || session?.status === "submitted";
 
   const onHint = async () => {
     if (!id) {
@@ -173,12 +181,23 @@ export function SessionWorkspacePage() {
 
       <div className="workspace-grid">
         <div className="terminal-panel">
-          <div className="terminal-header">Terminal</div>
-          <div className="terminal-body">
-            <p>xterm.js + WebSocket wiring is next.</p>
-            <p>WS URL placeholder: {session?.wsUrl}</p>
-            <p>WS token placeholder: {session?.wsToken}</p>
-          </div>
+          <div className="terminal-header">Terminal Workspace</div>
+          {session && isWorkspaceLive ? (
+            <Suspense
+              fallback={
+                <div className="terminal-placeholder">
+                  <p>Initializing terminal...</p>
+                </div>
+              }
+            >
+              <SessionTerminal wsToken={session.wsToken} wsUrl={session.wsUrl} />
+            </Suspense>
+          ) : (
+            <div className="terminal-placeholder">
+              <p>Workspace is not active for this session.</p>
+              <p>Start a new challenge from the catalog to launch a terminal.</p>
+            </div>
+          )}
         </div>
 
         <aside className="objective-panel">

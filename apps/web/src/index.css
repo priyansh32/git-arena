@@ -247,14 +247,45 @@ a {
   letter-spacing: 0.03em;
 }
 
-.terminal-body {
+.terminal-shell {
   background: #0f1713;
-  color: #b5f8d2;
   min-height: 360px;
   border-bottom-left-radius: 14px;
   border-bottom-right-radius: 14px;
+  display: grid;
+  grid-template-rows: auto 1fr;
+}
+
+.terminal-status {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.55rem 0.8rem;
+  border-bottom: 1px solid #1f2a24;
+  color: #89c7a6;
+  font-size: 0.82rem;
+}
+
+.terminal-canvas {
+  min-height: 320px;
+  padding: 0.7rem;
+}
+
+.terminal-placeholder {
+  min-height: 320px;
+  border-bottom-left-radius: 14px;
+  border-bottom-right-radius: 14px;
   padding: 1rem;
+  background: #0f1713;
+  color: #b5f8d2;
   font-family: "IBM Plex Mono", "SFMono-Regular", monospace;
+  display: grid;
+  align-content: center;
+  gap: 0.35rem;
+}
+
+.terminal-placeholder p {
+  margin: 0;
 }
 
 .objective-panel {
@@ -410,8 +441,13 @@ a {
     grid-template-columns: 1fr;
   }
 
-  .terminal-body {
-    min-height: 260px;
+  .terminal-shell {
+    min-height: 300px;
+  }
+
+  .terminal-canvas,
+  .terminal-placeholder {
+    min-height: 240px;
   }
 
   .history-item {

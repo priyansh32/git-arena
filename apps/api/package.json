@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@fastify/cors": "^8.5.0",
+    "@fastify/websocket": "^8.3.1",
     "@gitarena/shared": "0.1.0",
     "fastify": "^4.29.1",
     "pg": "^8.13.1",

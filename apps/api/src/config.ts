@@ -7,8 +7,23 @@ const envSchema = z.object({
   DATABASE_URL: z
     .string()
     .default("postgres://gitarena:gitarena@localhost:5432/gitarena"),
-  CORS_ORIGINS: z.string().default("http://localhost:5173,http://localhost:8080")
+  CORS_ORIGINS: z.string().default("http://localhost:5173,http://localhost:8080"),
+  WORKSPACE_IMAGE: z.string().default("alpine/git:2.47.2"),
+  WORKSPACE_ROOT: z.string().default("/workspace"),
+  WORKSPACE_SHELL: z.string().default("/bin/sh"),
+  WORKSPACE_CONTAINER_PREFIX: z.string().default("gitarena-ws"),
+  WORKSPACE_INIT_COMMAND: z
+    .string()
+    .default("mkdir -p /workspace && cd /workspace && exec tail -f /dev/null")
 });
+
+export interface WorkspaceConfig {
+  image: string;
+  rootDir: string;
+  shell: string;
+  containerPrefix: string;
+  initCommand: string;
+}
 
 export interface AppConfig {
   nodeEnv: "development" | "test" | "production";
@@ -16,6 +31,7 @@ export interface AppConfig {
   port: number;
   databaseUrl: string;
   corsOrigins: string[];
+  workspace: WorkspaceConfig;
 }
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
@@ -29,6 +45,13 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     host: parsed.HOST,
     port: parsed.PORT,
     databaseUrl: parsed.DATABASE_URL,
-    corsOrigins
+    corsOrigins,
+    workspace: {
+      image: parsed.WORKSPACE_IMAGE,
+      rootDir: parsed.WORKSPACE_ROOT,
+      shell: parsed.WORKSPACE_SHELL,
+      containerPrefix: parsed.WORKSPACE_CONTAINER_PREFIX,
+      initCommand: parsed.WORKSPACE_INIT_COMMAND
+    }
   };
 }
