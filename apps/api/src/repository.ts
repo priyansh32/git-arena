@@ -327,6 +327,8 @@ export class Repository {
   }
 
   async getSessionById(id: string): Promise<Session | null> {
+    await this.expireSessionById(this.pool, id);
+
     const result = await this.pool.query<SessionRow>(
       `
       SELECT
@@ -357,6 +359,8 @@ export class Repository {
     sessionId: string,
     userId: string
   ): Promise<{ hintIndex: number; hint: string; session: Session } | null> {
+    await this.expireSessionById(this.pool, sessionId, userId);
+
     const result = await this.pool.query<SessionScenarioRow>(
       `
       UPDATE sessions AS s
@@ -366,6 +370,7 @@ export class Repository {
         AND s.user_id = $2
         AND s.scenario_id = sc.id
         AND s.status IN ('active', 'submitted')
+        AND s.expires_at >= NOW()
       RETURNING
         s.id,
         s.user_id,
@@ -404,6 +409,7 @@ export class Repository {
 
     try {
       await client.query("BEGIN");
+      await this.expireSessionById(client, sessionId, userId);
 
       const lockResult = await client.query<SessionScenarioRow>(
         `
@@ -714,12 +720,35 @@ export class Repository {
     await this.pool.query(
       `
       UPDATE sessions
-      SET status = 'terminated'
+      SET status = 'terminated',
+          submitted_at = COALESCE(submitted_at, NOW())
       WHERE user_id = $1
         AND status IN ('active', 'submitted')
         AND expires_at < NOW()
       `,
       [userId]
+    );
+  }
+
+  private async expireSessionById(
+    queryable: Pool | PoolClient,
+    sessionId: string,
+    userId?: string
+  ): Promise<void> {
+    const values = userId ? [sessionId, userId] : [sessionId];
+    const userClause = userId ? "AND user_id = $2" : "";
+
+    await queryable.query(
+      `
+      UPDATE sessions
+      SET status = 'terminated',
+          submitted_at = COALESCE(submitted_at, NOW())
+      WHERE id = $1
+        ${userClause}
+        AND status IN ('active', 'submitted')
+        AND expires_at < NOW()
+      `,
+      values
     );
   }
 
