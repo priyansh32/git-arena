@@ -1,0 +1,52 @@
+services:
+  cloudsql-proxy:
+    image: gcr.io/cloud-sql-connectors/cloud-sql-proxy:2.18.3
+    restart: unless-stopped
+    command:
+      - "--structured-logs"
+      - "--address=0.0.0.0"
+      - "--port=5432"
+      - "${INSTANCE_CONNECTION_NAME}"
+
+  api:
+    build:
+      context: ../..
+      dockerfile: apps/api/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      - cloudsql-proxy
+    environment:
+      NODE_ENV: production
+      HOST: 0.0.0.0
+      PORT: 3001
+      DATABASE_URL: "${DATABASE_URL}"
+      CORS_ORIGINS: "${CORS_ORIGINS}"
+      WORKSPACE_IMAGE: "${WORKSPACE_IMAGE:-alpine/git:2.47.2}"
+      WORKSPACE_ROOT: "${WORKSPACE_ROOT:-/workspace}"
+      WORKSPACE_SHELL: "${WORKSPACE_SHELL:-/bin/sh}"
+      WORKSPACE_CONTAINER_PREFIX: "${WORKSPACE_CONTAINER_PREFIX:-gitarena-ws}"
+      WORKSPACE_INIT_COMMAND: "${WORKSPACE_INIT_COMMAND:-mkdir -p /workspace && cd /workspace && exec tail -f /dev/null}"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:3001/api/v1/health/ready').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+
+  web:
+    build:
+      context: ../..
+      dockerfile: apps/web/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - "80:80"

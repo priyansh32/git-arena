@@ -69,6 +69,17 @@ Run smoke test directly:
 npm run smoke:stack
 ```
 
+## GCP Low-Cost Deployment
+
+Single VM + Cloud SQL deployment assets are included:
+
+- Compose file: `deploy/gcp/docker-compose.vm.yml`
+- Runtime env template: `deploy/gcp/env.vm.example`
+- Provision script: `scripts/gcp/provision-vm.sh`
+- Deploy script: `scripts/gcp/deploy-vm.sh`
+- Destroy script: `scripts/gcp/destroy-vm.sh`
+- Runbook: `docs/deployment-gcp-vm.md`
+
 Fallback for environments without `buildx` or with broken Docker credential helpers:
 
 ```bash
