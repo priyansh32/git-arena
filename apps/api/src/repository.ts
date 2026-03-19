@@ -19,6 +19,7 @@ interface ScenarioRow {
   difficulty: Scenario["difficulty"];
   estimated_time_minutes: number;
   tags: unknown;
+  hints: unknown;
   status: Scenario["status"];
 }
 
@@ -49,9 +50,8 @@ interface AttemptRow {
 }
 
 interface SessionScenarioRow extends SessionRow {
-  scenario_title: string;
   scenario_objective: string;
-  scenario_tags: unknown;
+  scenario_hints: unknown;
   scenario_estimated_time_minutes: number;
 }
 
@@ -107,6 +107,7 @@ function mapScenario(row: ScenarioRow): Scenario {
     difficulty: row.difficulty,
     estimatedTimeMinutes: row.estimated_time_minutes,
     tags: parseStringArray(row.tags),
+    hints: parseStringArray(row.hints),
     status: row.status
   };
 }
@@ -142,15 +143,12 @@ function mapAttempt(row: AttemptRow): Attempt {
 }
 
 function buildHint(row: SessionScenarioRow): string {
-  const tags = parseStringArray(row.scenario_tags);
-  const primaryTag = tags[0] ?? "git-state";
+  const hints = parseStringArray(row.scenario_hints);
+  const nextHintIndex = Math.max(0, row.hint_count - 1);
 
-  if (row.hint_count === 1) {
-    return `Start by validating current ${primaryTag} state before changing history.`;
-  }
-
-  if (row.hint_count === 2) {
-    return `Re-run status and log after each step. Target: ${row.scenario_objective}`;
+  if (hints.length > 0) {
+    const boundedIndex = Math.min(nextHintIndex, hints.length - 1);
+    return hints[boundedIndex];
   }
 
   return `Keep changes minimal and verify objective: ${row.scenario_objective}`;
@@ -198,6 +196,7 @@ export class Repository {
         difficulty,
         estimated_time_minutes,
         tags,
+        hints,
         status
       FROM scenarios
       WHERE status = 'published'
@@ -219,6 +218,7 @@ export class Repository {
         difficulty,
         estimated_time_minutes,
         tags,
+        hints,
         status
       FROM scenarios
       WHERE id = $1
@@ -341,9 +341,8 @@ export class Repository {
         s.ws_token,
         s.expires_at,
         s.hint_count,
-        sc.title AS scenario_title,
         sc.objective AS scenario_objective,
-        sc.tags AS scenario_tags,
+        sc.hints AS scenario_hints,
         sc.estimated_time_minutes AS scenario_estimated_time_minutes
       `,
       [sessionId, userId]
@@ -383,9 +382,8 @@ export class Repository {
           s.ws_token,
           s.expires_at,
           s.hint_count,
-          sc.title AS scenario_title,
           sc.objective AS scenario_objective,
-          sc.tags AS scenario_tags,
+          sc.hints AS scenario_hints,
           sc.estimated_time_minutes AS scenario_estimated_time_minutes
         FROM sessions AS s
         JOIN scenarios AS sc
@@ -657,11 +655,15 @@ export class Repository {
         difficulty TEXT NOT NULL CHECK (difficulty IN ('beginner', 'intermediate', 'advanced')),
         estimated_time_minutes INTEGER NOT NULL CHECK (estimated_time_minutes > 0),
         tags JSONB NOT NULL DEFAULT '[]'::jsonb,
+        hints JSONB NOT NULL DEFAULT '[]'::jsonb,
         status TEXT NOT NULL CHECK (status IN ('draft', 'testing', 'published', 'deprecated')),
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
         updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       )
     `);
+    await client.query(
+      "ALTER TABLE scenarios ADD COLUMN IF NOT EXISTS hints JSONB NOT NULL DEFAULT '[]'::jsonb"
+    );
 
     await client.query(`
       CREATE TABLE IF NOT EXISTS sessions (
@@ -731,10 +733,11 @@ export class Repository {
           difficulty,
           estimated_time_minutes,
           tags,
+          hints,
           status,
           updated_at
         )
-        VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, $8, NOW())
+        VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, $8::jsonb, $9, NOW())
         ON CONFLICT (id)
         DO UPDATE SET
           title = EXCLUDED.title,
@@ -743,6 +746,7 @@ export class Repository {
           difficulty = EXCLUDED.difficulty,
           estimated_time_minutes = EXCLUDED.estimated_time_minutes,
           tags = EXCLUDED.tags,
+          hints = EXCLUDED.hints,
           status = EXCLUDED.status,
           updated_at = NOW()
         `,
@@ -754,6 +758,7 @@ export class Repository {
           scenario.difficulty,
           scenario.estimatedTimeMinutes,
           JSON.stringify(scenario.tags),
+          JSON.stringify(scenario.hints),
           scenario.status
         ]
       );

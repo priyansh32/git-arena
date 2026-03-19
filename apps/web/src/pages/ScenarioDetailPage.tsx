@@ -1,14 +1,15 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import type { Scenario } from "@gitarena/shared";
+import type { Attempt, Scenario } from "@gitarena/shared";
 
-import { createSession, fetchScenario } from "../api/client";
+import { createSession, fetchScenario, fetchScenarioAttempts } from "../api/client";
 
 export function ScenarioDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
 
   const [scenario, setScenario] = useState<Scenario | null>(null);
+  const [attempts, setAttempts] = useState<Attempt[]>([]);
   const [loading, setLoading] = useState(true);
   const [starting, setStarting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -22,8 +23,13 @@ export function ScenarioDetailPage() {
 
     const run = async () => {
       try {
-        const data = await fetchScenario(id);
-        setScenario(data);
+        const [scenarioData, attemptData] = await Promise.all([
+          fetchScenario(id),
+          fetchScenarioAttempts(id)
+        ]);
+
+        setScenario(scenarioData);
+        setAttempts(attemptData);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Unable to load scenario");
       } finally {
@@ -51,6 +57,14 @@ export function ScenarioDetailPage() {
       setStarting(false);
     }
   };
+
+  const bestScore = useMemo(() => {
+    if (attempts.length === 0) {
+      return null;
+    }
+
+    return Math.max(...attempts.map((attempt) => attempt.score));
+  }, [attempts]);
 
   if (loading) {
     return <p className="state-text">Loading scenario...</p>;
@@ -89,6 +103,12 @@ export function ScenarioDetailPage() {
         <h3>Objective</h3>
         <p>{scenario.objective}</p>
 
+        <div className="result-metrics">
+          <span>Hints available: {scenario.hints.length}</span>
+          <span>Attempts: {attempts.length}</span>
+          <span>Best score: {bestScore ?? "-"}</span>
+        </div>
+
         <div className="tag-row">
           {scenario.tags.map((tag) => (
             <span className="tag" key={tag}>
@@ -101,6 +121,33 @@ export function ScenarioDetailPage() {
           {starting ? "Provisioning session..." : "Launch workspace"}
         </button>
       </article>
+
+      {attempts.length > 0 && (
+        <article className="detail-card">
+          <h3>Recent Attempts</h3>
+          <div className="history-list">
+            {attempts.slice(0, 5).map((attempt) => (
+              <article className="history-item" key={attempt.id}>
+                <div>
+                  <h3>{new Date(attempt.evaluatedAt).toLocaleString()}</h3>
+                  <p>
+                    Base {attempt.baseScore} | Bonus +{attempt.timeBonus} | Penalty -
+                    {attempt.hintPenalty}
+                  </p>
+                </div>
+                <div className="history-meta">
+                  <span className={`score-pill ${attempt.passed ? "pass" : "fail"}`}>
+                    {attempt.score}
+                  </span>
+                  <Link className="link" to={`/sessions/${attempt.sessionId}/result`}>
+                    View
+                  </Link>
+                </div>
+              </article>
+            ))}
+          </div>
+        </article>
+      )}
     </section>
   );
 }

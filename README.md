@@ -79,6 +79,7 @@ This is a bootstrap foundation with:
 - Graceful API shutdown handling
 - Hint + submit + evaluation pipeline (no shell evaluator yet)
 - Attempt history persisted per user
+- Static scenario-authored hints served progressively per session
 - Dashboard, workspace, result, and history routes
 - Auth intentionally left out for now
 

@@ -9,6 +9,11 @@ export const defaultScenarios: Scenario[] = [
     difficulty: "beginner",
     estimatedTimeMinutes: 15,
     tags: ["detached-head", "branches"],
+    hints: [
+      "Start with `git status` and `git branch --show-current` to confirm detached state.",
+      "Use `git reflog` or commit history to locate recoverable branch tip.",
+      "Create a branch at the correct commit before making further history edits."
+    ],
     status: "published"
   },
   {
@@ -19,6 +24,11 @@ export const defaultScenarios: Scenario[] = [
     difficulty: "intermediate",
     estimatedTimeMinutes: 25,
     tags: ["rebase", "history"],
+    hints: [
+      "Inspect recent commits with `git log --oneline --graph -n 10`.",
+      "Use interactive rebase to reorder/squash without changing final content.",
+      "Re-run log and verify only intended commits remain in sequence."
+    ],
     status: "published"
   },
   {
@@ -29,6 +39,11 @@ export const defaultScenarios: Scenario[] = [
     difficulty: "advanced",
     estimatedTimeMinutes: 35,
     tags: ["remote", "merge", "rebase"],
+    hints: [
+      "Compare local and remote refs before resolving divergence.",
+      "Choose merge or rebase based on target history policy for the branch.",
+      "After reconciliation, validate branch contents before push."
+    ],
     status: "published"
   }
 ];

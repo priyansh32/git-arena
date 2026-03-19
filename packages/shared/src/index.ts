@@ -9,6 +9,7 @@ export interface Scenario {
   difficulty: Difficulty;
   estimatedTimeMinutes: number;
   tags: string[];
+  hints: string[];
   status: ScenarioStatus;
 }
 
