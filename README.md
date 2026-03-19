@@ -71,8 +71,9 @@ This is a bootstrap foundation with:
 - PostgreSQL-backed scenario/session persistence
 - API liveness/readiness health endpoints
 - Graceful API shutdown handling
-- Dashboard and scenario detail routes
-- Basic result-driven flow from frontend to backend
+- Hint + submit + evaluation pipeline (no shell evaluator yet)
+- Attempt history persisted per user
+- Dashboard, workspace, result, and history routes
 - Auth intentionally left out for now
 
 ## API routes (current)
@@ -82,8 +83,13 @@ This is a bootstrap foundation with:
 - `GET /api/v1/health`
 - `GET /api/v1/scenarios`
 - `GET /api/v1/scenarios/:id`
+- `GET /api/v1/scenarios/:id/attempts`
 - `POST /api/v1/sessions`
 - `GET /api/v1/sessions/:id`
+- `POST /api/v1/sessions/:id/hint`
+- `POST /api/v1/sessions/:id/submit`
+- `GET /api/v1/sessions/:id/result`
+- `GET /api/v1/users/me/history`
 
 ## Notes
 

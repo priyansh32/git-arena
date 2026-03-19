@@ -42,6 +42,11 @@ a {
   justify-content: space-between;
 }
 
+.app-header nav {
+  display: flex;
+  gap: 1rem;
+}
+
 .brand {
   font-weight: 800;
   font-size: 1.25rem;
@@ -273,6 +278,133 @@ a {
   gap: 0.6rem;
 }
 
+.hint-block {
+  border: 1px solid #c8d7cf;
+  background: #f6fbf8;
+  border-radius: 10px;
+  padding: 0.65rem 0.7rem;
+  color: #2b4337;
+}
+
+.result-head {
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--panel);
+  box-shadow: var(--shadow);
+  padding: 0.9rem 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.score-pill {
+  min-width: 72px;
+  text-align: center;
+  font-weight: 800;
+  border-radius: 999px;
+  padding: 0.35rem 0.7rem;
+  border: 1px solid transparent;
+}
+
+.score-pill.pass {
+  background: #d7f0e3;
+  color: #0a5d3a;
+  border-color: #94cdb1;
+}
+
+.score-pill.fail {
+  background: #fbd9d9;
+  color: #7e2020;
+  border-color: #e7aaaa;
+}
+
+.result-metrics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+}
+
+.result-metrics span {
+  border: 1px dashed #b8c7bd;
+  border-radius: 999px;
+  font-size: 0.82rem;
+  padding: 0.25rem 0.55rem;
+}
+
+.assertion-list {
+  display: grid;
+  gap: 0.6rem;
+}
+
+.assertion {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 0.65rem;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.7rem;
+  align-items: start;
+}
+
+.assertion-status {
+  font-size: 0.74rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  font-weight: 800;
+  border-radius: 999px;
+  padding: 0.2rem 0.45rem;
+}
+
+.assertion-status.pass {
+  background: #d7f0e3;
+  color: #0a5d3a;
+}
+
+.assertion-status.fail {
+  background: #fbd9d9;
+  color: #7e2020;
+}
+
+.assertion h4 {
+  margin: 0;
+}
+
+.assertion p {
+  margin: 0.35rem 0 0;
+}
+
+.history-list {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.history-item {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--panel);
+  box-shadow: var(--shadow);
+  padding: 0.85rem 0.95rem;
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.history-item h3 {
+  margin: 0;
+}
+
+.history-item p {
+  margin: 0.3rem 0 0;
+  color: var(--muted);
+}
+
+.history-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+}
+
 @media (max-width: 900px) {
   .workspace-grid {
     grid-template-columns: 1fr;
@@ -280,5 +412,10 @@ a {
 
   .terminal-body {
     min-height: 260px;
+  }
+
+  .history-item {
+    flex-direction: column;
+    align-items: flex-start;
   }
 }

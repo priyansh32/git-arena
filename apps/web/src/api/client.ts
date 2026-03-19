@@ -1,7 +1,10 @@
 import type {
+  Attempt,
   CreateSessionResponse,
+  RequestHintResponse,
   Scenario,
-  Session
+  Session,
+  SubmitSessionResponse
 } from "@gitarena/shared";
 
 const API_BASE = "/api/v1";
@@ -27,6 +30,18 @@ export async function fetchScenario(id: string): Promise<Scenario> {
   return payload.scenario;
 }
 
+export async function fetchScenarioAttempts(id: string): Promise<Attempt[]> {
+  const response = await fetch(`${API_BASE}/scenarios/${id}/attempts`);
+  const payload = await parse<{ attempts: Attempt[] }>(response);
+  return payload.attempts;
+}
+
+export async function fetchUserHistory(): Promise<Attempt[]> {
+  const response = await fetch(`${API_BASE}/users/me/history`);
+  const payload = await parse<{ attempts: Attempt[] }>(response);
+  return payload.attempts;
+}
+
 export async function createSession(scenarioId: string): Promise<Session> {
   const response = await fetch(`${API_BASE}/sessions`, {
     method: "POST",
@@ -42,4 +57,27 @@ export async function fetchSession(id: string): Promise<Session> {
   const response = await fetch(`${API_BASE}/sessions/${id}`);
   const payload = await parse<{ session: Session }>(response);
   return payload.session;
+}
+
+export async function requestHint(sessionId: string): Promise<RequestHintResponse> {
+  const response = await fetch(`${API_BASE}/sessions/${sessionId}/hint`, {
+    method: "POST"
+  });
+
+  return parse<RequestHintResponse>(response);
+}
+
+export async function submitSession(sessionId: string): Promise<SubmitSessionResponse> {
+  const response = await fetch(`${API_BASE}/sessions/${sessionId}/submit`, {
+    method: "POST"
+  });
+
+  return parse<SubmitSessionResponse>(response);
+}
+
+export async function fetchSessionResult(
+  sessionId: string
+): Promise<SubmitSessionResponse> {
+  const response = await fetch(`${API_BASE}/sessions/${sessionId}/result`);
+  return parse<SubmitSessionResponse>(response);
 }

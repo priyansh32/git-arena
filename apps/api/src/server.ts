@@ -1,10 +1,17 @@
 import cors from "@fastify/cors";
 import Fastify from "fastify";
-import type { CreateSessionRequest, CreateSessionResponse } from "@gitarena/shared";
+import type {
+  CreateSessionRequest,
+  CreateSessionResponse,
+  RequestHintResponse,
+  SubmitSessionResponse
+} from "@gitarena/shared";
 import { z } from "zod";
 
 import { loadConfig } from "./config.js";
 import { Repository } from "./repository.js";
+
+const LOCAL_USER_ID = "local-dev-user";
 
 const createSessionSchema = z.object({
   scenarioId: z.string().min(1)
@@ -82,6 +89,23 @@ app.get("/api/v1/scenarios/:id", async (request, reply) => {
   return { scenario };
 });
 
+app.get("/api/v1/scenarios/:id/attempts", async (request, reply) => {
+  const { id } = paramsSchema.parse(request.params);
+  const scenario = await repository.getScenarioById(id);
+
+  if (!scenario) {
+    return reply.code(404).send({ message: "Scenario not found" });
+  }
+
+  const attempts = await repository.listAttemptsByScenario(LOCAL_USER_ID, id);
+  return { attempts };
+});
+
+app.get("/api/v1/users/me/history", async () => {
+  const attempts = await repository.listAttemptsByUser(LOCAL_USER_ID);
+  return { attempts };
+});
+
 app.post("/api/v1/sessions", async (request, reply) => {
   const payload = createSessionSchema.parse(request.body) as CreateSessionRequest;
   const scenario = await repository.getScenarioById(payload.scenarioId);
@@ -90,7 +114,7 @@ app.post("/api/v1/sessions", async (request, reply) => {
     return reply.code(404).send({ message: "Scenario not found or unavailable" });
   }
 
-  const session = await repository.createSession("local-dev-user", payload.scenarioId);
+  const session = await repository.createSession(LOCAL_USER_ID, payload.scenarioId);
   const response: CreateSessionResponse = { session };
 
   return reply.code(201).send(response);
@@ -100,11 +124,60 @@ app.get("/api/v1/sessions/:id", async (request, reply) => {
   const { id } = paramsSchema.parse(request.params);
   const session = await repository.getSessionById(id);
 
-  if (!session) {
+  if (!session || session.userId !== LOCAL_USER_ID) {
     return reply.code(404).send({ message: "Session not found" });
   }
 
   return { session };
+});
+
+app.get("/api/v1/sessions/:id/result", async (request, reply) => {
+  const { id } = paramsSchema.parse(request.params);
+  const result = await repository.getSessionResult(id, LOCAL_USER_ID);
+
+  if (!result) {
+    return reply.code(404).send({ message: "Result not found" });
+  }
+
+  const response: SubmitSessionResponse = {
+    attempt: result.attempt,
+    session: result.session
+  };
+
+  return response;
+});
+
+app.post("/api/v1/sessions/:id/hint", async (request, reply) => {
+  const { id } = paramsSchema.parse(request.params);
+  const hintResult = await repository.requestHint(id, LOCAL_USER_ID);
+
+  if (!hintResult) {
+    return reply.code(404).send({ message: "Session not found or inactive" });
+  }
+
+  const response: RequestHintResponse = {
+    hintIndex: hintResult.hintIndex,
+    hint: hintResult.hint,
+    session: hintResult.session
+  };
+
+  return response;
+});
+
+app.post("/api/v1/sessions/:id/submit", async (request, reply) => {
+  const { id } = paramsSchema.parse(request.params);
+  const submitResult = await repository.submitSession(id, LOCAL_USER_ID);
+
+  if (!submitResult) {
+    return reply.code(404).send({ message: "Session not found or unavailable" });
+  }
+
+  const response: SubmitSessionResponse = {
+    attempt: submitResult.attempt,
+    session: submitResult.session
+  };
+
+  return response;
 });
 
 app.addHook("onClose", async () => {

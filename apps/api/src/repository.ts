@@ -1,6 +1,11 @@
 import { randomUUID } from "node:crypto";
 
-import type { Scenario, Session } from "@gitarena/shared";
+import type {
+  AssertionResult,
+  Attempt,
+  Scenario,
+  Session
+} from "@gitarena/shared";
 import { Pool, type PoolClient } from "pg";
 
 import { defaultScenarios } from "./scenario-seed.js";
@@ -12,7 +17,7 @@ interface ScenarioRow {
   objective: string;
   difficulty: Scenario["difficulty"];
   estimated_time_minutes: number;
-  tags: string[];
+  tags: unknown;
   status: Scenario["status"];
 }
 
@@ -25,6 +30,75 @@ interface SessionRow {
   ws_url: string;
   ws_token: string;
   expires_at: Date;
+  hint_count: number;
+}
+
+interface AttemptRow {
+  id: string;
+  session_id: string;
+  user_id: string;
+  scenario_id: string;
+  score: number;
+  base_score: number;
+  time_bonus: number;
+  hint_penalty: number;
+  passed: boolean;
+  assertion_results: unknown;
+  evaluated_at: Date;
+}
+
+interface SessionScenarioRow extends SessionRow {
+  scenario_title: string;
+  scenario_objective: string;
+  scenario_tags: unknown;
+  scenario_estimated_time_minutes: number;
+}
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, value));
+}
+
+function parseStringArray(value: unknown): string[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value
+    .filter((item): item is string => typeof item === "string")
+    .map((item) => item.trim())
+    .filter((item) => item.length > 0);
+}
+
+function parseAssertions(value: unknown): AssertionResult[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value
+    .map((item) => {
+      if (!item || typeof item !== "object") {
+        return null;
+      }
+
+      const record = item as Partial<AssertionResult>;
+
+      if (
+        typeof record.checkId !== "string" ||
+        typeof record.passed !== "boolean" ||
+        typeof record.explanation !== "string" ||
+        typeof record.weight !== "number"
+      ) {
+        return null;
+      }
+
+      return {
+        checkId: record.checkId,
+        passed: record.passed,
+        explanation: record.explanation,
+        weight: record.weight
+      } satisfies AssertionResult;
+    })
+    .filter((item): item is AssertionResult => item !== null);
 }
 
 function mapScenario(row: ScenarioRow): Scenario {
@@ -35,7 +109,7 @@ function mapScenario(row: ScenarioRow): Scenario {
     objective: row.objective,
     difficulty: row.difficulty,
     estimatedTimeMinutes: row.estimated_time_minutes,
-    tags: row.tags,
+    tags: parseStringArray(row.tags),
     status: row.status
   };
 }
@@ -49,8 +123,40 @@ function mapSession(row: SessionRow): Session {
     startedAt: row.started_at.toISOString(),
     wsUrl: row.ws_url,
     wsToken: row.ws_token,
-    expiresAt: row.expires_at.toISOString()
+    expiresAt: row.expires_at.toISOString(),
+    hintCount: row.hint_count
   };
+}
+
+function mapAttempt(row: AttemptRow): Attempt {
+  return {
+    id: row.id,
+    sessionId: row.session_id,
+    userId: row.user_id,
+    scenarioId: row.scenario_id,
+    score: row.score,
+    baseScore: row.base_score,
+    timeBonus: row.time_bonus,
+    hintPenalty: row.hint_penalty,
+    passed: row.passed,
+    assertions: parseAssertions(row.assertion_results),
+    evaluatedAt: row.evaluated_at.toISOString()
+  };
+}
+
+function buildHint(row: SessionScenarioRow): string {
+  const tags = parseStringArray(row.scenario_tags);
+  const primaryTag = tags[0] ?? "git-state";
+
+  if (row.hint_count === 1) {
+    return `Start by validating current ${primaryTag} state before changing history.`;
+  }
+
+  if (row.hint_count === 2) {
+    return `Re-run status and log after each step. Target: ${row.scenario_objective}`;
+  }
+
+  return `Keep changes minimal and verify objective: ${row.scenario_objective}`;
 }
 
 export class Repository {
@@ -124,7 +230,7 @@ export class Repository {
       [id]
     );
 
-    if (result.rowCount === 0) {
+    if (!result.rowCount) {
       return null;
     }
 
@@ -143,7 +249,8 @@ export class Repository {
       startedAt: startedAt.toISOString(),
       wsUrl: `/ws/sessions/${scenarioId}`,
       wsToken: randomUUID(),
-      expiresAt: expiresAt.toISOString()
+      expiresAt: expiresAt.toISOString(),
+      hintCount: 0
     };
 
     const result = await this.pool.query<SessionRow>(
@@ -156,9 +263,10 @@ export class Repository {
         started_at,
         ws_url,
         ws_token,
-        expires_at
+        expires_at,
+        hint_count
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
       RETURNING
         id,
         user_id,
@@ -167,7 +275,8 @@ export class Repository {
         started_at,
         ws_url,
         ws_token,
-        expires_at
+        expires_at,
+        hint_count
       `,
       [
         insert.id,
@@ -177,7 +286,8 @@ export class Repository {
         insert.startedAt,
         insert.wsUrl,
         insert.wsToken,
-        insert.expiresAt
+        insert.expiresAt,
+        insert.hintCount
       ]
     );
 
@@ -195,7 +305,8 @@ export class Repository {
         started_at,
         ws_url,
         ws_token,
-        expires_at
+        expires_at,
+        hint_count
       FROM sessions
       WHERE id = $1
       LIMIT 1
@@ -203,11 +314,372 @@ export class Repository {
       [id]
     );
 
-    if (result.rowCount === 0) {
+    if (!result.rowCount) {
       return null;
     }
 
     return mapSession(result.rows[0]);
+  }
+
+  async requestHint(
+    sessionId: string,
+    userId: string
+  ): Promise<{ hintIndex: number; hint: string; session: Session } | null> {
+    const result = await this.pool.query<SessionScenarioRow>(
+      `
+      UPDATE sessions AS s
+      SET hint_count = s.hint_count + 1
+      FROM scenarios AS sc
+      WHERE s.id = $1
+        AND s.user_id = $2
+        AND s.scenario_id = sc.id
+        AND s.status IN ('active', 'submitted')
+      RETURNING
+        s.id,
+        s.user_id,
+        s.scenario_id,
+        s.status,
+        s.started_at,
+        s.ws_url,
+        s.ws_token,
+        s.expires_at,
+        s.hint_count,
+        sc.title AS scenario_title,
+        sc.objective AS scenario_objective,
+        sc.tags AS scenario_tags,
+        sc.estimated_time_minutes AS scenario_estimated_time_minutes
+      `,
+      [sessionId, userId]
+    );
+
+    if (!result.rowCount) {
+      return null;
+    }
+
+    const row = result.rows[0];
+
+    return {
+      hintIndex: row.hint_count,
+      hint: buildHint(row),
+      session: mapSession(row)
+    };
+  }
+
+  async submitSession(
+    sessionId: string,
+    userId: string
+  ): Promise<{ attempt: Attempt; session: Session } | null> {
+    const client = await this.pool.connect();
+
+    try {
+      await client.query("BEGIN");
+
+      const lockResult = await client.query<SessionScenarioRow>(
+        `
+        SELECT
+          s.id,
+          s.user_id,
+          s.scenario_id,
+          s.status,
+          s.started_at,
+          s.ws_url,
+          s.ws_token,
+          s.expires_at,
+          s.hint_count,
+          sc.title AS scenario_title,
+          sc.objective AS scenario_objective,
+          sc.tags AS scenario_tags,
+          sc.estimated_time_minutes AS scenario_estimated_time_minutes
+        FROM sessions AS s
+        JOIN scenarios AS sc
+          ON sc.id = s.scenario_id
+        WHERE s.id = $1
+          AND s.user_id = $2
+        FOR UPDATE
+        `,
+        [sessionId, userId]
+      );
+
+      if (!lockResult.rowCount) {
+        await client.query("ROLLBACK");
+        return null;
+      }
+
+      const row = lockResult.rows[0];
+
+      if (row.status === "evaluated") {
+        const existingAttempt = await this.getLatestAttemptForSession(client, row.id);
+        await client.query("COMMIT");
+
+        if (!existingAttempt) {
+          return null;
+        }
+
+        return {
+          attempt: existingAttempt,
+          session: mapSession(row)
+        };
+      }
+
+      if (row.status === "terminated") {
+        await client.query("ROLLBACK");
+        return null;
+      }
+
+      const now = new Date();
+      const elapsedSeconds = Math.max(
+        0,
+        Math.floor((now.getTime() - row.started_at.getTime()) / 1000)
+      );
+      const timeLimitSeconds = Math.max(1, row.scenario_estimated_time_minutes * 60);
+      const timeRemaining = Math.max(0, timeLimitSeconds - elapsedSeconds);
+
+      const assertions: AssertionResult[] = [
+        {
+          checkId: "workspace_active",
+          passed: true,
+          explanation: "Workspace session is active and submission was received.",
+          weight: 30
+        },
+        {
+          checkId: "objective_submitted",
+          passed: true,
+          explanation: `Submission captured for objective: ${row.scenario_objective}`,
+          weight: 40
+        },
+        {
+          checkId: "within_time_window",
+          passed: timeRemaining > 0,
+          explanation:
+            timeRemaining > 0
+              ? "Submission was within expected time window."
+              : "Submission exceeded expected scenario time window.",
+          weight: 30
+        }
+      ];
+
+      const baseScore = assertions
+        .filter((assertion) => assertion.passed)
+        .reduce((total, assertion) => total + assertion.weight, 0);
+
+      const timeBonus = Math.round((timeRemaining / timeLimitSeconds) * 20);
+      const hintPenalty = Math.min(row.hint_count * 5, 20);
+      const score = clamp(baseScore + timeBonus - hintPenalty, 0, 100);
+      const passed = score >= 70;
+
+      const attemptInsertResult = await client.query<AttemptRow>(
+        `
+        INSERT INTO attempts (
+          id,
+          session_id,
+          user_id,
+          scenario_id,
+          score,
+          base_score,
+          time_bonus,
+          hint_penalty,
+          passed,
+          assertion_results,
+          evaluated_at
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10::jsonb, $11)
+        RETURNING
+          id,
+          session_id,
+          user_id,
+          scenario_id,
+          score,
+          base_score,
+          time_bonus,
+          hint_penalty,
+          passed,
+          assertion_results,
+          evaluated_at
+        `,
+        [
+          randomUUID(),
+          row.id,
+          row.user_id,
+          row.scenario_id,
+          score,
+          baseScore,
+          timeBonus,
+          hintPenalty,
+          passed,
+          JSON.stringify(assertions),
+          now.toISOString()
+        ]
+      );
+
+      const sessionUpdateResult = await client.query<SessionRow>(
+        `
+        UPDATE sessions
+        SET status = 'evaluated',
+            submitted_at = $2
+        WHERE id = $1
+        RETURNING
+          id,
+          user_id,
+          scenario_id,
+          status,
+          started_at,
+          ws_url,
+          ws_token,
+          expires_at,
+          hint_count
+        `,
+        [row.id, now.toISOString()]
+      );
+
+      await client.query("COMMIT");
+
+      return {
+        attempt: mapAttempt(attemptInsertResult.rows[0]),
+        session: mapSession(sessionUpdateResult.rows[0])
+      };
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
+  async listAttemptsByScenario(
+    userId: string,
+    scenarioId: string
+  ): Promise<Attempt[]> {
+    const result = await this.pool.query<AttemptRow>(
+      `
+      SELECT
+        id,
+        session_id,
+        user_id,
+        scenario_id,
+        score,
+        base_score,
+        time_bonus,
+        hint_penalty,
+        passed,
+        assertion_results,
+        evaluated_at
+      FROM attempts
+      WHERE user_id = $1
+        AND scenario_id = $2
+      ORDER BY evaluated_at DESC
+      `,
+      [userId, scenarioId]
+    );
+
+    return result.rows.map(mapAttempt);
+  }
+
+  async listAttemptsByUser(userId: string): Promise<Attempt[]> {
+    const result = await this.pool.query<AttemptRow>(
+      `
+      SELECT
+        id,
+        session_id,
+        user_id,
+        scenario_id,
+        score,
+        base_score,
+        time_bonus,
+        hint_penalty,
+        passed,
+        assertion_results,
+        evaluated_at
+      FROM attempts
+      WHERE user_id = $1
+      ORDER BY evaluated_at DESC
+      `,
+      [userId]
+    );
+
+    return result.rows.map(mapAttempt);
+  }
+
+  async getSessionResult(
+    sessionId: string,
+    userId: string
+  ): Promise<{ attempt: Attempt; session: Session } | null> {
+    const session = await this.getSessionById(sessionId);
+
+    if (!session || session.userId !== userId) {
+      return null;
+    }
+
+    const attempt = await this.getLatestAttemptForSessionById(sessionId);
+    if (!attempt) {
+      return null;
+    }
+
+    return { attempt, session };
+  }
+
+  private async getLatestAttemptForSession(
+    client: PoolClient,
+    sessionId: string
+  ): Promise<Attempt | null> {
+    const result = await client.query<AttemptRow>(
+      `
+      SELECT
+        id,
+        session_id,
+        user_id,
+        scenario_id,
+        score,
+        base_score,
+        time_bonus,
+        hint_penalty,
+        passed,
+        assertion_results,
+        evaluated_at
+      FROM attempts
+      WHERE session_id = $1
+      ORDER BY evaluated_at DESC
+      LIMIT 1
+      `,
+      [sessionId]
+    );
+
+    if (!result.rowCount) {
+      return null;
+    }
+
+    return mapAttempt(result.rows[0]);
+  }
+
+  private async getLatestAttemptForSessionById(
+    sessionId: string
+  ): Promise<Attempt | null> {
+    const result = await this.pool.query<AttemptRow>(
+      `
+      SELECT
+        id,
+        session_id,
+        user_id,
+        scenario_id,
+        score,
+        base_score,
+        time_bonus,
+        hint_penalty,
+        passed,
+        assertion_results,
+        evaluated_at
+      FROM attempts
+      WHERE session_id = $1
+      ORDER BY evaluated_at DESC
+      LIMIT 1
+      `,
+      [sessionId]
+    );
+
+    if (!result.rowCount) {
+      return null;
+    }
+
+    return mapAttempt(result.rows[0]);
   }
 
   private async createSchema(client: PoolClient): Promise<void> {
@@ -236,7 +708,32 @@ export class Repository {
         ws_url TEXT NOT NULL,
         ws_token TEXT NOT NULL,
         expires_at TIMESTAMPTZ NOT NULL,
+        hint_count INTEGER NOT NULL DEFAULT 0,
+        submitted_at TIMESTAMPTZ,
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+
+    await client.query(
+      "ALTER TABLE sessions ADD COLUMN IF NOT EXISTS hint_count INTEGER NOT NULL DEFAULT 0"
+    );
+    await client.query(
+      "ALTER TABLE sessions ADD COLUMN IF NOT EXISTS submitted_at TIMESTAMPTZ"
+    );
+
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS attempts (
+        id TEXT PRIMARY KEY,
+        session_id TEXT NOT NULL REFERENCES sessions(id),
+        user_id TEXT NOT NULL,
+        scenario_id TEXT NOT NULL REFERENCES scenarios(id),
+        score INTEGER NOT NULL CHECK (score >= 0 AND score <= 100),
+        base_score INTEGER NOT NULL CHECK (base_score >= 0 AND base_score <= 100),
+        time_bonus INTEGER NOT NULL CHECK (time_bonus >= 0 AND time_bonus <= 20),
+        hint_penalty INTEGER NOT NULL CHECK (hint_penalty >= 0 AND hint_penalty <= 20),
+        passed BOOLEAN NOT NULL,
+        assertion_results JSONB NOT NULL,
+        evaluated_at TIMESTAMPTZ NOT NULL
       )
     `);
 
@@ -245,6 +742,15 @@ export class Repository {
     );
     await client.query(
       "CREATE INDEX IF NOT EXISTS sessions_scenario_id_idx ON sessions (scenario_id)"
+    );
+    await client.query(
+      "CREATE INDEX IF NOT EXISTS attempts_user_id_idx ON attempts (user_id)"
+    );
+    await client.query(
+      "CREATE INDEX IF NOT EXISTS attempts_scenario_id_idx ON attempts (scenario_id)"
+    );
+    await client.query(
+      "CREATE INDEX IF NOT EXISTS attempts_session_id_idx ON attempts (session_id)"
     );
   }
 

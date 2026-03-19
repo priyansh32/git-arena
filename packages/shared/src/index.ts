@@ -21,6 +21,7 @@ export interface Session {
   wsUrl: string;
   wsToken: string;
   expiresAt: string;
+  hintCount: number;
 }
 
 export interface CreateSessionRequest {
@@ -28,5 +29,40 @@ export interface CreateSessionRequest {
 }
 
 export interface CreateSessionResponse {
+  session: Session;
+}
+
+export interface AssertionResult {
+  checkId: string;
+  passed: boolean;
+  explanation: string;
+  weight: number;
+}
+
+export interface Attempt {
+  id: string;
+  sessionId: string;
+  userId: string;
+  scenarioId: string;
+  score: number;
+  baseScore: number;
+  timeBonus: number;
+  hintPenalty: number;
+  passed: boolean;
+  assertions: AssertionResult[];
+  evaluatedAt: string;
+}
+
+export interface SubmitSessionResponse {
+  attempt: Attempt;
+  session: Session;
+}
+
+export interface HintResponse {
+  hintIndex: number;
+  hint: string;
+}
+
+export interface RequestHintResponse extends HintResponse {
   session: Session;
 }
