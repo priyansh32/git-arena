@@ -10,3 +10,8 @@ coverage
 .env.*
 !.env.example
 deploy/gcp/env.vm
+
+# https://github.com/priyansh32/local-doc-renderer/releases/tag/v1.1.1
+local-doc-renderer-linux-amd64 
+
+temp-docs
