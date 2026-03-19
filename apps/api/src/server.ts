@@ -251,7 +251,22 @@ app.get("/ws/sessions/:id", { websocket: true } as any, (connection: any, reques
         return;
       }
 
-      terminal.stdin.write(normalizeTerminalInput(data));
+      if (typeof data === "string") {
+        terminal.stdin.write(data);
+        return;
+      }
+
+      if (Array.isArray(data)) {
+        terminal.stdin.write(Buffer.concat(data));
+        return;
+      }
+
+      if (data instanceof ArrayBuffer) {
+        terminal.stdin.write(Buffer.from(data));
+        return;
+      }
+
+      terminal.stdin.write(data);
     });
 
     connection.socket.on("close", () => {
@@ -384,53 +399,6 @@ app.post("/api/v1/sessions/:id/submit", async (request, reply) => {
 
   return response;
 });
-
-function normalizeTerminalInput(data: unknown): Buffer | string {
-  if (typeof data === "string") {
-    return data.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
-  }
-
-  if (Array.isArray(data)) {
-    return normalizeBuffer(
-      Buffer.concat(data.map((chunk) => (Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk))))
-    );
-  }
-
-  if (data instanceof ArrayBuffer) {
-    return normalizeBuffer(Buffer.from(data));
-  }
-
-  if (Buffer.isBuffer(data)) {
-    return normalizeBuffer(data);
-  }
-
-  if (ArrayBuffer.isView(data)) {
-    return normalizeBuffer(Buffer.from(data.buffer, data.byteOffset, data.byteLength));
-  }
-
-  return "";
-}
-
-function normalizeBuffer(input: Buffer): Buffer {
-  const normalized: number[] = [];
-
-  for (let index = 0; index < input.length; index += 1) {
-    const byte = input[index];
-
-    if (byte === 0x0d) {
-      if (index + 1 < input.length && input[index + 1] === 0x0a) {
-        index += 1;
-      }
-
-      normalized.push(0x0a);
-      continue;
-    }
-
-    normalized.push(byte);
-  }
-
-  return Buffer.from(normalized);
-}
 
 app.addHook("onClose", async () => {
   await repository.close();

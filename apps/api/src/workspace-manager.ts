@@ -66,18 +66,26 @@ export class WorkspaceManager {
 
   openTerminal(sessionId: string): ChildProcessWithoutNullStreams {
     const containerName = this.getContainerName(sessionId);
-
-    return spawn(
+    const command = [
       "docker",
-      ["exec", "-i", "--env", "TERM=xterm-256color", containerName, this.config.shell, "-i"],
-      {
-        stdio: "pipe",
-        env: {
-          ...process.env,
-          TERM: "xterm-256color"
-        }
+      "exec",
+      "-it",
+      "--env",
+      "TERM=xterm-256color",
+      containerName,
+      this.config.shell,
+      "-i"
+    ]
+      .map(shellEscape)
+      .join(" ");
+
+    return spawn("script", ["-qefc", command, "/dev/null"], {
+      stdio: "pipe",
+      env: {
+        ...process.env,
+        TERM: "xterm-256color"
       }
-    );
+    });
   }
 
   private async createWorkspaceContainer(containerName: string, session: Session): Promise<void> {
@@ -218,4 +226,12 @@ function parseAssertions(stdout: string): AssertionResult[] {
       } satisfies AssertionResult;
     })
     .filter((assertion): assertion is AssertionResult => assertion !== null);
+}
+
+function shellEscape(value: string): string {
+  if (/^[a-zA-Z0-9_./:-]+$/.test(value)) {
+    return value;
+  }
+
+  return `'${value.replace(/'/g, `'\\''`)}'`;
 }

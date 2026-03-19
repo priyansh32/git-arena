@@ -60,7 +60,7 @@ export function SessionTerminal({ wsUrl, wsToken }: SessionTerminalProps) {
 
     const inputDisposable = terminal.onData((input) => {
       if (socket.readyState === WebSocket.OPEN) {
-        socket.send(input.replace(/\r\n/g, "\n").replace(/\r/g, "\n"));
+        socket.send(input);
       }
     });
 
