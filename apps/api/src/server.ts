@@ -101,6 +101,11 @@ app.get("/api/v1/scenarios/:id/attempts", async (request, reply) => {
   return { attempts };
 });
 
+app.get("/api/v1/users/me/active-session", async () => {
+  const session = await repository.getActiveSessionByUser(LOCAL_USER_ID);
+  return { session };
+});
+
 app.get("/api/v1/users/me/history", async () => {
   const attempts = await repository.listAttemptsByUser(LOCAL_USER_ID);
   return { attempts };

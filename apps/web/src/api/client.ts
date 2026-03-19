@@ -63,6 +63,12 @@ export async function fetchUserHistory(): Promise<Attempt[]> {
   return payload.attempts;
 }
 
+export async function fetchActiveSession(): Promise<Session | null> {
+  const response = await fetch(`${API_BASE}/users/me/active-session`);
+  const payload = await parse<{ session: Session | null }>(response);
+  return payload.session;
+}
+
 export async function createSession(scenarioId: string): Promise<Session> {
   const response = await fetch(`${API_BASE}/sessions`, {
     method: "POST",
