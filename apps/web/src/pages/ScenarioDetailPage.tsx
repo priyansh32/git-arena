@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import type { Attempt, Scenario } from "@gitarena/shared";
+import type { Attempt, CreateSessionConflictResponse, Scenario } from "@gitarena/shared";
 
-import { createSession, fetchScenario, fetchScenarioAttempts } from "../api/client";
+import { createSession, fetchScenario, fetchScenarioAttempts, isApiError } from "../api/client";
 
 export function ScenarioDetailPage() {
   const { id } = useParams();
@@ -52,6 +52,14 @@ export function ScenarioDetailPage() {
       const session = await createSession(scenario.id);
       navigate(`/sessions/${session.id}`);
     } catch (err) {
+      if (isApiError<CreateSessionConflictResponse>(err) && err.status === 409) {
+        const activeSessionId = err.payload?.session?.id;
+        if (activeSessionId) {
+          navigate(`/sessions/${activeSessionId}`);
+          return;
+        }
+      }
+
       setError(err instanceof Error ? err.message : "Unable to create session");
     } finally {
       setStarting(false);

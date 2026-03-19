@@ -9,13 +9,34 @@ import type {
 
 const API_BASE = "/api/v1";
 
+export class ApiError<TPayload = unknown> extends Error {
+  status: number;
+  payload: TPayload;
+
+  constructor(message: string, status: number, payload: TPayload) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+    this.payload = payload;
+  }
+}
+
+export function isApiError<TPayload = unknown>(error: unknown): error is ApiError<TPayload> {
+  return error instanceof ApiError;
+}
+
 async function parse<T>(response: Response): Promise<T> {
+  const payload = await response.json().catch(() => ({ message: "Request failed" }));
+
   if (!response.ok) {
-    const payload = await response.json().catch(() => ({ message: "Request failed" }));
-    throw new Error(payload.message ?? "Request failed");
+    const message =
+      typeof payload.message === "string" && payload.message.length > 0
+        ? payload.message
+        : "Request failed";
+    throw new ApiError(message, response.status, payload);
   }
 
-  return (await response.json()) as T;
+  return payload as T;
 }
 
 export async function fetchScenarios(): Promise<Scenario[]> {

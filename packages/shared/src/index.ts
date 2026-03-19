@@ -33,6 +33,11 @@ export interface CreateSessionResponse {
   session: Session;
 }
 
+export interface CreateSessionConflictResponse {
+  message: string;
+  session: Session;
+}
+
 export interface AssertionResult {
   checkId: string;
   passed: boolean;
