@@ -1,0 +1,284 @@
+:root {
+  --bg: #f6f8f6;
+  --bg-alt: #edf1ee;
+  --text: #1f2421;
+  --muted: #5f6a63;
+  --line: #d9e0db;
+  --panel: #ffffff;
+  --accent: #1c7c54;
+  --accent-strong: #14613f;
+  --danger: #9f1f1f;
+  --shadow: 0 10px 30px rgba(16, 24, 19, 0.08);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: "IBM Plex Sans", "Avenir Next", "Segoe UI", sans-serif;
+  color: var(--text);
+  background:
+    radial-gradient(circle at 95% 5%, #dbeee2 0%, transparent 35%),
+    radial-gradient(circle at 10% 90%, #e9f2ed 0%, transparent 40%),
+    var(--bg);
+}
+
+a {
+  color: inherit;
+}
+
+.app-shell {
+  min-height: 100vh;
+}
+
+.app-header {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 1.2rem 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.brand {
+  font-weight: 800;
+  font-size: 1.25rem;
+  text-decoration: none;
+  letter-spacing: 0.04em;
+}
+
+.nav-link {
+  text-decoration: none;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.nav-link:hover {
+  color: var(--text);
+}
+
+.app-main {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 0.4rem 1rem 2rem;
+}
+
+.stack {
+  display: grid;
+  gap: 1rem;
+}
+
+.page-head h1,
+.detail-card h1,
+.workspace-head h1 {
+  margin: 0;
+  letter-spacing: 0.01em;
+}
+
+.page-head p,
+.detail-card p,
+.workspace-head p {
+  margin: 0.5rem 0 0;
+  color: var(--muted);
+}
+
+.grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+}
+
+.card,
+.detail-card,
+.objective-panel,
+.terminal-panel {
+  border: 1px solid var(--line);
+  background: var(--panel);
+  border-radius: 14px;
+  box-shadow: var(--shadow);
+}
+
+.card,
+.detail-card {
+  padding: 1rem;
+  display: grid;
+  gap: 0.8rem;
+}
+
+.card h2 {
+  margin: 0;
+  font-size: 1.15rem;
+}
+
+.card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+}
+
+.badge {
+  text-transform: uppercase;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 0.3rem 0.55rem;
+  border-radius: 999px;
+  letter-spacing: 0.04em;
+}
+
+.badge.beginner {
+  background: #d7f0e3;
+  color: #0a5d3a;
+}
+
+.badge.intermediate {
+  background: #ffeec7;
+  color: #7c5a09;
+}
+
+.badge.advanced {
+  background: #fbd9d9;
+  color: #7e2020;
+}
+
+.time {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.tag-row {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.tag {
+  border: 1px dashed #b9c6be;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  padding: 0.2rem 0.5rem;
+  color: #4b5a51;
+}
+
+.button {
+  border: none;
+  border-radius: 10px;
+  background: var(--accent);
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.92rem;
+  padding: 0.65rem 1rem;
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: fit-content;
+}
+
+.button:hover {
+  background: var(--accent-strong);
+}
+
+.button:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.button.subtle {
+  background: transparent;
+  border: 1px solid #b8c7bd;
+  color: #2c3932;
+}
+
+.button.subtle:hover {
+  background: var(--bg-alt);
+}
+
+.link {
+  color: #2f5d49;
+  text-decoration: none;
+  width: fit-content;
+}
+
+.state-text {
+  margin: 0;
+  color: var(--muted);
+}
+
+.state-text.error {
+  color: var(--danger);
+}
+
+.workspace {
+  display: grid;
+  gap: 1rem;
+}
+
+.workspace-head {
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--panel);
+  box-shadow: var(--shadow);
+  padding: 0.9rem 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.workspace-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: 2.2fr 1fr;
+}
+
+.terminal-header {
+  padding: 0.6rem 0.9rem;
+  border-bottom: 1px solid var(--line);
+  font-weight: 700;
+  letter-spacing: 0.03em;
+}
+
+.terminal-body {
+  background: #0f1713;
+  color: #b5f8d2;
+  min-height: 360px;
+  border-bottom-left-radius: 14px;
+  border-bottom-right-radius: 14px;
+  padding: 1rem;
+  font-family: "IBM Plex Mono", "SFMono-Regular", monospace;
+}
+
+.objective-panel {
+  padding: 1rem;
+  display: grid;
+  gap: 0.8rem;
+  align-content: start;
+}
+
+.objective-panel h2 {
+  margin: 0;
+}
+
+.objective-panel p {
+  margin: 0;
+  color: var(--muted);
+}
+
+.panel-actions {
+  display: flex;
+  gap: 0.6rem;
+}
+
+@media (max-width: 900px) {
+  .workspace-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .terminal-body {
+    min-height: 260px;
+  }
+}

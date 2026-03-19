@@ -1,0 +1,18 @@
+{
+  "name": "gitarena",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "npm run build -w @gitarena/shared && (npm run dev -w @gitarena/api & npm run dev -w @gitarena/web)",
+    "dev:api": "npm run build -w @gitarena/shared && npm run dev -w @gitarena/api",
+    "dev:web": "npm run build -w @gitarena/shared && npm run dev -w @gitarena/web",
+    "build": "npm run build -w @gitarena/shared && npm run build -w @gitarena/api && npm run build -w @gitarena/web",
+    "typecheck": "npm run typecheck -w @gitarena/shared && npm run typecheck -w @gitarena/api && npm run typecheck -w @gitarena/web",
+    "docker:up": "docker compose up --build",
+    "docker:down": "docker compose down"
+  }
+}
