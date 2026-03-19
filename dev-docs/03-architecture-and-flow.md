@@ -86,9 +86,9 @@ Expiration behavior:
 
 ## Auth Status (Current)
 
-Auth is intentionally deferred.
+Auth now uses Google Sign-In ID tokens + server-managed session cookies.
 
-- API hardcodes user id to `local-dev-user`.
-- All session ownership checks compare against this local id.
-- Frontend does not do sign-in flow yet.
-
+- Web obtains a Google ID token and calls `POST /api/v1/auth/google`.
+- API verifies token signature/claims and upserts the user record.
+- API issues an HTTP-only cookie tied to `auth_sessions` in Postgres.
+- Protected session/attempt/history routes enforce request-scoped `user.id`.

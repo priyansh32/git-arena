@@ -31,6 +31,7 @@ Files:
 - `deploy/gcp/env.vm.example`
 - `scripts/gcp/provision-vm.sh`
 - `scripts/gcp/deploy-vm.sh`
+- `scripts/gcp/configure-auth-platform.sh`
 - `scripts/gcp/destroy-vm.sh`
 
 Runtime services on VM:
@@ -48,6 +49,7 @@ No VM-hosted Postgres in this path; DB is Cloud SQL.
 3. Prepare `deploy/gcp/env.vm` with DB/proxy values.
 4. Run deploy script to sync repo and `docker compose up -d --build`.
 5. Check readiness endpoint.
+6. Configure Auth Platform (`npm run gcp:auth-platform`) and verify Google provider setup.
 
 ## Required Env for VM Runtime
 
@@ -56,6 +58,8 @@ Must be set in `deploy/gcp/env.vm`:
 - `INSTANCE_CONNECTION_NAME`
 - `DATABASE_URL` (pointing to `cloudsql-proxy:5432`)
 - `CORS_ORIGINS`
+- `GOOGLE_CLIENT_ID`
+- `VITE_GOOGLE_CLIENT_ID`
 
 Optional tuning:
 
@@ -64,6 +68,8 @@ Optional tuning:
 - `WORKSPACE_SHELL`
 - `WORKSPACE_CONTAINER_PREFIX`
 - `WORKSPACE_INIT_COMMAND`
+- `SESSION_COOKIE_NAME`
+- `SESSION_TTL_HOURS`
 
 ## Cost Controls
 
@@ -97,4 +103,3 @@ Focus areas:
 - API workspace provisioning errors (`docker` failures).
 - websocket connection failures.
 - Cloud SQL proxy connectivity/auth issues.
-

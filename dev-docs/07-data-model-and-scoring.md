@@ -4,6 +4,31 @@ Database is PostgreSQL. Schema is created/updated in `Repository.createSchema()`
 
 ## Tables
 
+## `users`
+
+Stores authenticated GitArena identities.
+
+Important columns:
+
+- `id` (PK)
+- `google_sub` (unique Google account subject)
+- `email`
+- `display_name`
+- `avatar_url`
+- `created_at`, `updated_at`
+
+## `auth_sessions`
+
+Tracks server-side login sessions bound to cookie tokens.
+
+Important columns:
+
+- `id` (PK)
+- `user_id` (FK -> users)
+- `token_hash` (sha256 hash of cookie token, unique)
+- `created_at`, `expires_at`, `revoked_at`, `last_seen_at`
+- `user_agent`, `ip_address`
+
 ## `scenarios`
 
 Stores scenario metadata shown in catalog and used during sessions.
@@ -55,6 +80,7 @@ Important columns:
 
 Types in `packages/shared/src/index.ts` mirror DB payloads for API/web:
 
+- `UserProfile`
 - `Scenario`
 - `Session`
 - `Attempt`
@@ -102,4 +128,3 @@ This is invoked:
 - before hint request
 - before submit flow
 - during startup normalization
-

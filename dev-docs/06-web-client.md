@@ -14,6 +14,12 @@ Frontend lives in `apps/web` and is built with React + Vite.
 
 Unknown paths redirect to `/dashboard`.
 
+Auth gate:
+
+- app bootstraps user via `GET /api/v1/users/me`
+- unauthenticated users see `LoginPage` with Google Sign-In button
+- authenticated users get full app shell + routes
+
 ## API Integration Pattern
 
 `src/api/client.ts`:
@@ -21,10 +27,17 @@ Unknown paths redirect to `/dashboard`.
 - wraps `fetch` for each endpoint
 - centralizes JSON parsing and typed error throwing (`ApiError`)
 - all endpoints use `/api/v1` base
+- requests send `credentials: "include"` for cookie session auth
 
 Route pages call these functions inside `useEffect` or button handlers.
 
 ## Page Responsibilities
+
+Login (`LoginPage.tsx`):
+
+- loads Google Identity Services script
+- renders Google sign-in button using `VITE_GOOGLE_CLIENT_ID`
+- exchanges ID token with backend (`POST /api/v1/auth/google`)
 
 Dashboard (`DashboardPage.tsx`):
 
@@ -66,6 +79,7 @@ History (`HistoryPage.tsx`):
 - displays connection state banner
 
 The component sends raw keystrokes and handles both string and `ArrayBuffer` payloads.
+Browser auth cookie is automatically included in websocket handshake.
 
 ## Styling System
 
@@ -98,4 +112,3 @@ Docker runtime:
 2. Update shared styles in `index.css` if needed.
 3. Validate desktop + mobile breakpoints.
 4. Verify terminal still focuses and input reaches backend after UI changes.
-

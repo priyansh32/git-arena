@@ -40,6 +40,11 @@ npm run dev:api
 npm run dev:web
 ```
 
+Required env for auth:
+
+- `GOOGLE_CLIENT_ID` (API-side Google ID token audience)
+- `VITE_GOOGLE_CLIENT_ID` (web Google Sign-In client id)
+
 Run API scoring tests:
 
 ```bash
@@ -88,6 +93,7 @@ Single VM + Cloud SQL deployment assets are included:
 - Runtime env template: `deploy/gcp/env.vm.example`
 - Provision script: `scripts/gcp/provision-vm.sh`
 - Deploy script: `scripts/gcp/deploy-vm.sh`
+- Auth platform script: `scripts/gcp/configure-auth-platform.sh`
 - Destroy script: `scripts/gcp/destroy-vm.sh`
 - Runbook: `docs/deployment-gcp-vm.md`
 
@@ -114,13 +120,16 @@ This is a bootstrap foundation with:
 - Scenario scripts are modularized in `apps/api/scenarios/<scenario-id>/{seed.sh,eval.sh}`
 - Interactive terminal over websocket at session workspace route
 - Dashboard, workspace, result, and history routes
-- Auth intentionally left out for now
+- Google sign-in with server-side session cookies and per-user API isolation
 
 ## API routes (current)
 
 - `GET /api/v1/health/live`
 - `GET /api/v1/health/ready`
 - `GET /api/v1/health`
+- `POST /api/v1/auth/google`
+- `POST /api/v1/auth/logout`
+- `GET /api/v1/users/me`
 - `GET /api/v1/scenarios`
 - `GET /api/v1/scenarios/:id`
 - `GET /api/v1/scenarios/:id/attempts`
@@ -143,4 +152,5 @@ This is a bootstrap foundation with:
 
 ## Notes
 
-- Authentication is intentionally excluded at this stage.
+- `GET /api/v1/scenarios` and `GET /api/v1/scenarios/:id` are public.
+- Session, attempt, and history routes require an authenticated cookie session.

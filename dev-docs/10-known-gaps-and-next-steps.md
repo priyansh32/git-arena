@@ -17,15 +17,14 @@ Working today:
 
 Not implemented yet:
 
-- authentication and user identity
 - role-based access (`learner/author/admin`)
 - scenario authoring admin UI
 - richer observability/metrics dashboards
 
 ## Highest Priority Next
 
-1. Add real auth and identity.
-2. Harden terminal websocket behavior and add reconnect handling.
+1. Harden submission integrity (immutable snapshot evaluation path).
+2. Harden container/runtime restrictions (privileges, limits, network isolation).
 3. Expand automated tests beyond scoring unit tests.
 4. Add scenario authoring workflow (draft/test/publish controls).
 5. Add production guardrails (rate limiting, abuse controls, backups, alerts).
@@ -74,4 +73,3 @@ When features ship, update these files first:
 - auth -> `04-backend-api.md`, `06-web-client.md`, `07-data-model-and-scoring.md`
 - scenario authoring -> `05-workspace-runtime-and-scenarios.md`
 - infra changes -> `09-deployment-and-ops.md`
-

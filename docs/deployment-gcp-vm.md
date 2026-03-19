@@ -81,6 +81,8 @@ Required values in `deploy/gcp/env.vm`:
 - `INSTANCE_CONNECTION_NAME` (from Cloud SQL)
 - `DATABASE_URL` (must point to `cloudsql-proxy:5432`)
 - `CORS_ORIGINS`
+- `GOOGLE_CLIENT_ID`
+- `VITE_GOOGLE_CLIENT_ID`
 
 Example:
 
@@ -88,6 +90,8 @@ Example:
 INSTANCE_CONNECTION_NAME=your-project:us-central1:gitarena-pg
 DATABASE_URL=postgres://gitarena:replace-with-strong-password@cloudsql-proxy:5432/gitarena
 CORS_ORIGINS=https://gitarena.example.com
+GOOGLE_CLIENT_ID=replace-with-google-web-client-id.apps.googleusercontent.com
+VITE_GOOGLE_CLIENT_ID=replace-with-google-web-client-id.apps.googleusercontent.com
 ```
 
 ## 5. Deploy App
@@ -108,6 +112,15 @@ After deploy, app is available at:
 Health endpoint:
 
 - `http://<vm-external-ip>/api/v1/health/ready`
+
+Configure Auth Platform (authorized domains + provider):
+
+```bash
+# Optional for automatic google.com provider setup:
+# export GOOGLE_PROVIDER_CLIENT_ID="..."
+# export GOOGLE_PROVIDER_CLIENT_SECRET="..."
+npm run gcp:auth-platform
+```
 
 ## 6. Operational Commands
 

@@ -21,6 +21,9 @@ Important env vars:
 
 - `DATABASE_URL`
 - `CORS_ORIGINS`
+- `GOOGLE_CLIENT_ID`
+- `SESSION_COOKIE_NAME`
+- `SESSION_TTL_HOURS`
 - `WORKSPACE_IMAGE`
 - `WORKSPACE_ROOT`
 - `WORKSPACE_SHELL`
@@ -36,6 +39,12 @@ Health:
 - `GET /api/v1/health/live`
 - `GET /api/v1/health/ready`
 - `GET /api/v1/health`
+
+Auth:
+
+- `POST /api/v1/auth/google`
+- `POST /api/v1/auth/logout`
+- `GET /api/v1/users/me`
 
 Scenarios:
 
@@ -65,9 +74,11 @@ Terminal:
 
 `src/repository.ts` owns DB interactions:
 
-- Schema bootstrapping (`scenarios`, `sessions`, `attempts`).
+- Schema bootstrapping (`users`, `auth_sessions`, `scenarios`, `sessions`, `attempts`).
 - Session expiration normalization.
 - Scenario upsert seeding from `defaultScenarios`.
+- User upsert from verified Google identity.
+- Session token lifecycle (create, load, revoke, cleanup).
 - Session creation, hinting, submit, terminate.
 - Attempt fetch by scenario/user/session.
 
@@ -111,14 +122,8 @@ During submit:
 
 ## Auth Placeholder Notes
 
-Current local user id in server:
+Auth middleware now injects request-scoped user context from a signed-in cookie:
 
-```ts
-const LOCAL_USER_ID = "local-dev-user";
-```
-
-When auth is added:
-
-- replace this with middleware-injected user context.
-- ensure every route and websocket path receives authenticated identity.
-
+- cookie value is random session token (`SESSION_COOKIE_NAME`)
+- DB stores only `sha256` token hash in `auth_sessions`
+- websocket handshake also validates auth cookie before attaching terminal
