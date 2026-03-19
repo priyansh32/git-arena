@@ -404,7 +404,8 @@ export class Repository {
 
   async submitSession(
     sessionId: string,
-    userId: string
+    userId: string,
+    assertions?: AssertionResult[]
   ): Promise<{ attempt: Attempt; session: Session } | null> {
     const client = await this.pool.connect();
 
@@ -469,7 +470,8 @@ export class Repository {
         startedAt: row.started_at,
         evaluatedAt: now,
         estimatedTimeMinutes: row.scenario_estimated_time_minutes,
-        hintCount: row.hint_count
+        hintCount: row.hint_count,
+        assertions
       });
 
       const attemptInsertResult = await client.query<AttemptRow>(

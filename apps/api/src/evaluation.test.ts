@@ -43,3 +43,35 @@ test("evaluateSubmission fails time window when overdue", () => {
   assert.equal(output.timeBonus, 0);
   assert.equal(output.baseScore, 70);
 });
+
+test("evaluateSubmission uses provided assertion output", () => {
+  const now = new Date("2026-03-19T18:05:00.000Z");
+  const started = new Date("2026-03-19T18:00:00.000Z");
+
+  const output = evaluateSubmission({
+    objective: "Recover branch history",
+    startedAt: started,
+    evaluatedAt: now,
+    estimatedTimeMinutes: 20,
+    hintCount: 0,
+    assertions: [
+      {
+        checkId: "not_detached",
+        passed: true,
+        explanation: "HEAD is attached to a branch.",
+        weight: 35
+      },
+      {
+        checkId: "feature_branch_recovered",
+        passed: false,
+        explanation: "Expected branch was not created.",
+        weight: 65
+      }
+    ]
+  });
+
+  assert.equal(output.baseScore, 35);
+  assert.equal(output.assertions.length, 2);
+  assert.equal(output.score < 70, true);
+  assert.equal(output.passed, false);
+});

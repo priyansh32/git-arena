@@ -94,6 +94,22 @@ async function isContainerRunning(containerName) {
   }
 }
 
+async function isWorkspaceSeeded(containerName) {
+  try {
+    const { stdout } = await execFileAsync("docker", [
+      "exec",
+      "-i",
+      containerName,
+      "sh",
+      "-lc",
+      "cd /workspace && git rev-parse --is-inside-work-tree"
+    ]);
+    return stdout.trim() === "true";
+  } catch {
+    return false;
+  }
+}
+
 async function main() {
   const { apiBase, containerPrefix } = parseArgs(process.argv.slice(2));
   const cleanupSessionIds = new Set();
@@ -161,6 +177,10 @@ async function main() {
     const runningBeforeDelete = await isContainerRunning(containerName);
     console.log(`[smoke] workspace_container_running=${runningBeforeDelete}`);
     assert(runningBeforeDelete, "Workspace container did not start");
+
+    const seededWorkspace = await isWorkspaceSeeded(containerName);
+    console.log(`[smoke] workspace_seeded_git_repo=${seededWorkspace}`);
+    assert(seededWorkspace, "Workspace did not contain a seeded git repository");
 
     const finalDelete = await requestJson(apiBase, `/sessions/${thirdSessionId}`, {
       method: "DELETE"

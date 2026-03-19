@@ -84,10 +84,11 @@ This is a bootstrap foundation with:
 - PostgreSQL-backed scenario/session persistence
 - API liveness/readiness health endpoints
 - Graceful API shutdown handling
-- Hint + submit + evaluation pipeline (no shell evaluator yet)
+- Hint + submit + evaluation pipeline with scenario-specific shell evaluators
 - Attempt history persisted per user
 - Static scenario-authored hints served progressively per session
 - Docker-backed workspace container provisioning per active session
+- Scenario seed scripts that create a real Git challenge repository per workspace
 - Interactive terminal over websocket at session workspace route
 - Dashboard, workspace, result, and history routes
 - Auth intentionally left out for now
