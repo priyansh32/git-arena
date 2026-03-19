@@ -8,6 +8,17 @@ Initial implementation scaffold based on `git-arena-designdoc.md`.
 - `apps/web` - React + Vite frontend
 - `packages/shared` - shared TypeScript types
 
+## Developer Docs
+
+Detailed onboarding + architecture docs live in [`dev-docs/`](dev-docs/README.md):
+
+- Start here: [`dev-docs/README.md`](dev-docs/README.md)
+- Quick setup: [`dev-docs/01-quick-start.md`](dev-docs/01-quick-start.md)
+- System architecture: [`dev-docs/03-architecture-and-flow.md`](dev-docs/03-architecture-and-flow.md)
+- Backend deep dive: [`dev-docs/04-backend-api.md`](dev-docs/04-backend-api.md)
+- Scenario runtime and challenge authoring: [`dev-docs/05-workspace-runtime-and-scenarios.md`](dev-docs/05-workspace-runtime-and-scenarios.md)
+- Deployment and ops: [`dev-docs/09-deployment-and-ops.md`](dev-docs/09-deployment-and-ops.md)
+
 ## Quick start
 
 ```bash
