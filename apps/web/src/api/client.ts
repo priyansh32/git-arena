@@ -1,6 +1,9 @@
 import type {
   Attempt,
+  AuthUserResponse,
   CreateSessionResponse,
+  CurrentUserResponse,
+  GoogleAuthRequest,
   RequestHintResponse,
   Scenario,
   Session,
@@ -39,80 +42,95 @@ async function parse<T>(response: Response): Promise<T> {
   return payload as T;
 }
 
+async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
+  const response = await fetch(`${API_BASE}${path}`, {
+    credentials: "include",
+    ...init
+  });
+  return parse<T>(response);
+}
+
+export async function fetchCurrentUser() {
+  const payload = await request<CurrentUserResponse>("/users/me");
+  return payload.user;
+}
+
+export async function loginWithGoogleIdToken(idToken: string) {
+  const payload = await request<AuthUserResponse>("/auth/google", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ idToken } satisfies GoogleAuthRequest)
+  });
+
+  return payload.user;
+}
+
+export async function logoutUser(): Promise<void> {
+  await request<{ ok: true }>("/auth/logout", {
+    method: "POST"
+  });
+}
+
 export async function fetchScenarios(): Promise<Scenario[]> {
-  const response = await fetch(`${API_BASE}/scenarios`);
-  const payload = await parse<{ scenarios: Scenario[] }>(response);
+  const payload = await request<{ scenarios: Scenario[] }>("/scenarios");
   return payload.scenarios;
 }
 
 export async function fetchScenario(id: string): Promise<Scenario> {
-  const response = await fetch(`${API_BASE}/scenarios/${id}`);
-  const payload = await parse<{ scenario: Scenario }>(response);
+  const payload = await request<{ scenario: Scenario }>(`/scenarios/${id}`);
   return payload.scenario;
 }
 
 export async function fetchScenarioAttempts(id: string): Promise<Attempt[]> {
-  const response = await fetch(`${API_BASE}/scenarios/${id}/attempts`);
-  const payload = await parse<{ attempts: Attempt[] }>(response);
+  const payload = await request<{ attempts: Attempt[] }>(`/scenarios/${id}/attempts`);
   return payload.attempts;
 }
 
 export async function fetchUserHistory(): Promise<Attempt[]> {
-  const response = await fetch(`${API_BASE}/users/me/history`);
-  const payload = await parse<{ attempts: Attempt[] }>(response);
+  const payload = await request<{ attempts: Attempt[] }>("/users/me/history");
   return payload.attempts;
 }
 
 export async function fetchActiveSession(): Promise<Session | null> {
-  const response = await fetch(`${API_BASE}/users/me/active-session`);
-  const payload = await parse<{ session: Session | null }>(response);
+  const payload = await request<{ session: Session | null }>("/users/me/active-session");
   return payload.session;
 }
 
 export async function createSession(scenarioId: string): Promise<Session> {
-  const response = await fetch(`${API_BASE}/sessions`, {
+  const payload = await request<CreateSessionResponse>("/sessions", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ scenarioId })
   });
-
-  const payload = await parse<CreateSessionResponse>(response);
   return payload.session;
 }
 
 export async function fetchSession(id: string): Promise<Session> {
-  const response = await fetch(`${API_BASE}/sessions/${id}`);
-  const payload = await parse<{ session: Session }>(response);
+  const payload = await request<{ session: Session }>(`/sessions/${id}`);
   return payload.session;
 }
 
 export async function terminateSession(sessionId: string): Promise<Session> {
-  const response = await fetch(`${API_BASE}/sessions/${sessionId}`, {
+  const payload = await request<{ session: Session }>(`/sessions/${sessionId}`, {
     method: "DELETE"
   });
-  const payload = await parse<{ session: Session }>(response);
   return payload.session;
 }
 
 export async function requestHint(sessionId: string): Promise<RequestHintResponse> {
-  const response = await fetch(`${API_BASE}/sessions/${sessionId}/hint`, {
+  return request<RequestHintResponse>(`/sessions/${sessionId}/hint`, {
     method: "POST"
   });
-
-  return parse<RequestHintResponse>(response);
 }
 
 export async function submitSession(sessionId: string): Promise<SubmitSessionResponse> {
-  const response = await fetch(`${API_BASE}/sessions/${sessionId}/submit`, {
+  return request<SubmitSessionResponse>(`/sessions/${sessionId}/submit`, {
     method: "POST"
   });
-
-  return parse<SubmitSessionResponse>(response);
 }
 
 export async function fetchSessionResult(
   sessionId: string
 ): Promise<SubmitSessionResponse> {
-  const response = await fetch(`${API_BASE}/sessions/${sessionId}/result`);
-  return parse<SubmitSessionResponse>(response);
+  return request<SubmitSessionResponse>(`/sessions/${sessionId}/result`);
 }

@@ -5,7 +5,7 @@
     "moduleResolution": "NodeNext",
     "rootDir": "src",
     "outDir": "dist",
-    "types": ["node", "@fastify/websocket"]
+    "types": ["node", "@fastify/websocket", "@fastify/cookie"]
   },
   "include": ["src/**/*.ts"]
 }

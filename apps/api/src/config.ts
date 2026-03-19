@@ -14,7 +14,10 @@ const envSchema = z.object({
   WORKSPACE_CONTAINER_PREFIX: z.string().default("gitarena-ws"),
   WORKSPACE_INIT_COMMAND: z
     .string()
-    .default("mkdir -p /workspace && cd /workspace && exec tail -f /dev/null")
+    .default("mkdir -p /workspace && cd /workspace && exec tail -f /dev/null"),
+  GOOGLE_CLIENT_ID: z.string().min(1),
+  SESSION_COOKIE_NAME: z.string().default("gitarena_session"),
+  SESSION_TTL_HOURS: z.coerce.number().int().min(1).max(24 * 30).default(24 * 7)
 });
 
 export interface WorkspaceConfig {
@@ -32,6 +35,11 @@ export interface AppConfig {
   databaseUrl: string;
   corsOrigins: string[];
   workspace: WorkspaceConfig;
+  auth: {
+    googleClientId: string;
+    sessionCookieName: string;
+    sessionTtlHours: number;
+  };
 }
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
@@ -52,6 +60,11 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
       shell: parsed.WORKSPACE_SHELL,
       containerPrefix: parsed.WORKSPACE_CONTAINER_PREFIX,
       initCommand: parsed.WORKSPACE_INIT_COMMAND
+    },
+    auth: {
+      googleClientId: parsed.GOOGLE_CLIENT_ID,
+      sessionCookieName: parsed.SESSION_COOKIE_NAME,
+      sessionTtlHours: parsed.SESSION_TTL_HOURS
     }
   };
 }

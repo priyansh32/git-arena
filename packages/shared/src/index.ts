@@ -13,6 +13,15 @@ export interface Scenario {
   status: ScenarioStatus;
 }
 
+export interface UserProfile {
+  id: string;
+  email: string;
+  displayName: string;
+  avatarUrl: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface Session {
   id: string;
   userId: string;
@@ -71,4 +80,16 @@ export interface HintResponse {
 
 export interface RequestHintResponse extends HintResponse {
   session: Session;
+}
+
+export interface GoogleAuthRequest {
+  idToken: string;
+}
+
+export interface AuthUserResponse {
+  user: UserProfile;
+}
+
+export interface CurrentUserResponse {
+  user: UserProfile | null;
 }

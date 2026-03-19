@@ -21,6 +21,9 @@ services:
       PORT: 3001
       DATABASE_URL: "${DATABASE_URL}"
       CORS_ORIGINS: "${CORS_ORIGINS}"
+      GOOGLE_CLIENT_ID: "${GOOGLE_CLIENT_ID}"
+      SESSION_COOKIE_NAME: "${SESSION_COOKIE_NAME:-gitarena_session}"
+      SESSION_TTL_HOURS: "${SESSION_TTL_HOURS:-168}"
       WORKSPACE_IMAGE: "${WORKSPACE_IMAGE:-alpine/git:2.47.2}"
       WORKSPACE_ROOT: "${WORKSPACE_ROOT:-/workspace}"
       WORKSPACE_SHELL: "${WORKSPACE_SHELL:-/bin/sh}"
@@ -44,6 +47,8 @@ services:
     build:
       context: ../..
       dockerfile: apps/web/Dockerfile
+      args:
+        VITE_GOOGLE_CLIENT_ID: "${VITE_GOOGLE_CLIENT_ID:-${GOOGLE_CLIENT_ID}}"
     restart: unless-stopped
     depends_on:
       api:

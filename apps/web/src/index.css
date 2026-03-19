@@ -47,8 +47,9 @@ a {
   background: color-mix(in srgb, var(--bg) 92%, transparent);
 }
 
-.app-header nav {
+.header-nav {
   display: flex;
+  align-items: center;
   gap: 1rem;
 }
 
@@ -67,6 +68,13 @@ a {
 
 .nav-link:hover {
   color: var(--text);
+}
+
+.nav-user {
+  color: var(--muted);
+  font-size: 0.9rem;
+  border-left: 1px solid var(--line);
+  padding-left: 0.85rem;
 }
 
 .app-main {
@@ -461,6 +469,22 @@ a {
 }
 
 @media (max-width: 900px) {
+  .app-header {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 0.55rem;
+  }
+
+  .header-nav {
+    flex-wrap: wrap;
+    gap: 0.7rem;
+  }
+
+  .nav-user {
+    border-left: 0;
+    padding-left: 0;
+  }
+
   .workspace-grid {
     grid-template-columns: 1fr;
   }

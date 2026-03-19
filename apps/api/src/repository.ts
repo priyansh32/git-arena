@@ -4,7 +4,8 @@ import type {
   AssertionResult,
   Attempt,
   Scenario,
-  Session
+  Session,
+  UserProfile
 } from "@gitarena/shared";
 import { Pool, type PoolClient } from "pg";
 
@@ -47,6 +48,28 @@ interface AttemptRow {
   passed: boolean;
   assertion_results: unknown;
   evaluated_at: Date;
+}
+
+interface UserRow {
+  id: string;
+  google_sub: string;
+  email: string;
+  display_name: string;
+  avatar_url: string | null;
+  created_at: Date;
+  updated_at: Date;
+}
+
+interface AuthSessionJoinRow {
+  user_id: string;
+  expires_at: Date;
+  session_id: string;
+  google_sub: string;
+  email: string;
+  display_name: string;
+  avatar_url: string | null;
+  created_at: Date;
+  updated_at: Date;
 }
 
 interface SessionScenarioRow extends SessionRow {
@@ -142,6 +165,17 @@ function mapAttempt(row: AttemptRow): Attempt {
   };
 }
 
+function mapUserProfile(row: UserRow): UserProfile {
+  return {
+    id: row.id,
+    email: row.email,
+    displayName: row.display_name,
+    avatarUrl: row.avatar_url,
+    createdAt: row.created_at.toISOString(),
+    updatedAt: row.updated_at.toISOString()
+  };
+}
+
 function buildHint(row: SessionScenarioRow): string {
   const hints = parseStringArray(row.scenario_hints);
   const nextHintIndex = Math.max(0, row.hint_count - 1);
@@ -177,6 +211,7 @@ export class Repository {
       await this.createSchema(client);
       await this.normalizeActiveSessions(client);
       await this.ensureConstraints(client);
+      await this.purgeExpiredAuthSessions(client);
       await this.seedScenarios(client);
       await client.query("COMMIT");
     } catch (error) {
@@ -185,6 +220,141 @@ export class Repository {
     } finally {
       client.release();
     }
+  }
+
+  async upsertGoogleUser(input: {
+    googleSub: string;
+    email: string;
+    displayName: string;
+    avatarUrl: string | null;
+  }): Promise<UserProfile> {
+    const result = await this.pool.query<UserRow>(
+      `
+      INSERT INTO users (
+        id,
+        google_sub,
+        email,
+        display_name,
+        avatar_url,
+        created_at,
+        updated_at
+      )
+      VALUES ($1, $2, $3, $4, $5, NOW(), NOW())
+      ON CONFLICT (google_sub)
+      DO UPDATE SET
+        email = EXCLUDED.email,
+        display_name = EXCLUDED.display_name,
+        avatar_url = EXCLUDED.avatar_url,
+        updated_at = NOW()
+      RETURNING
+        id,
+        google_sub,
+        email,
+        display_name,
+        avatar_url,
+        created_at,
+        updated_at
+      `,
+      [
+        randomUUID(),
+        input.googleSub,
+        input.email.toLowerCase(),
+        input.displayName,
+        input.avatarUrl
+      ]
+    );
+
+    return mapUserProfile(result.rows[0]);
+  }
+
+  async getUserBySessionTokenHash(tokenHash: string): Promise<UserProfile | null> {
+    const result = await this.pool.query<AuthSessionJoinRow>(
+      `
+      WITH active_session AS (
+        UPDATE auth_sessions
+        SET last_seen_at = NOW()
+        WHERE token_hash = $1
+          AND revoked_at IS NULL
+          AND expires_at >= NOW()
+        RETURNING id, user_id, expires_at
+      )
+      SELECT
+        active_session.user_id,
+        active_session.expires_at,
+        active_session.id AS session_id,
+        u.google_sub,
+        u.email,
+        u.display_name,
+        u.avatar_url,
+        u.created_at,
+        u.updated_at
+      FROM active_session
+      JOIN users AS u
+        ON u.id = active_session.user_id
+      LIMIT 1
+      `,
+      [tokenHash]
+    );
+
+    if (!result.rowCount) {
+      return null;
+    }
+
+    const row = result.rows[0];
+    return mapUserProfile({
+      id: row.user_id,
+      google_sub: row.google_sub,
+      email: row.email,
+      display_name: row.display_name,
+      avatar_url: row.avatar_url,
+      created_at: row.created_at,
+      updated_at: row.updated_at
+    });
+  }
+
+  async createAuthSession(input: {
+    userId: string;
+    tokenHash: string;
+    expiresAt: Date;
+    userAgent: string | null;
+    ipAddress: string | null;
+  }): Promise<void> {
+    await this.pool.query(
+      `
+      INSERT INTO auth_sessions (
+        id,
+        user_id,
+        token_hash,
+        created_at,
+        expires_at,
+        revoked_at,
+        last_seen_at,
+        user_agent,
+        ip_address
+      )
+      VALUES ($1, $2, $3, NOW(), $4, NULL, NOW(), $5, $6)
+      `,
+      [
+        randomUUID(),
+        input.userId,
+        input.tokenHash,
+        input.expiresAt.toISOString(),
+        input.userAgent,
+        input.ipAddress
+      ]
+    );
+  }
+
+  async revokeAuthSessionByTokenHash(tokenHash: string): Promise<void> {
+    await this.pool.query(
+      `
+      UPDATE auth_sessions
+      SET revoked_at = NOW()
+      WHERE token_hash = $1
+        AND revoked_at IS NULL
+      `,
+      [tokenHash]
+    );
   }
 
   async listPublishedScenarios(): Promise<Scenario[]> {
@@ -757,6 +927,49 @@ export class Repository {
 
   private async createSchema(client: PoolClient): Promise<void> {
     await client.query(`
+      CREATE TABLE IF NOT EXISTS users (
+        id TEXT PRIMARY KEY,
+        google_sub TEXT NOT NULL UNIQUE,
+        email TEXT NOT NULL,
+        display_name TEXT NOT NULL,
+        avatar_url TEXT,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+
+    await client.query(
+      "ALTER TABLE users ADD COLUMN IF NOT EXISTS display_name TEXT NOT NULL DEFAULT 'Player'"
+    );
+    await client.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_url TEXT");
+    await client.query(
+      "ALTER TABLE users ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()"
+    );
+
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS auth_sessions (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL REFERENCES users(id),
+        token_hash TEXT NOT NULL UNIQUE,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        expires_at TIMESTAMPTZ NOT NULL,
+        revoked_at TIMESTAMPTZ,
+        last_seen_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        user_agent TEXT,
+        ip_address TEXT
+      )
+    `);
+
+    await client.query(
+      "ALTER TABLE auth_sessions ADD COLUMN IF NOT EXISTS revoked_at TIMESTAMPTZ"
+    );
+    await client.query(
+      "ALTER TABLE auth_sessions ADD COLUMN IF NOT EXISTS last_seen_at TIMESTAMPTZ NOT NULL DEFAULT NOW()"
+    );
+    await client.query("ALTER TABLE auth_sessions ADD COLUMN IF NOT EXISTS user_agent TEXT");
+    await client.query("ALTER TABLE auth_sessions ADD COLUMN IF NOT EXISTS ip_address TEXT");
+
+    await client.query(`
       CREATE TABLE IF NOT EXISTS scenarios (
         id TEXT PRIMARY KEY,
         title TEXT NOT NULL,
@@ -815,6 +1028,18 @@ export class Repository {
     `);
 
     await client.query(
+      "CREATE INDEX IF NOT EXISTS users_email_idx ON users (LOWER(email))"
+    );
+    await client.query(
+      "CREATE INDEX IF NOT EXISTS auth_sessions_user_id_idx ON auth_sessions (user_id)"
+    );
+    await client.query(
+      "CREATE INDEX IF NOT EXISTS auth_sessions_expires_at_idx ON auth_sessions (expires_at)"
+    );
+    await client.query(
+      "CREATE INDEX IF NOT EXISTS auth_sessions_revoked_at_idx ON auth_sessions (revoked_at)"
+    );
+    await client.query(
       "CREATE INDEX IF NOT EXISTS sessions_user_id_idx ON sessions (user_id)"
     );
     await client.query(
@@ -866,6 +1091,16 @@ export class Repository {
       FROM ranked AS r
       WHERE s.id = r.id
         AND r.rn > 1
+      `
+    );
+  }
+
+  private async purgeExpiredAuthSessions(client: PoolClient): Promise<void> {
+    await client.query(
+      `
+      DELETE FROM auth_sessions
+      WHERE expires_at < NOW() - INTERVAL '7 days'
+         OR revoked_at < NOW() - INTERVAL '7 days'
       `
     );
   }

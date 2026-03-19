@@ -1,15 +1,25 @@
-import websocket from "@fastify/websocket";
+import cookie from "@fastify/cookie";
 import cors from "@fastify/cors";
-import Fastify from "fastify";
+import websocket from "@fastify/websocket";
+import Fastify, { type FastifyReply, type FastifyRequest } from "fastify";
 import type {
   AssertionResult,
+  AuthUserResponse,
   CreateSessionRequest,
   CreateSessionResponse,
+  CurrentUserResponse,
   RequestHintResponse,
-  SubmitSessionResponse
+  SubmitSessionResponse,
+  UserProfile
 } from "@gitarena/shared";
 import { z } from "zod";
 
+import {
+  createSessionToken,
+  hashSessionToken,
+  parseCookieHeader,
+  verifyGoogleIdToken
+} from "./auth.js";
 import { loadConfig } from "./config.js";
 import { Repository } from "./repository.js";
 import {
@@ -17,7 +27,12 @@ import {
   WorkspaceProvisionError
 } from "./workspace-manager.js";
 
-const LOCAL_USER_ID = "local-dev-user";
+declare module "fastify" {
+  interface FastifyRequest {
+    user: UserProfile | null;
+    sessionTokenHash: string | null;
+  }
+}
 
 const createSessionSchema = z.object({
   scenarioId: z.string().min(1)
@@ -31,6 +46,10 @@ const wsQuerySchema = z.object({
   token: z.string().min(1)
 });
 
+const googleLoginSchema = z.object({
+  idToken: z.string().min(1)
+});
+
 const config = loadConfig();
 const repository = new Repository(config.databaseUrl);
 const workspaceManager = new WorkspaceManager(config.workspace);
@@ -41,11 +60,43 @@ const app = Fastify({
   }
 });
 
+const sessionCookieOptions = {
+  path: "/",
+  httpOnly: true,
+  secure: config.nodeEnv === "production",
+  sameSite: "lax" as const
+};
+const sessionCookieMaxAgeSeconds = config.auth.sessionTtlHours * 60 * 60;
+
 await app.register(cors, {
   origin: config.corsOrigins,
   credentials: true
 });
+await app.register(cookie);
 await app.register(websocket);
+
+app.decorateRequest("user", null);
+app.decorateRequest("sessionTokenHash", null);
+
+app.addHook("onRequest", async (request, reply) => {
+  request.user = null;
+  request.sessionTokenHash = null;
+
+  const sessionToken = request.cookies[config.auth.sessionCookieName];
+  if (!sessionToken) {
+    return;
+  }
+
+  const tokenHash = hashSessionToken(sessionToken);
+  const user = await repository.getUserBySessionTokenHash(tokenHash);
+  if (!user) {
+    reply.clearCookie(config.auth.sessionCookieName, sessionCookieOptions);
+    return;
+  }
+
+  request.sessionTokenHash = tokenHash;
+  request.user = user;
+});
 
 app.setErrorHandler((error, _request, reply) => {
   app.log.error(error);
@@ -59,6 +110,15 @@ app.setErrorHandler((error, _request, reply) => {
 
   return reply.code(500).send({ message: "Internal server error" });
 });
+
+function requireUser(request: FastifyRequest, reply: FastifyReply): UserProfile | null {
+  if (!request.user) {
+    void reply.code(401).send({ message: "Authentication required" });
+    return null;
+  }
+
+  return request.user;
+}
 
 app.get("/api/v1/health/live", async () => ({
   status: "ok",
@@ -85,6 +145,56 @@ app.get("/api/v1/health", async (_request, reply) => {
   }
 });
 
+app.post("/api/v1/auth/google", async (request, reply) => {
+  const payload = googleLoginSchema.parse(request.body);
+
+  let identity;
+  try {
+    identity = await verifyGoogleIdToken(payload.idToken, config.auth.googleClientId);
+  } catch (error) {
+    app.log.warn({ error }, "Rejected invalid Google ID token");
+    return reply.code(401).send({ message: "Invalid Google ID token" });
+  }
+
+  const user = await repository.upsertGoogleUser(identity);
+  const sessionToken = createSessionToken();
+  const tokenHash = hashSessionToken(sessionToken);
+  const expiresAt = new Date(Date.now() + sessionCookieMaxAgeSeconds * 1000);
+
+  await repository.createAuthSession({
+    userId: user.id,
+    tokenHash,
+    expiresAt,
+    userAgent: request.headers["user-agent"] ?? null,
+    ipAddress: request.ip ?? null
+  });
+
+  reply.setCookie(config.auth.sessionCookieName, sessionToken, {
+    ...sessionCookieOptions,
+    maxAge: sessionCookieMaxAgeSeconds
+  });
+
+  const response: AuthUserResponse = { user };
+  return response;
+});
+
+app.post("/api/v1/auth/logout", async (request, reply) => {
+  if (request.sessionTokenHash) {
+    await repository.revokeAuthSessionByTokenHash(request.sessionTokenHash);
+  }
+
+  reply.clearCookie(config.auth.sessionCookieName, sessionCookieOptions);
+  return { ok: true };
+});
+
+app.get("/api/v1/users/me", async (request) => {
+  const response: CurrentUserResponse = {
+    user: request.user
+  };
+
+  return response;
+});
+
 app.get("/api/v1/scenarios", async () => {
   const scenarios = await repository.listPublishedScenarios();
   return { scenarios };
@@ -102,6 +212,11 @@ app.get("/api/v1/scenarios/:id", async (request, reply) => {
 });
 
 app.get("/api/v1/scenarios/:id/attempts", async (request, reply) => {
+  const user = requireUser(request, reply);
+  if (!user) {
+    return;
+  }
+
   const { id } = paramsSchema.parse(request.params);
   const scenario = await repository.getScenarioById(id);
 
@@ -109,21 +224,36 @@ app.get("/api/v1/scenarios/:id/attempts", async (request, reply) => {
     return reply.code(404).send({ message: "Scenario not found" });
   }
 
-  const attempts = await repository.listAttemptsByScenario(LOCAL_USER_ID, id);
+  const attempts = await repository.listAttemptsByScenario(user.id, id);
   return { attempts };
 });
 
-app.get("/api/v1/users/me/active-session", async () => {
-  const session = await repository.getActiveSessionByUser(LOCAL_USER_ID);
+app.get("/api/v1/users/me/active-session", async (request, reply) => {
+  const user = requireUser(request, reply);
+  if (!user) {
+    return;
+  }
+
+  const session = await repository.getActiveSessionByUser(user.id);
   return { session };
 });
 
-app.get("/api/v1/users/me/history", async () => {
-  const attempts = await repository.listAttemptsByUser(LOCAL_USER_ID);
+app.get("/api/v1/users/me/history", async (request, reply) => {
+  const user = requireUser(request, reply);
+  if (!user) {
+    return;
+  }
+
+  const attempts = await repository.listAttemptsByUser(user.id);
   return { attempts };
 });
 
 app.post("/api/v1/sessions", async (request, reply) => {
+  const user = requireUser(request, reply);
+  if (!user) {
+    return;
+  }
+
   const payload = createSessionSchema.parse(request.body) as CreateSessionRequest;
   const scenario = await repository.getScenarioById(payload.scenarioId);
 
@@ -131,7 +261,7 @@ app.post("/api/v1/sessions", async (request, reply) => {
     return reply.code(404).send({ message: "Scenario not found or unavailable" });
   }
 
-  const activeSession = await repository.getActiveSessionByUser(LOCAL_USER_ID);
+  const activeSession = await repository.getActiveSessionByUser(user.id);
   if (activeSession) {
     return reply.code(409).send({
       message: "Finish or quit your active session before starting another.",
@@ -139,7 +269,7 @@ app.post("/api/v1/sessions", async (request, reply) => {
     });
   }
 
-  const session = await repository.createSession(LOCAL_USER_ID, payload.scenarioId);
+  const session = await repository.createSession(user.id, payload.scenarioId);
   try {
     await workspaceManager.ensureWorkspace(session);
   } catch (error) {
@@ -147,7 +277,7 @@ app.post("/api/v1/sessions", async (request, reply) => {
       { error, sessionId: session.id },
       "Failed to provision workspace container"
     );
-    await repository.terminateSession(session.id, LOCAL_USER_ID);
+    await repository.terminateSession(session.id, user.id);
 
     return reply.code(503).send({
       message: "Unable to provision workspace container. Verify Docker is available."
@@ -155,15 +285,19 @@ app.post("/api/v1/sessions", async (request, reply) => {
   }
 
   const response: CreateSessionResponse = { session };
-
   return reply.code(201).send(response);
 });
 
 app.get("/api/v1/sessions/:id", async (request, reply) => {
+  const user = requireUser(request, reply);
+  if (!user) {
+    return;
+  }
+
   const { id } = paramsSchema.parse(request.params);
   const session = await repository.getSessionById(id);
 
-  if (!session || session.userId !== LOCAL_USER_ID) {
+  if (!session || session.userId !== user.id) {
     return reply.code(404).send({ message: "Session not found" });
   }
 
@@ -188,9 +322,22 @@ app.get("/ws/sessions/:id", { websocket: true } as any, (connection: any, reques
   void (async () => {
     const { id } = paramsSchema.parse(request.params);
     const { token } = wsQuerySchema.parse(request.query);
+    const cookies = parseCookieHeader(request.headers?.cookie);
+    const sessionToken = cookies[config.auth.sessionCookieName];
+
+    if (!sessionToken) {
+      connection.socket.close(1008, "Authentication required");
+      return;
+    }
+
+    const user = await repository.getUserBySessionTokenHash(hashSessionToken(sessionToken));
+    if (!user) {
+      connection.socket.close(1008, "Authentication required");
+      return;
+    }
 
     const session = await repository.getSessionById(id);
-    if (!session || session.userId !== LOCAL_USER_ID) {
+    if (!session || session.userId !== user.id) {
       connection.socket.close(1008, "Session not found");
       return;
     }
@@ -283,8 +430,13 @@ app.get("/ws/sessions/:id", { websocket: true } as any, (connection: any, reques
 });
 
 app.get("/api/v1/sessions/:id/result", async (request, reply) => {
+  const user = requireUser(request, reply);
+  if (!user) {
+    return;
+  }
+
   const { id } = paramsSchema.parse(request.params);
-  const result = await repository.getSessionResult(id, LOCAL_USER_ID);
+  const result = await repository.getSessionResult(id, user.id);
 
   if (!result) {
     return reply.code(404).send({ message: "Result not found" });
@@ -299,8 +451,13 @@ app.get("/api/v1/sessions/:id/result", async (request, reply) => {
 });
 
 app.delete("/api/v1/sessions/:id", async (request, reply) => {
+  const user = requireUser(request, reply);
+  if (!user) {
+    return;
+  }
+
   const { id } = paramsSchema.parse(request.params);
-  const terminatedSession = await repository.terminateSession(id, LOCAL_USER_ID);
+  const terminatedSession = await repository.terminateSession(id, user.id);
 
   if (!terminatedSession) {
     return reply.code(404).send({ message: "Session not found or already closed" });
@@ -318,8 +475,13 @@ app.delete("/api/v1/sessions/:id", async (request, reply) => {
 });
 
 app.post("/api/v1/sessions/:id/hint", async (request, reply) => {
+  const user = requireUser(request, reply);
+  if (!user) {
+    return;
+  }
+
   const { id } = paramsSchema.parse(request.params);
-  const hintResult = await repository.requestHint(id, LOCAL_USER_ID);
+  const hintResult = await repository.requestHint(id, user.id);
 
   if (!hintResult) {
     return reply.code(404).send({ message: "Session not found or inactive" });
@@ -335,9 +497,14 @@ app.post("/api/v1/sessions/:id/hint", async (request, reply) => {
 });
 
 app.post("/api/v1/sessions/:id/submit", async (request, reply) => {
+  const user = requireUser(request, reply);
+  if (!user) {
+    return;
+  }
+
   const { id } = paramsSchema.parse(request.params);
   const session = await repository.getSessionById(id);
-  if (!session || session.userId !== LOCAL_USER_ID) {
+  if (!session || session.userId !== user.id) {
     return reply.code(404).send({ message: "Session not found or unavailable" });
   }
 
@@ -376,7 +543,7 @@ app.post("/api/v1/sessions/:id/submit", async (request, reply) => {
 
   const submitResult = await repository.submitSession(
     id,
-    LOCAL_USER_ID,
+    user.id,
     assertionResults
   );
 
