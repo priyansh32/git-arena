@@ -175,6 +175,8 @@ export class Repository {
     try {
       await client.query("BEGIN");
       await this.createSchema(client);
+      await this.normalizeActiveSessions(client);
+      await this.ensureConstraints(client);
       await this.seedScenarios(client);
       await client.query("COMMIT");
     } catch (error) {
@@ -235,6 +237,8 @@ export class Repository {
   }
 
   async createSession(userId: string, scenarioId: string): Promise<Session> {
+    await this.expireActiveSessions(userId);
+
     const startedAt = new Date();
     const expiresAt = new Date(startedAt.getTime() + 30 * 60 * 1000);
 
@@ -287,6 +291,37 @@ export class Repository {
         insert.hintCount
       ]
     );
+
+    return mapSession(result.rows[0]);
+  }
+
+  async getActiveSessionByUser(userId: string): Promise<Session | null> {
+    await this.expireActiveSessions(userId);
+
+    const result = await this.pool.query<SessionRow>(
+      `
+      SELECT
+        id,
+        user_id,
+        scenario_id,
+        status,
+        started_at,
+        ws_url,
+        ws_token,
+        expires_at,
+        hint_count
+      FROM sessions
+      WHERE user_id = $1
+        AND status IN ('active', 'submitted')
+      ORDER BY started_at DESC
+      LIMIT 1
+      `,
+      [userId]
+    );
+
+    if (!result.rowCount) {
+      return null;
+    }
 
     return mapSession(result.rows[0]);
   }
@@ -580,6 +615,36 @@ export class Repository {
     return { attempt, session };
   }
 
+  async terminateSession(sessionId: string, userId: string): Promise<Session | null> {
+    const result = await this.pool.query<SessionRow>(
+      `
+      UPDATE sessions
+      SET status = 'terminated',
+          submitted_at = COALESCE(submitted_at, NOW())
+      WHERE id = $1
+        AND user_id = $2
+        AND status IN ('active', 'submitted')
+      RETURNING
+        id,
+        user_id,
+        scenario_id,
+        status,
+        started_at,
+        ws_url,
+        ws_token,
+        expires_at,
+        hint_count
+      `,
+      [sessionId, userId]
+    );
+
+    if (!result.rowCount) {
+      return null;
+    }
+
+    return mapSession(result.rows[0]);
+  }
+
   private async getLatestAttemptForSession(
     client: PoolClient,
     sessionId: string
@@ -643,6 +708,19 @@ export class Repository {
     }
 
     return mapAttempt(result.rows[0]);
+  }
+
+  private async expireActiveSessions(userId: string): Promise<void> {
+    await this.pool.query(
+      `
+      UPDATE sessions
+      SET status = 'terminated'
+      WHERE user_id = $1
+        AND status IN ('active', 'submitted')
+        AND expires_at < NOW()
+      `,
+      [userId]
+    );
   }
 
   private async createSchema(client: PoolClient): Promise<void> {
@@ -718,6 +796,45 @@ export class Repository {
     );
     await client.query(
       "CREATE INDEX IF NOT EXISTS attempts_session_id_idx ON attempts (session_id)"
+    );
+  }
+
+  private async ensureConstraints(client: PoolClient): Promise<void> {
+    await client.query(
+      "CREATE UNIQUE INDEX IF NOT EXISTS sessions_single_active_user_idx ON sessions (user_id) WHERE status IN ('active', 'submitted')"
+    );
+  }
+
+  private async normalizeActiveSessions(client: PoolClient): Promise<void> {
+    await client.query(
+      `
+      UPDATE sessions
+      SET status = 'terminated',
+          submitted_at = COALESCE(submitted_at, NOW())
+      WHERE status IN ('active', 'submitted')
+        AND expires_at < NOW()
+      `
+    );
+
+    await client.query(
+      `
+      WITH ranked AS (
+        SELECT
+          id,
+          ROW_NUMBER() OVER (
+            PARTITION BY user_id
+            ORDER BY started_at DESC, id DESC
+          ) AS rn
+        FROM sessions
+        WHERE status IN ('active', 'submitted')
+      )
+      UPDATE sessions AS s
+      SET status = 'terminated',
+          submitted_at = COALESCE(submitted_at, NOW())
+      FROM ranked AS r
+      WHERE s.id = r.id
+        AND r.rn > 1
+      `
     );
   }
 

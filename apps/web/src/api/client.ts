@@ -59,6 +59,14 @@ export async function fetchSession(id: string): Promise<Session> {
   return payload.session;
 }
 
+export async function terminateSession(sessionId: string): Promise<Session> {
+  const response = await fetch(`${API_BASE}/sessions/${sessionId}`, {
+    method: "DELETE"
+  });
+  const payload = await parse<{ session: Session }>(response);
+  return payload.session;
+}
+
 export async function requestHint(sessionId: string): Promise<RequestHintResponse> {
   const response = await fetch(`${API_BASE}/sessions/${sessionId}/hint`, {
     method: "POST"

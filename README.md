@@ -92,7 +92,9 @@ This is a bootstrap foundation with:
 - `GET /api/v1/scenarios/:id`
 - `GET /api/v1/scenarios/:id/attempts`
 - `POST /api/v1/sessions`
+  - Returns `409` if user already has an `active`/`submitted` session.
 - `GET /api/v1/sessions/:id`
+- `DELETE /api/v1/sessions/:id`
 - `POST /api/v1/sessions/:id/hint`
 - `POST /api/v1/sessions/:id/submit`
 - `GET /api/v1/sessions/:id/result`

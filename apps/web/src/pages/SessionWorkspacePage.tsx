@@ -2,7 +2,13 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import type { Scenario, Session } from "@gitarena/shared";
 
-import { fetchScenario, fetchSession, requestHint, submitSession } from "../api/client";
+import {
+  fetchScenario,
+  fetchSession,
+  requestHint,
+  submitSession,
+  terminateSession
+} from "../api/client";
 
 function getRemainingLabel(expiresAt: string): string {
   const remainingMs = new Date(expiresAt).getTime() - Date.now();
@@ -29,6 +35,7 @@ export function SessionWorkspacePage() {
   const [hintText, setHintText] = useState<string | null>(null);
   const [hintLoading, setHintLoading] = useState(false);
   const [submitLoading, setSubmitLoading] = useState(false);
+  const [quitLoading, setQuitLoading] = useState(false);
 
   useEffect(() => {
     if (!id) {
@@ -112,6 +119,26 @@ export function SessionWorkspacePage() {
     }
   };
 
+  const onQuit = async () => {
+    if (!id) {
+      navigate("/dashboard");
+      return;
+    }
+
+    setQuitLoading(true);
+    setError(null);
+
+    try {
+      await terminateSession(id);
+      navigate("/dashboard");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unable to terminate session");
+      navigate("/dashboard");
+    } finally {
+      setQuitLoading(false);
+    }
+  };
+
   if (loading) {
     return <p className="state-text">Loading workspace...</p>;
   }
@@ -134,9 +161,14 @@ export function SessionWorkspacePage() {
           <h1>{scenario?.title ?? "Session"}</h1>
           <p>{statusText}</p>
         </div>
-        <Link className="button subtle" to="/dashboard">
-          Quit
-        </Link>
+        <button
+          className="button subtle"
+          disabled={quitLoading || submitLoading || hintLoading}
+          onClick={onQuit}
+          type="button"
+        >
+          {quitLoading ? "Closing..." : "Quit"}
+        </button>
       </header>
 
       <div className="workspace-grid">

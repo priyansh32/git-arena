@@ -114,6 +114,14 @@ app.post("/api/v1/sessions", async (request, reply) => {
     return reply.code(404).send({ message: "Scenario not found or unavailable" });
   }
 
+  const activeSession = await repository.getActiveSessionByUser(LOCAL_USER_ID);
+  if (activeSession) {
+    return reply.code(409).send({
+      message: "Finish or quit your active session before starting another.",
+      session: activeSession
+    });
+  }
+
   const session = await repository.createSession(LOCAL_USER_ID, payload.scenarioId);
   const response: CreateSessionResponse = { session };
 
@@ -145,6 +153,17 @@ app.get("/api/v1/sessions/:id/result", async (request, reply) => {
   };
 
   return response;
+});
+
+app.delete("/api/v1/sessions/:id", async (request, reply) => {
+  const { id } = paramsSchema.parse(request.params);
+  const terminatedSession = await repository.terminateSession(id, LOCAL_USER_ID);
+
+  if (!terminatedSession) {
+    return reply.code(404).send({ message: "Session not found or already closed" });
+  }
+
+  return { session: terminatedSession };
 });
 
 app.post("/api/v1/sessions/:id/hint", async (request, reply) => {
