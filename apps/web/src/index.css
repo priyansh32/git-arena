@@ -40,6 +40,11 @@ a {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  backdrop-filter: blur(8px);
+  background: color-mix(in srgb, var(--bg) 92%, transparent);
 }
 
 .app-header nav {
@@ -103,6 +108,15 @@ a {
   background: var(--panel);
   border-radius: 14px;
   box-shadow: var(--shadow);
+}
+
+.card {
+  transition: transform 120ms ease, box-shadow 120ms ease;
+}
+
+.card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 30px rgba(16, 24, 19, 0.12);
 }
 
 .card,
@@ -254,6 +268,7 @@ a {
   border-bottom-right-radius: 14px;
   display: grid;
   grid-template-rows: auto 1fr;
+  cursor: text;
 }
 
 .terminal-status {
@@ -269,6 +284,15 @@ a {
 .terminal-canvas {
   min-height: 320px;
   padding: 0.7rem;
+  overflow: hidden;
+}
+
+.terminal-canvas .xterm {
+  height: 100%;
+}
+
+.terminal-canvas .xterm-viewport {
+  border-radius: 8px;
 }
 
 .terminal-placeholder {

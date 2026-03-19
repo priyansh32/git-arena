@@ -18,6 +18,7 @@ function buildSocketUrl(path: string, token: string): string {
 
 export function SessionTerminal({ wsUrl, wsToken }: SessionTerminalProps) {
   const mountRef = useRef<HTMLDivElement | null>(null);
+  const terminalRef = useRef<Terminal | null>(null);
   const [connectionState, setConnectionState] = useState<
     "connecting" | "connected" | "closed" | "error"
   >("connecting");
@@ -42,6 +43,7 @@ export function SessionTerminal({ wsUrl, wsToken }: SessionTerminalProps) {
       }
     });
     const fitAddon = new FitAddon();
+    terminalRef.current = terminal;
     terminal.loadAddon(fitAddon);
     terminal.open(mount);
     fitAddon.fit();
@@ -58,13 +60,14 @@ export function SessionTerminal({ wsUrl, wsToken }: SessionTerminalProps) {
 
     const inputDisposable = terminal.onData((input) => {
       if (socket.readyState === WebSocket.OPEN) {
-        socket.send(input);
+        socket.send(input.replace(/\r\n/g, "\n").replace(/\r/g, "\n"));
       }
     });
 
     socket.onopen = () => {
       setConnectionState("connected");
       terminal.writeln("\r\nWorkspace connected.");
+      terminal.focus();
     };
 
     socket.onmessage = (event) => {
@@ -96,12 +99,18 @@ export function SessionTerminal({ wsUrl, wsToken }: SessionTerminalProps) {
       if (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING) {
         socket.close();
       }
+      terminalRef.current = null;
       terminal.dispose();
     };
   }, [wsToken, wsUrl]);
 
   return (
-    <div className="terminal-shell">
+    <div
+      className="terminal-shell"
+      onClick={() => {
+        terminalRef.current?.focus();
+      }}
+    >
       <div className="terminal-status">
         <span>State: {connectionState}</span>
         <span>Type commands and press Enter.</span>
