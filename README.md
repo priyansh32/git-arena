@@ -89,6 +89,7 @@ This is a bootstrap foundation with:
 - Static scenario-authored hints served progressively per session
 - Docker-backed workspace container provisioning per active session
 - Scenario seed scripts that create a real Git challenge repository per workspace
+- Scenario scripts are modularized in `apps/api/scenarios/<scenario-id>/{seed.sh,eval.sh}`
 - Interactive terminal over websocket at session workspace route
 - Dashboard, workspace, result, and history routes
 - Auth intentionally left out for now
