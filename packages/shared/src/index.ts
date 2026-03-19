@@ -1,5 +1,6 @@
 export type Difficulty = "beginner" | "intermediate" | "advanced";
 export type ScenarioStatus = "draft" | "testing" | "published" | "deprecated";
+export const CSRF_HEADER_NAME = "x-gitarena-csrf";
 
 export interface Scenario {
   id: string;
@@ -88,8 +89,10 @@ export interface GoogleAuthRequest {
 
 export interface AuthUserResponse {
   user: UserProfile;
+  csrfToken: string;
 }
 
 export interface CurrentUserResponse {
   user: UserProfile | null;
+  csrfToken: string | null;
 }

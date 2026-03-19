@@ -64,12 +64,18 @@ interface AuthSessionJoinRow {
   user_id: string;
   expires_at: Date;
   session_id: string;
+  csrf_token: string;
   google_sub: string;
   email: string;
   display_name: string;
   avatar_url: string | null;
   created_at: Date;
   updated_at: Date;
+}
+
+interface AuthenticatedSession {
+  user: UserProfile;
+  csrfToken: string;
 }
 
 interface SessionScenarioRow extends SessionRow {
@@ -267,21 +273,26 @@ export class Repository {
     return mapUserProfile(result.rows[0]);
   }
 
-  async getUserBySessionTokenHash(tokenHash: string): Promise<UserProfile | null> {
+  async getAuthSessionByTokenHash(
+    tokenHash: string
+  ): Promise<AuthenticatedSession | null> {
     const result = await this.pool.query<AuthSessionJoinRow>(
       `
       WITH active_session AS (
         UPDATE auth_sessions
         SET last_seen_at = NOW()
         WHERE token_hash = $1
+          AND csrf_token IS NOT NULL
+          AND LENGTH(csrf_token) > 0
           AND revoked_at IS NULL
           AND expires_at >= NOW()
-        RETURNING id, user_id, expires_at
+        RETURNING id, user_id, expires_at, csrf_token
       )
       SELECT
         active_session.user_id,
         active_session.expires_at,
         active_session.id AS session_id,
+        active_session.csrf_token,
         u.google_sub,
         u.email,
         u.display_name,
@@ -301,20 +312,24 @@ export class Repository {
     }
 
     const row = result.rows[0];
-    return mapUserProfile({
-      id: row.user_id,
-      google_sub: row.google_sub,
-      email: row.email,
-      display_name: row.display_name,
-      avatar_url: row.avatar_url,
-      created_at: row.created_at,
-      updated_at: row.updated_at
-    });
+    return {
+      user: mapUserProfile({
+        id: row.user_id,
+        google_sub: row.google_sub,
+        email: row.email,
+        display_name: row.display_name,
+        avatar_url: row.avatar_url,
+        created_at: row.created_at,
+        updated_at: row.updated_at
+      }),
+      csrfToken: row.csrf_token
+    };
   }
 
   async createAuthSession(input: {
     userId: string;
     tokenHash: string;
+    csrfToken: string;
     expiresAt: Date;
     userAgent: string | null;
     ipAddress: string | null;
@@ -325,6 +340,7 @@ export class Repository {
         id,
         user_id,
         token_hash,
+        csrf_token,
         created_at,
         expires_at,
         revoked_at,
@@ -332,12 +348,13 @@ export class Repository {
         user_agent,
         ip_address
       )
-      VALUES ($1, $2, $3, NOW(), $4, NULL, NOW(), $5, $6)
+      VALUES ($1, $2, $3, $4, NOW(), $5, NULL, NOW(), $6, $7)
       `,
       [
         randomUUID(),
         input.userId,
         input.tokenHash,
+        input.csrfToken,
         input.expiresAt.toISOString(),
         input.userAgent,
         input.ipAddress
@@ -951,6 +968,7 @@ export class Repository {
         id TEXT PRIMARY KEY,
         user_id TEXT NOT NULL REFERENCES users(id),
         token_hash TEXT NOT NULL UNIQUE,
+        csrf_token TEXT NOT NULL,
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
         expires_at TIMESTAMPTZ NOT NULL,
         revoked_at TIMESTAMPTZ,
@@ -962,6 +980,15 @@ export class Repository {
 
     await client.query(
       "ALTER TABLE auth_sessions ADD COLUMN IF NOT EXISTS revoked_at TIMESTAMPTZ"
+    );
+    await client.query("ALTER TABLE auth_sessions ADD COLUMN IF NOT EXISTS csrf_token TEXT");
+    await client.query(
+      `
+      UPDATE auth_sessions
+      SET revoked_at = COALESCE(revoked_at, NOW())
+      WHERE csrf_token IS NULL
+         OR LENGTH(csrf_token) = 0
+      `
     );
     await client.query(
       "ALTER TABLE auth_sessions ADD COLUMN IF NOT EXISTS last_seen_at TIMESTAMPTZ NOT NULL DEFAULT NOW()"

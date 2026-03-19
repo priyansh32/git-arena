@@ -9,8 +9,20 @@ import type {
   Session,
   SubmitSessionResponse
 } from "@gitarena/shared";
+import { CSRF_HEADER_NAME } from "@gitarena/shared";
 
 const API_BASE = "/api/v1";
+let csrfToken: string | null = null;
+
+function setCsrfToken(nextToken: string | null | undefined): void {
+  if (!nextToken) {
+    csrfToken = null;
+    return;
+  }
+
+  const normalized = nextToken.trim();
+  csrfToken = normalized.length > 0 ? normalized : null;
+}
 
 export class ApiError<TPayload = unknown> extends Error {
   status: number;
@@ -32,6 +44,10 @@ async function parse<T>(response: Response): Promise<T> {
   const payload = await response.json().catch(() => ({ message: "Request failed" }));
 
   if (!response.ok) {
+    if (response.status === 401) {
+      setCsrfToken(null);
+    }
+
     const message =
       typeof payload.message === "string" && payload.message.length > 0
         ? payload.message
@@ -43,15 +59,27 @@ async function parse<T>(response: Response): Promise<T> {
 }
 
 async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
+  const method = (init.method ?? "GET").toUpperCase();
+  const headers = new Headers(init.headers ?? undefined);
+
+  if (
+    csrfToken &&
+    (method === "POST" || method === "PUT" || method === "PATCH" || method === "DELETE")
+  ) {
+    headers.set(CSRF_HEADER_NAME, csrfToken);
+  }
+
   const response = await fetch(`${API_BASE}${path}`, {
     credentials: "include",
-    ...init
+    ...init,
+    headers
   });
   return parse<T>(response);
 }
 
 export async function fetchCurrentUser() {
   const payload = await request<CurrentUserResponse>("/users/me");
+  setCsrfToken(payload.csrfToken);
   return payload.user;
 }
 
@@ -62,13 +90,18 @@ export async function loginWithGoogleIdToken(idToken: string) {
     body: JSON.stringify({ idToken } satisfies GoogleAuthRequest)
   });
 
+  setCsrfToken(payload.csrfToken);
   return payload.user;
 }
 
 export async function logoutUser(): Promise<void> {
-  await request<{ ok: true }>("/auth/logout", {
-    method: "POST"
-  });
+  try {
+    await request<{ ok: true }>("/auth/logout", {
+      method: "POST"
+    });
+  } finally {
+    setCsrfToken(null);
+  }
 }
 
 export async function fetchScenarios(): Promise<Scenario[]> {

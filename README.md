@@ -101,6 +101,7 @@ This is a bootstrap foundation with:
 - Interactive terminal over websocket at session workspace route
 - Dashboard, workspace, result, and history routes
 - Google Sign-In with server-side session cookies and per-user API isolation
+- CSRF tokens enforced for mutating authenticated API routes
 
 ## API routes (current)
 

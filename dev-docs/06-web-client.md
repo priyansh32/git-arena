@@ -28,6 +28,7 @@ Auth gate:
 - centralizes JSON parsing and typed error throwing (`ApiError`)
 - all endpoints use `/api/v1` base
 - requests send `credentials: "include"` for cookie session auth
+- mutating requests automatically include `x-gitarena-csrf` after login/bootstrap
 
 Route pages call these functions inside `useEffect` or button handlers.
 

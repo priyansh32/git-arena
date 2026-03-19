@@ -2,15 +2,16 @@ import cookie from "@fastify/cookie";
 import cors from "@fastify/cors";
 import websocket from "@fastify/websocket";
 import Fastify, { type FastifyReply, type FastifyRequest } from "fastify";
-import type {
-  AssertionResult,
-  AuthUserResponse,
-  CreateSessionRequest,
-  CreateSessionResponse,
-  CurrentUserResponse,
-  RequestHintResponse,
-  SubmitSessionResponse,
-  UserProfile
+import {
+  CSRF_HEADER_NAME,
+  type AssertionResult,
+  type AuthUserResponse,
+  type CreateSessionRequest,
+  type CreateSessionResponse,
+  type CurrentUserResponse,
+  type RequestHintResponse,
+  type SubmitSessionResponse,
+  type UserProfile
 } from "@gitarena/shared";
 import { z } from "zod";
 
@@ -18,6 +19,7 @@ import {
   createSessionToken,
   hashSessionToken,
   parseCookieHeader,
+  tokenEquals,
   verifyGoogleIdToken
 } from "./auth.js";
 import { loadConfig } from "./config.js";
@@ -31,6 +33,7 @@ declare module "fastify" {
   interface FastifyRequest {
     user: UserProfile | null;
     sessionTokenHash: string | null;
+    csrfToken: string | null;
   }
 }
 
@@ -77,10 +80,12 @@ await app.register(websocket);
 
 app.decorateRequest("user", null);
 app.decorateRequest("sessionTokenHash", null);
+app.decorateRequest("csrfToken", null);
 
 app.addHook("onRequest", async (request, reply) => {
   request.user = null;
   request.sessionTokenHash = null;
+  request.csrfToken = null;
 
   const sessionToken = request.cookies[config.auth.sessionCookieName];
   if (!sessionToken) {
@@ -88,14 +93,54 @@ app.addHook("onRequest", async (request, reply) => {
   }
 
   const tokenHash = hashSessionToken(sessionToken);
-  const user = await repository.getUserBySessionTokenHash(tokenHash);
-  if (!user) {
+  const authSession = await repository.getAuthSessionByTokenHash(tokenHash);
+  if (!authSession) {
     reply.clearCookie(config.auth.sessionCookieName, sessionCookieOptions);
     return;
   }
 
   request.sessionTokenHash = tokenHash;
-  request.user = user;
+  request.user = authSession.user;
+  request.csrfToken = authSession.csrfToken;
+});
+
+function requiresCsrfCheck(request: FastifyRequest): boolean {
+  const method = request.method.toUpperCase();
+  if (method !== "POST" && method !== "PUT" && method !== "PATCH" && method !== "DELETE") {
+    return false;
+  }
+
+  if (request.url.startsWith("/api/v1/auth/google")) {
+    return false;
+  }
+
+  return true;
+}
+
+function readCsrfHeader(request: FastifyRequest): string | null {
+  const raw = request.headers[CSRF_HEADER_NAME];
+  if (typeof raw === "string") {
+    return raw.trim();
+  }
+
+  if (Array.isArray(raw) && raw.length > 0 && typeof raw[0] === "string") {
+    return raw[0].trim();
+  }
+
+  return null;
+}
+
+app.addHook("preHandler", async (request, reply) => {
+  if (!requiresCsrfCheck(request) || !request.user) {
+    return;
+  }
+
+  const expectedToken = request.csrfToken;
+  const suppliedToken = readCsrfHeader(request);
+
+  if (!expectedToken || !suppliedToken || !tokenEquals(expectedToken, suppliedToken)) {
+    return reply.code(403).send({ message: "Invalid or missing CSRF token" });
+  }
 });
 
 app.setErrorHandler((error, _request, reply) => {
@@ -158,12 +203,14 @@ app.post("/api/v1/auth/google", async (request, reply) => {
 
   const user = await repository.upsertGoogleUser(identity);
   const sessionToken = createSessionToken();
+  const csrfToken = createSessionToken();
   const tokenHash = hashSessionToken(sessionToken);
   const expiresAt = new Date(Date.now() + sessionCookieMaxAgeSeconds * 1000);
 
   await repository.createAuthSession({
     userId: user.id,
     tokenHash,
+    csrfToken,
     expiresAt,
     userAgent: request.headers["user-agent"] ?? null,
     ipAddress: request.ip ?? null
@@ -174,7 +221,7 @@ app.post("/api/v1/auth/google", async (request, reply) => {
     maxAge: sessionCookieMaxAgeSeconds
   });
 
-  const response: AuthUserResponse = { user };
+  const response: AuthUserResponse = { user, csrfToken };
   return response;
 });
 
@@ -189,7 +236,8 @@ app.post("/api/v1/auth/logout", async (request, reply) => {
 
 app.get("/api/v1/users/me", async (request) => {
   const response: CurrentUserResponse = {
-    user: request.user
+    user: request.user,
+    csrfToken: request.user ? request.csrfToken : null
   };
 
   return response;
@@ -330,12 +378,15 @@ app.get("/ws/sessions/:id", { websocket: true } as any, (connection: any, reques
       return;
     }
 
-    const user = await repository.getUserBySessionTokenHash(hashSessionToken(sessionToken));
-    if (!user) {
+    const authSession = await repository.getAuthSessionByTokenHash(
+      hashSessionToken(sessionToken)
+    );
+    if (!authSession) {
       connection.socket.close(1008, "Authentication required");
       return;
     }
 
+    const user = authSession.user;
     const session = await repository.getSessionById(id);
     if (!session || session.userId !== user.id) {
       connection.socket.close(1008, "Session not found");

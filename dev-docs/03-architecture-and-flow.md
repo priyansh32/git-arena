@@ -91,4 +91,5 @@ Auth now uses `/api/v1/auth/google` + server-managed session cookies.
 - Web obtains a Google ID token using Google Identity Services and calls `POST /api/v1/auth/google`.
 - API validates the Google ID token against `GOOGLE_CLIENT_ID`, then upserts the user record.
 - API issues an HTTP-only cookie tied to `auth_sessions` in Postgres.
+- API returns a per-session CSRF token; mutating authenticated routes require `x-gitarena-csrf`.
 - Protected session/attempt/history routes enforce request-scoped `user.id`.

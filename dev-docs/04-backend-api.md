@@ -120,10 +120,11 @@ During submit:
 5. Return consistent payload shape.
 6. Add tests (unit/integration as applicable).
 
-## Auth Placeholder Notes
+## Auth Notes
 
 Auth middleware now injects request-scoped user context from a signed-in cookie:
 
 - cookie value is random session token (`SESSION_COOKIE_NAME`)
-- DB stores only `sha256` token hash in `auth_sessions`
+- DB stores `sha256` session token hash in `auth_sessions`
+- each auth session also has a CSRF token; mutating authenticated routes require `x-gitarena-csrf`
 - websocket handshake also validates auth cookie before attaching terminal

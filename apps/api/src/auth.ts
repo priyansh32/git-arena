@@ -1,4 +1,4 @@
-import { createHash, randomBytes } from "node:crypto";
+import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
 
 import { createRemoteJWKSet, jwtVerify } from "jose";
 
@@ -20,6 +20,17 @@ export function createSessionToken(): string {
 
 export function hashSessionToken(sessionToken: string): string {
   return createHash("sha256").update(sessionToken, "utf8").digest("hex");
+}
+
+export function tokenEquals(expected: string, received: string): boolean {
+  const expectedBytes = Buffer.from(expected, "utf8");
+  const receivedBytes = Buffer.from(received, "utf8");
+
+  if (expectedBytes.length !== receivedBytes.length) {
+    return false;
+  }
+
+  return timingSafeEqual(expectedBytes, receivedBytes);
 }
 
 export function parseCookieHeader(
