@@ -1,6 +1,6 @@
 import type { Scenario } from "@gitarena/shared";
 
-const scenarios: Scenario[] = [
+export const defaultScenarios: Scenario[] = [
   {
     id: "detached-head-recovery",
     title: "Detached HEAD Recovery",
@@ -32,11 +32,3 @@ const scenarios: Scenario[] = [
     status: "published"
   }
 ];
-
-export function listPublishedScenarios(): Scenario[] {
-  return scenarios.filter((scenario) => scenario.status === "published");
-}
-
-export function getScenarioById(id: string): Scenario | undefined {
-  return scenarios.find((scenario) => scenario.id === id);
-}

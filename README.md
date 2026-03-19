@@ -24,6 +24,7 @@ Or use the launch script for containers:
 Or run each app separately:
 
 ```bash
+cp .env.example .env
 npm run dev:api
 npm run dev:web
 ```
@@ -39,7 +40,7 @@ docker compose up --build
 Endpoints:
 
 - Web app: `http://localhost:8080`
-- API: `http://localhost:3001/api/v1/health`
+- API readiness: `http://localhost:3001/api/v1/health/ready`
 
 Stop and remove containers:
 
@@ -67,15 +68,23 @@ DOCKER_CONFIG=/tmp/docker-config-no-creds DOCKER_BUILDKIT=0 docker compose up --
 
 This is a bootstrap foundation with:
 
-- Scenario catalog API (mock/in-memory)
-- Session creation stub API
+- PostgreSQL-backed scenario/session persistence
+- API liveness/readiness health endpoints
+- Graceful API shutdown handling
 - Dashboard and scenario detail routes
 - Basic result-driven flow from frontend to backend
+- Auth intentionally left out for now
 
 ## API routes (current)
 
+- `GET /api/v1/health/live`
+- `GET /api/v1/health/ready`
 - `GET /api/v1/health`
 - `GET /api/v1/scenarios`
 - `GET /api/v1/scenarios/:id`
 - `POST /api/v1/sessions`
 - `GET /api/v1/sessions/:id`
+
+## Notes
+
+- Authentication is intentionally excluded at this stage.

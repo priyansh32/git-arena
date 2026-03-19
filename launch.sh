@@ -121,7 +121,7 @@ main() {
         cat <<'EOF'
 GitArena is running.
 Web: http://localhost:8080
-API: http://localhost:3001/api/v1/health
+API: http://localhost:3001/api/v1/health/ready
 EOF
       fi
       ;;
@@ -134,7 +134,7 @@ EOF
       cat <<'EOF'
 GitArena is running.
 Web: http://localhost:8080
-API: http://localhost:3001/api/v1/health
+API: http://localhost:3001/api/v1/health/ready
 EOF
       ;;
     status|ps)

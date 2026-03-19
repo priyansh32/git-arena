@@ -1,4 +1,20 @@
 services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: gitarena
+      POSTGRES_USER: gitarena
+      POSTGRES_PASSWORD: gitarena
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gitarena -d gitarena"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   api:
     build:
       context: .
@@ -6,14 +22,34 @@ services:
     environment:
       HOST: 0.0.0.0
       PORT: 3001
+      DATABASE_URL: postgres://gitarena:gitarena@postgres:5432/gitarena
+      CORS_ORIGINS: http://localhost:5173,http://localhost:8080
+    depends_on:
+      postgres:
+        condition: service_healthy
     ports:
       - "3001:3001"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:3001/api/v1/health/ready').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   web:
     build:
       context: .
       dockerfile: apps/web/Dockerfile
     depends_on:
-      - api
+      api:
+        condition: service_healthy
     ports:
       - "8080:80"
+
+volumes:
+  postgres_data:
