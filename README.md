@@ -59,7 +59,14 @@ Equivalent launch script commands:
 ```bash
 ./launch.sh start
 ./launch.sh logs
+./launch.sh smoke
 ./launch.sh stop
+```
+
+Run smoke test directly:
+
+```bash
+npm run smoke:stack
 ```
 
 Fallback for environments without `buildx` or with broken Docker credential helpers:

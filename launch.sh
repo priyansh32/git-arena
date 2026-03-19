@@ -23,6 +23,7 @@ Commands:
   restart      Recreate containers
   status       Show container status
   logs         Tail logs
+  smoke        Run API smoke test against running stack
   build        Build images
   help         Show this message
 
@@ -65,6 +66,13 @@ require_docker() {
 
   if ! docker compose version >/dev/null 2>&1; then
     echo "Docker Compose is required but unavailable." >&2
+    exit 1
+  fi
+}
+
+require_node() {
+  if ! command -v node >/dev/null 2>&1; then
+    echo "Node.js is required but not found in PATH." >&2
     exit 1
   fi
 }
@@ -142,6 +150,10 @@ EOF
       ;;
     logs)
       run_compose logs -f "$@"
+      ;;
+    smoke)
+      require_node
+      node scripts/smoke-stack.mjs "$@"
       ;;
     build)
       run_compose build "$@"
