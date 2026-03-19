@@ -8,6 +8,7 @@ import type {
 } from "@gitarena/shared";
 import { Pool, type PoolClient } from "pg";
 
+import { evaluateSubmission } from "./evaluation.js";
 import { defaultScenarios } from "./scenario-seed.js";
 
 interface ScenarioRow {
@@ -52,10 +53,6 @@ interface SessionScenarioRow extends SessionRow {
   scenario_objective: string;
   scenario_tags: unknown;
   scenario_estimated_time_minutes: number;
-}
-
-function clamp(value: number, min: number, max: number): number {
-  return Math.max(min, Math.min(max, value));
 }
 
 function parseStringArray(value: unknown): string[] {
@@ -427,45 +424,13 @@ export class Repository {
       }
 
       const now = new Date();
-      const elapsedSeconds = Math.max(
-        0,
-        Math.floor((now.getTime() - row.started_at.getTime()) / 1000)
-      );
-      const timeLimitSeconds = Math.max(1, row.scenario_estimated_time_minutes * 60);
-      const timeRemaining = Math.max(0, timeLimitSeconds - elapsedSeconds);
-
-      const assertions: AssertionResult[] = [
-        {
-          checkId: "workspace_active",
-          passed: true,
-          explanation: "Workspace session is active and submission was received.",
-          weight: 30
-        },
-        {
-          checkId: "objective_submitted",
-          passed: true,
-          explanation: `Submission captured for objective: ${row.scenario_objective}`,
-          weight: 40
-        },
-        {
-          checkId: "within_time_window",
-          passed: timeRemaining > 0,
-          explanation:
-            timeRemaining > 0
-              ? "Submission was within expected time window."
-              : "Submission exceeded expected scenario time window.",
-          weight: 30
-        }
-      ];
-
-      const baseScore = assertions
-        .filter((assertion) => assertion.passed)
-        .reduce((total, assertion) => total + assertion.weight, 0);
-
-      const timeBonus = Math.round((timeRemaining / timeLimitSeconds) * 20);
-      const hintPenalty = Math.min(row.hint_count * 5, 20);
-      const score = clamp(baseScore + timeBonus - hintPenalty, 0, 100);
-      const passed = score >= 70;
+      const evaluation = evaluateSubmission({
+        objective: row.scenario_objective,
+        startedAt: row.started_at,
+        evaluatedAt: now,
+        estimatedTimeMinutes: row.scenario_estimated_time_minutes,
+        hintCount: row.hint_count
+      });
 
       const attemptInsertResult = await client.query<AttemptRow>(
         `
@@ -501,12 +466,12 @@ export class Repository {
           row.id,
           row.user_id,
           row.scenario_id,
-          score,
-          baseScore,
-          timeBonus,
-          hintPenalty,
-          passed,
-          JSON.stringify(assertions),
+          evaluation.score,
+          evaluation.baseScore,
+          evaluation.timeBonus,
+          evaluation.hintPenalty,
+          evaluation.passed,
+          JSON.stringify(evaluation.assertions),
           now.toISOString()
         ]
       );

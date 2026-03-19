@@ -29,6 +29,12 @@ npm run dev:api
 npm run dev:web
 ```
 
+Run API scoring tests:
+
+```bash
+npm run test -w @gitarena/api
+```
+
 ## Docker
 
 Build and run the full stack:
