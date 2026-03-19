@@ -86,9 +86,9 @@ Expiration behavior:
 
 ## Auth Status (Current)
 
-Auth now uses Google Sign-In ID tokens + server-managed session cookies.
+Auth now uses `/api/v1/auth/google` + server-managed session cookies.
 
-- Web obtains a Google ID token and calls `POST /api/v1/auth/google`.
-- API verifies token signature/claims and upserts the user record.
+- In local development, web uses a simulated Google token and calls `POST /api/v1/auth/google`.
+- API validates simulated/real token based on `AUTH_MODE`, then upserts the user record.
 - API issues an HTTP-only cookie tied to `auth_sessions` in Postgres.
 - Protected session/attempt/history routes enforce request-scoped `user.id`.

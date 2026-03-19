@@ -10,10 +10,7 @@ apps/
   web/      # React + Vite UI + xterm terminal client
 packages/
   shared/   # shared TypeScript contracts used by api/web
-deploy/
-  gcp/      # single-VM + Cloud SQL deployment compose/env
 scripts/
-  gcp/      # provision/deploy/destroy VM helpers
   smoke-stack.mjs
 dev-docs/   # this onboarding set
 ```
@@ -72,8 +69,3 @@ Key files:
   - Helper script to start/stop/log/smoke stack.
 - `.env.example`
   - API env defaults for local non-compose runs.
-- `docs/deployment-gcp-vm.md`
-  - GCP low-cost deployment runbook.
-- `deploy/gcp/docker-compose.vm.yml`
-  - VM deploy compose (api + web + cloudsql proxy).
-

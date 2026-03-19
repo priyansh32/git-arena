@@ -91,5 +91,4 @@ When adding platform features:
 - API contract changes -> update `packages/shared` first.
 - Backend route/repo updates -> update `apps/api`.
 - Frontend usage -> update `apps/web`.
-- Deployment impact -> update `deploy/` or `scripts/gcp/` and docs.
-
+- Runtime/ops impact -> update compose/scripts/docs together.

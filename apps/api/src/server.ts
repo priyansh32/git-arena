@@ -18,7 +18,8 @@ import {
   createSessionToken,
   hashSessionToken,
   parseCookieHeader,
-  verifyGoogleIdToken
+  verifyGoogleIdToken,
+  verifySimulatedGoogleToken
 } from "./auth.js";
 import { loadConfig } from "./config.js";
 import { Repository } from "./repository.js";
@@ -148,12 +149,19 @@ app.get("/api/v1/health", async (_request, reply) => {
 app.post("/api/v1/auth/google", async (request, reply) => {
   const payload = googleLoginSchema.parse(request.body);
 
-  let identity;
-  try {
-    identity = await verifyGoogleIdToken(payload.idToken, config.auth.googleClientId);
-  } catch (error) {
-    app.log.warn({ error }, "Rejected invalid Google ID token");
-    return reply.code(401).send({ message: "Invalid Google ID token" });
+  let identity: Awaited<ReturnType<typeof verifyGoogleIdToken>>;
+  if (config.auth.mode === "simulated") {
+    identity = verifySimulatedGoogleToken(payload.idToken);
+  } else {
+    try {
+      identity = await verifyGoogleIdToken(
+        payload.idToken,
+        config.auth.googleClientId ?? ""
+      );
+    } catch (error) {
+      app.log.warn({ error }, "Rejected invalid Google ID token");
+      return reply.code(401).send({ message: "Invalid Google ID token" });
+    }
   }
 
   const user = await repository.upsertGoogleUser(identity);

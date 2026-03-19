@@ -13,7 +13,7 @@ Working today:
 - hint and submit flow
 - scenario-specific shell evaluators
 - scoring + attempt persistence
-- local and GCP low-cost deployment path
+- local dockerized deployment path
 
 Not implemented yet:
 

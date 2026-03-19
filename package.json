@@ -13,10 +13,6 @@
     "build": "npm run build -w @gitarena/shared && npm run build -w @gitarena/api && npm run build -w @gitarena/web",
     "typecheck": "npm run build -w @gitarena/shared && npm run typecheck -w @gitarena/api && npm run typecheck -w @gitarena/web",
     "smoke:stack": "node scripts/smoke-stack.mjs",
-    "gcp:provision": "bash scripts/gcp/provision-vm.sh",
-    "gcp:deploy": "bash scripts/gcp/deploy-vm.sh",
-    "gcp:auth-platform": "bash scripts/gcp/configure-auth-platform.sh",
-    "gcp:destroy": "bash scripts/gcp/destroy-vm.sh",
     "docker:up": "docker compose up --build",
     "docker:down": "docker compose down"
   }

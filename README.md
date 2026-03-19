@@ -42,8 +42,8 @@ npm run dev:web
 
 Required env for auth:
 
-- `GOOGLE_CLIENT_ID` (API-side Google ID token audience)
-- `VITE_GOOGLE_CLIENT_ID` (web Google Sign-In client id)
+- `AUTH_MODE` (`simulated` for local dev)
+- `GOOGLE_CLIENT_ID` (required only when `AUTH_MODE=google`)
 
 Run API scoring tests:
 
@@ -85,26 +85,6 @@ Run smoke test directly:
 npm run smoke:stack
 ```
 
-## GCP Low-Cost Deployment
-
-Single VM + Cloud SQL deployment assets are included:
-
-- Compose file: `deploy/gcp/docker-compose.vm.yml`
-- Runtime env template: `deploy/gcp/env.vm.example`
-- Provision script: `scripts/gcp/provision-vm.sh`
-- Deploy script: `scripts/gcp/deploy-vm.sh`
-- Auth platform script: `scripts/gcp/configure-auth-platform.sh`
-- Destroy script: `scripts/gcp/destroy-vm.sh`
-- Runbook: `docs/deployment-gcp-vm.md`
-
-Fallback for environments without `buildx` or with broken Docker credential helpers:
-
-```bash
-mkdir -p /tmp/docker-config-no-creds
-printf '{\"auths\":{}}' > /tmp/docker-config-no-creds/config.json
-DOCKER_CONFIG=/tmp/docker-config-no-creds DOCKER_BUILDKIT=0 docker compose up --build
-```
-
 ## Current status
 
 This is a bootstrap foundation with:
@@ -120,7 +100,7 @@ This is a bootstrap foundation with:
 - Scenario scripts are modularized in `apps/api/scenarios/<scenario-id>/{seed.sh,eval.sh}`
 - Interactive terminal over websocket at session workspace route
 - Dashboard, workspace, result, and history routes
-- Google sign-in with server-side session cookies and per-user API isolation
+- Simulated Google login for local dev with server-side session cookies and per-user API isolation
 
 ## API routes (current)
 
