@@ -97,19 +97,3 @@ export async function verifyGoogleIdToken(
     avatarUrl
   };
 }
-
-export function verifySimulatedGoogleToken(idToken: string): VerifiedGoogleIdentity {
-  const raw = idToken.trim().replace(/^dev:/, "");
-  const [rawEmail, rawDisplayName] = raw.split("|", 2);
-  const fallbackEmail = "developer@gitarena.local";
-  const email = (rawEmail ?? fallbackEmail).trim().toLowerCase() || fallbackEmail;
-  const displayName =
-    (rawDisplayName ?? "Local Developer").trim() || "Local Developer";
-
-  return {
-    googleSub: `simulated-${hashSessionToken(email).slice(0, 24)}`,
-    email,
-    displayName,
-    avatarUrl: null
-  };
-}

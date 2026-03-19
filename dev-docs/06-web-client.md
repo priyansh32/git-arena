@@ -35,7 +35,7 @@ Route pages call these functions inside `useEffect` or button handlers.
 
 Login (`LoginPage.tsx`):
 
-- uses simulated Google login token for local development
+- loads Google Identity Services script and renders Google sign-in button
 - calls backend auth exchange (`POST /api/v1/auth/google`)
 
 Dashboard (`DashboardPage.tsx`):

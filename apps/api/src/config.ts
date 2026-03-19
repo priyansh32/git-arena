@@ -15,8 +15,7 @@ const envSchema = z.object({
   WORKSPACE_INIT_COMMAND: z
     .string()
     .default("mkdir -p /workspace && cd /workspace && exec tail -f /dev/null"),
-  AUTH_MODE: z.enum(["simulated", "google"]).default("simulated"),
-  GOOGLE_CLIENT_ID: z.string().optional().default(""),
+  GOOGLE_CLIENT_ID: z.string().trim().min(1),
   SESSION_COOKIE_NAME: z.string().default("gitarena_session"),
   SESSION_TTL_HOURS: z.coerce.number().int().min(1).max(24 * 30).default(24 * 7)
 });
@@ -37,8 +36,7 @@ export interface AppConfig {
   corsOrigins: string[];
   workspace: WorkspaceConfig;
   auth: {
-    mode: "simulated" | "google";
-    googleClientId: string | null;
+    googleClientId: string;
     sessionCookieName: string;
     sessionTtlHours: number;
   };
@@ -46,12 +44,6 @@ export interface AppConfig {
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
   const parsed = envSchema.parse(env);
-  const googleClientId = parsed.GOOGLE_CLIENT_ID.trim();
-
-  if (parsed.AUTH_MODE === "google" && googleClientId.length === 0) {
-    throw new Error("GOOGLE_CLIENT_ID is required when AUTH_MODE=google");
-  }
-
   const corsOrigins = parsed.CORS_ORIGINS.split(",")
     .map((origin) => origin.trim())
     .filter((origin) => origin.length > 0);
@@ -70,8 +62,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
       initCommand: parsed.WORKSPACE_INIT_COMMAND
     },
     auth: {
-      mode: parsed.AUTH_MODE,
-      googleClientId: googleClientId.length > 0 ? googleClientId : null,
+      googleClientId: parsed.GOOGLE_CLIENT_ID,
       sessionCookieName: parsed.SESSION_COOKIE_NAME,
       sessionTtlHours: parsed.SESSION_TTL_HOURS
     }

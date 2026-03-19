@@ -88,7 +88,7 @@ Expiration behavior:
 
 Auth now uses `/api/v1/auth/google` + server-managed session cookies.
 
-- In local development, web uses a simulated Google token and calls `POST /api/v1/auth/google`.
-- API validates simulated/real token based on `AUTH_MODE`, then upserts the user record.
+- Web obtains a Google ID token using Google Identity Services and calls `POST /api/v1/auth/google`.
+- API validates the Google ID token against `GOOGLE_CLIENT_ID`, then upserts the user record.
 - API issues an HTTP-only cookie tied to `auth_sessions` in Postgres.
 - Protected session/attempt/history routes enforce request-scoped `user.id`.

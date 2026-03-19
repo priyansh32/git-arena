@@ -21,7 +21,6 @@ Important env vars:
 
 - `DATABASE_URL`
 - `CORS_ORIGINS`
-- `AUTH_MODE` (`simulated|google`)
 - `GOOGLE_CLIENT_ID`
 - `SESSION_COOKIE_NAME`
 - `SESSION_TTL_HOURS`

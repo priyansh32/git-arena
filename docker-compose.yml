@@ -24,8 +24,7 @@ services:
       PORT: 3001
       DATABASE_URL: postgres://gitarena:gitarena@postgres:5432/gitarena
       CORS_ORIGINS: http://localhost:5173,http://localhost:8080
-      AUTH_MODE: ${AUTH_MODE:-simulated}
-      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
       SESSION_COOKIE_NAME: ${SESSION_COOKIE_NAME:-gitarena_session}
       SESSION_TTL_HOURS: ${SESSION_TTL_HOURS:-168}
       WORKSPACE_IMAGE: alpine/git:2.47.2

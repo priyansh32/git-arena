@@ -22,8 +22,8 @@ Set in `.env`:
 
 - `DATABASE_URL`
 - `CORS_ORIGINS`
-- `AUTH_MODE` (`simulated` for local dev)
-- `GOOGLE_CLIENT_ID` (only required if `AUTH_MODE=google`)
+- `GOOGLE_CLIENT_ID`
+- `VITE_GOOGLE_CLIENT_ID`
 - `SESSION_COOKIE_NAME`
 - `SESSION_TTL_HOURS`
 
@@ -32,7 +32,7 @@ Set in `.env`:
 Validate after startup:
 
 1. `GET /api/v1/health/ready` returns `200`.
-2. Sign in from web app (simulated mode).
+2. Sign in from web app with Google.
 3. Create and terminate a session; container appears/disappears.
 4. Submit a scenario and verify attempt history is stored.
 

@@ -42,8 +42,8 @@ npm run dev:web
 
 Required env for auth:
 
-- `AUTH_MODE` (`simulated` for local dev)
-- `GOOGLE_CLIENT_ID` (required only when `AUTH_MODE=google`)
+- `GOOGLE_CLIENT_ID` (API token audience validation)
+- `VITE_GOOGLE_CLIENT_ID` (frontend Google Sign-In button)
 
 Run API scoring tests:
 
@@ -100,7 +100,7 @@ This is a bootstrap foundation with:
 - Scenario scripts are modularized in `apps/api/scenarios/<scenario-id>/{seed.sh,eval.sh}`
 - Interactive terminal over websocket at session workspace route
 - Dashboard, workspace, result, and history routes
-- Simulated Google login for local dev with server-side session cookies and per-user API isolation
+- Google Sign-In with server-side session cookies and per-user API isolation
 
 ## API routes (current)
 
