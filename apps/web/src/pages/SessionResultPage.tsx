@@ -34,7 +34,7 @@ export function SessionResultPage() {
       }
     };
 
-    run();
+    void run();
   }, [id]);
 
   const scoreLabel = useMemo(() => {
@@ -46,63 +46,80 @@ export function SessionResultPage() {
   }, [attempt]);
 
   if (loading) {
-    return <p className="state-text">Loading result...</p>;
+    return (
+      <section className="page" aria-busy="true" aria-live="polite">
+        <div className="skeleton skeleton-card" />
+        <div className="skeleton skeleton-card" />
+      </section>
+    );
   }
 
   if (error || !attempt || !session) {
     return (
-      <div className="stack">
-        <p className="state-text error">{error ?? "Result not found"}</p>
-        <Link className="link" to="/dashboard">
-          Back to catalog
-        </Link>
-      </div>
+      <section className="page">
+        <article className="panel state-surface">
+          <p className="state-text error">{error ?? "Result not found"}</p>
+          <Link className="text-link" to="/dashboard">
+            Back to catalog
+          </Link>
+        </article>
+      </section>
     );
   }
 
   return (
-    <section className="stack">
-      <div className="result-head">
-        <div>
-          <h1>{scenario?.title ?? "Session Result"}</h1>
-          <p>{attempt.passed ? "Passed" : "Not passed"}</p>
-        </div>
-        <div className={`score-pill ${attempt.passed ? "pass" : "fail"}`}>{scoreLabel}</div>
-      </div>
-
-      <article className="detail-card">
-        <h3>Breakdown</h3>
-
-        <div className="result-metrics">
-          <span>Base: {attempt.baseScore}</span>
-          <span>Time bonus: +{attempt.timeBonus}</span>
-          <span>Hint penalty: -{attempt.hintPenalty}</span>
-          <span>Evaluated: {new Date(attempt.evaluatedAt).toLocaleString()}</span>
-        </div>
-
-        <div className="assertion-list">
-          {attempt.assertions.map((assertion) => (
-            <article className="assertion" key={assertion.checkId}>
-              <div className={`assertion-status ${assertion.passed ? "pass" : "fail"}`}>
-                {assertion.passed ? "PASS" : "FAIL"}
-              </div>
-              <div>
-                <h4>{assertion.checkId}</h4>
-                <p>{assertion.explanation}</p>
-              </div>
-            </article>
-          ))}
-        </div>
-
-        <div className="panel-actions">
-          <Link className="button" to={`/scenarios/${session.scenarioId}`}>
-            Retry Scenario
-          </Link>
-          <Link className="button subtle" to="/history">
-            View History
-          </Link>
-        </div>
+    <section className="page">
+      <article className="panel result-hero">
+        <h1>{scenario?.title ?? "Session Result"}</h1>
+        <p className="state-text">{attempt.passed ? "Passed" : "Not passed"}</p>
+        <div className={`score-pill-hero ${attempt.passed ? "pass" : "fail"}`}>{scoreLabel}</div>
       </article>
+
+      <dl className="metric-grid">
+        <div className="metric-card">
+          <dt>Base Score</dt>
+          <dd>{attempt.baseScore}</dd>
+        </div>
+        <div className="metric-card">
+          <dt>Time Bonus</dt>
+          <dd>+{attempt.timeBonus}</dd>
+        </div>
+        <div className="metric-card">
+          <dt>Hint Penalty</dt>
+          <dd>-{attempt.hintPenalty}</dd>
+        </div>
+      </dl>
+
+      <article className="panel">
+        <table className="result-assertions">
+          <tbody>
+            {attempt.assertions.map((assertion) => (
+              <tr key={assertion.checkId}>
+                <td>
+                  <span className={`assertion-icon ${assertion.passed ? "pass" : "fail"}`}>
+                    {assertion.passed ? "OK" : "X"}
+                  </span>
+                </td>
+                <td>
+                  <div className="assertion-text">
+                    <h3>{assertion.checkId}</h3>
+                    <p>{assertion.explanation}</p>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </article>
+
+      <div className="scenario-card-top">
+        <Link className="button button-primary" to={`/scenarios/${session.scenarioId}`}>
+          Retry Scenario
+        </Link>
+        <Link className="button button-secondary" to="/history">
+          View History
+        </Link>
+      </div>
     </section>
   );
 }

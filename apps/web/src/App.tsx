@@ -1,4 +1,13 @@
-import { Link, Navigate, Route, Routes } from "react-router-dom";
+import { useEffect, useState } from "react";
+import {
+  Link,
+  NavLink,
+  Navigate,
+  Route,
+  Routes,
+  useLocation,
+  useMatch
+} from "react-router-dom";
 
 import { useAuth } from "./auth/AuthContext";
 import { DashboardPage } from "./pages/DashboardPage";
@@ -8,14 +17,39 @@ import { ScenarioDetailPage } from "./pages/ScenarioDetailPage";
 import { SessionResultPage } from "./pages/SessionResultPage";
 import { SessionWorkspacePage } from "./pages/SessionWorkspacePage";
 
+function userInitial(displayName: string): string {
+  const trimmed = displayName.trim();
+  if (trimmed.length === 0) {
+    return "GA";
+  }
+
+  const [first = "G", second = "A"] = trimmed.split(/\s+/).map((token) => token[0]?.toUpperCase());
+  return `${first ?? "G"}${second ?? "A"}`;
+}
+
+function navClassName({ isActive }: { isActive: boolean }): string {
+  return `sidebar-link${isActive ? " active" : ""}`;
+}
+
 export default function App() {
   const { user, loading, logout } = useAuth();
+  const location = useLocation();
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const isWorkspaceRoute = Boolean(useMatch({ path: "/sessions/:id", end: true }));
+
+  useEffect(() => {
+    setMobileNavOpen(false);
+  }, [location.pathname]);
 
   if (loading) {
     return (
       <div className="app-shell">
-        <main className="app-main">
-          <p className="state-text">Loading user session...</p>
+        <main className="app-main app-main-centered">
+          <section className="auth-layout page" aria-busy="true" aria-live="polite">
+            <div className="panel state-surface">
+              <p className="state-text">Loading user session...</p>
+            </div>
+          </section>
         </main>
       </div>
     );
@@ -24,7 +58,7 @@ export default function App() {
   if (!user) {
     return (
       <div className="app-shell">
-        <main className="app-main">
+        <main className="app-main app-main-centered">
           <LoginPage />
         </main>
       </div>
@@ -32,26 +66,89 @@ export default function App() {
   }
 
   return (
-    <div className="app-shell">
-      <header className="app-header">
-        <Link className="brand" to="/dashboard">
+    <div className="app-shell app-shell-auth">
+      <header className="mobile-topbar">
+        <Link className="mobile-brand" to="/dashboard">
           GitArena
         </Link>
-        <nav className="header-nav">
-          <Link className="nav-link" to="/dashboard">
+        <button
+          aria-expanded={mobileNavOpen}
+          aria-label="Toggle navigation menu"
+          className="button button-secondary button-mini"
+          onClick={() => {
+            setMobileNavOpen((open) => !open);
+          }}
+          type="button"
+        >
+          {mobileNavOpen ? "Close" : "Menu"}
+        </button>
+      </header>
+
+      {mobileNavOpen && (
+        <nav aria-label="Mobile" className="mobile-nav">
+          <NavLink className={navClassName} to="/dashboard">
             Dashboard
-          </Link>
-          <Link className="nav-link" to="/history">
+          </NavLink>
+          <NavLink className={navClassName} to="/history">
             History
-          </Link>
-          <span className="nav-user">{user.displayName}</span>
-          <button className="button subtle" onClick={() => void logout()} type="button">
+          </NavLink>
+          <div className="mobile-user-row sidebar-user">
+            {user.avatarUrl ? (
+              <img alt="" className="sidebar-avatar" src={user.avatarUrl} />
+            ) : (
+              <span className="sidebar-avatar-fallback" aria-hidden="true">
+                {userInitial(user.displayName)}
+              </span>
+            )}
+            <div className="sidebar-user-meta">
+              <p className="sidebar-user-name">{user.displayName}</p>
+              <p className="sidebar-user-email">{user.email}</p>
+            </div>
+          </div>
+          <button className="button button-secondary" onClick={() => void logout()} type="button">
             Logout
           </button>
         </nav>
-      </header>
+      )}
 
-      <main className="app-main">
+      <aside className="app-sidebar">
+        <div className="sidebar-brand">
+          <Link className="sidebar-brand-link" to="/dashboard">
+            GitArena
+          </Link>
+          <span className="sidebar-brand-note">Tactical Workspace</span>
+        </div>
+
+        <nav aria-label="Primary" className="sidebar-nav">
+          <NavLink className={navClassName} to="/dashboard">
+            Dashboard
+          </NavLink>
+          <NavLink className={navClassName} to="/history">
+            History
+          </NavLink>
+        </nav>
+
+        <div className="sidebar-footer">
+          <div className="sidebar-user">
+            {user.avatarUrl ? (
+              <img alt="" className="sidebar-avatar" src={user.avatarUrl} />
+            ) : (
+              <span className="sidebar-avatar-fallback" aria-hidden="true">
+                {userInitial(user.displayName)}
+              </span>
+            )}
+            <div className="sidebar-user-meta">
+              <p className="sidebar-user-name">{user.displayName}</p>
+              <p className="sidebar-user-email">{user.email}</p>
+            </div>
+          </div>
+          <button className="button button-secondary" onClick={() => void logout()} type="button">
+            Logout
+          </button>
+        </div>
+      </aside>
+
+      <main className={`app-main${isWorkspaceRoute ? " app-main-workspace" : ""}`}>
         <Routes>
           <Route element={<Navigate replace to="/dashboard" />} path="/" />
           <Route element={<DashboardPage />} path="/dashboard" />

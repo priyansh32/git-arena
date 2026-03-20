@@ -37,61 +37,86 @@ export function DashboardPage() {
       }
     };
 
-    run();
+    void run();
   }, []);
-
-  if (loading) {
-    return <p className="state-text">Loading scenarios...</p>;
-  }
-
-  if (error) {
-    return <p className="state-text error">{error}</p>;
-  }
 
   const activeScenarioTitle =
     scenarios.find((scenario) => scenario.id === activeSession?.scenarioId)?.title ??
     activeSession?.scenarioId;
 
+  if (loading) {
+    return (
+      <section className="page" aria-busy="true" aria-live="polite">
+        <header className="page-header">
+          <h1>Scenario Catalog</h1>
+          <p>Start with one challenge and ship a clean Git outcome.</p>
+        </header>
+        <div className="skeleton skeleton-card" />
+        <div className="dashboard-grid">
+          {Array.from({ length: 6 }).map((_, index) => (
+            <div className="skeleton skeleton-card" key={index} />
+          ))}
+        </div>
+      </section>
+    );
+  }
+
+  if (error) {
+    return (
+      <section className="page">
+        <header className="page-header">
+          <h1>Scenario Catalog</h1>
+          <p>Start with one challenge and ship a clean Git outcome.</p>
+        </header>
+        <article className="panel state-surface">
+          <p className="state-text error">{error}</p>
+        </article>
+      </section>
+    );
+  }
+
   return (
-    <section className="stack">
-      <div className="page-head">
+    <section className="page">
+      <header className="page-header">
         <h1>Scenario Catalog</h1>
         <p>Start with one challenge and ship a clean Git outcome.</p>
-      </div>
+      </header>
 
       {activeSession && (
-        <article className="detail-card">
-          <h3>Active Session</h3>
-          <p>
-            {activeScenarioTitle} • {getRemainingLabel(activeSession.expiresAt)}
-          </p>
-          <Link className="button" to={`/sessions/${activeSession.id}`}>
-            Resume workspace
-          </Link>
+        <article className="panel active-session-banner">
+          <p className="active-session-banner-title">Active Session</p>
+          <div className="active-session-row">
+            <p>
+              <span className="mono">{activeScenarioTitle}</span> - {getRemainingLabel(activeSession.expiresAt)}
+            </p>
+            <Link className="button button-primary" to={`/sessions/${activeSession.id}`}>
+              Resume Workspace
+            </Link>
+          </div>
         </article>
       )}
 
-      <div className="grid">
+      <div className="dashboard-grid">
         {scenarios.map((scenario) => (
-          <article className="card" key={scenario.id}>
-            <div className="card-top">
+          <article className="scenario-card" key={scenario.id}>
+            <div className="scenario-card-top">
               <span className={`badge ${scenario.difficulty}`}>{scenario.difficulty}</span>
-              <span className="time">~{scenario.estimatedTimeMinutes} min</span>
+              <span className="mono state-text">~{scenario.estimatedTimeMinutes}m</span>
             </div>
 
             <h2>{scenario.title}</h2>
             <p>{scenario.description}</p>
 
-            <div className="tag-row">
+            <div className="scenario-tags">
               {scenario.tags.map((tag) => (
-                <span className="tag" key={tag}>
+                <span className="scenario-tag" key={tag}>
                   {tag}
                 </span>
               ))}
             </div>
 
-            <Link className="button" to={`/scenarios/${scenario.id}`}>
-              Start
+            <Link className="button button-primary" to={`/scenarios/${scenario.id}`}>
+              Open Scenario
             </Link>
           </article>
         ))}

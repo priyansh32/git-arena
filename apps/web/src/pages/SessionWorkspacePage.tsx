@@ -9,11 +9,17 @@ import {
   submitSession,
   terminateSession
 } from "../api/client";
+import type { TerminalConnectionState } from "../components/SessionTerminal";
 
 const SessionTerminal = lazy(async () => {
   const mod = await import("../components/SessionTerminal");
   return { default: mod.SessionTerminal };
 });
+
+interface RevealedHint {
+  index: number;
+  text: string;
+}
 
 function getRemainingLabel(expiresAt: string): string {
   const remainingMs = new Date(expiresAt).getTime() - Date.now();
@@ -28,6 +34,10 @@ function getRemainingLabel(expiresAt: string): string {
   return `${minutes}:${seconds}`;
 }
 
+function toHintLabel(index: number): string {
+  return `Hint ${index}`;
+}
+
 export function SessionWorkspacePage() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -37,10 +47,11 @@ export function SessionWorkspacePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [remaining, setRemaining] = useState("00:00");
-  const [hintText, setHintText] = useState<string | null>(null);
+  const [revealedHints, setRevealedHints] = useState<RevealedHint[]>([]);
   const [hintLoading, setHintLoading] = useState(false);
   const [submitLoading, setSubmitLoading] = useState(false);
   const [quitLoading, setQuitLoading] = useState(false);
+  const [terminalState, setTerminalState] = useState<TerminalConnectionState>("connecting");
 
   useEffect(() => {
     if (!id) {
@@ -64,7 +75,7 @@ export function SessionWorkspacePage() {
       }
     };
 
-    run();
+    void run();
   }, [id]);
 
   useEffect(() => {
@@ -79,19 +90,30 @@ export function SessionWorkspacePage() {
     return () => window.clearInterval(interval);
   }, [session]);
 
+  const isWorkspaceLive = session?.status === "active" || session?.status === "submitted";
+
+  useEffect(() => {
+    if (isWorkspaceLive) {
+      setTerminalState("connecting");
+      return;
+    }
+
+    setTerminalState("closed");
+  }, [isWorkspaceLive, session?.id]);
+
+  const hintsExhausted =
+    scenario !== null && session !== null && session.hintCount >= scenario.hints.length;
+
   const statusText = useMemo(() => {
     if (!session) {
       return "-";
     }
 
-    return `${session.status} • ${remaining} • hints: ${session.hintCount}`;
-  }, [remaining, session]);
-
-  const isWorkspaceLive =
-    session?.status === "active" || session?.status === "submitted";
+    return `${session.status} - hints used: ${session.hintCount}`;
+  }, [session]);
 
   const onHint = async () => {
-    if (!id) {
+    if (!id || hintsExhausted) {
       return;
     }
 
@@ -100,7 +122,13 @@ export function SessionWorkspacePage() {
 
     try {
       const response = await requestHint(id);
-      setHintText(`Hint ${response.hintIndex}: ${response.hint}`);
+      setRevealedHints((previous) => {
+        if (previous.some((hint) => hint.index === response.hintIndex)) {
+          return previous;
+        }
+
+        return [...previous, { index: response.hintIndex, text: response.hint }];
+      });
       setSession(response.session);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to request hint");
@@ -148,40 +176,131 @@ export function SessionWorkspacePage() {
   };
 
   if (loading) {
-    return <p className="state-text">Loading workspace...</p>;
+    return (
+      <section className="workspace-page" aria-busy="true" aria-live="polite">
+        <aside className="workspace-sidebar">
+          <div className="workspace-sidebar-scroll">
+            <div className="skeleton skeleton-card" />
+            <div className="skeleton skeleton-card" />
+            <div className="skeleton skeleton-card" />
+          </div>
+        </aside>
+        <section className="workspace-terminal-pane">
+          <header className="workspace-terminal-header">
+            <div className="workspace-terminal-status">
+              <span className="connection-dot connecting" />
+              <span>connecting</span>
+            </div>
+          </header>
+          <div className="workspace-terminal-body">
+            <div className="terminal-placeholder">
+              <p>Initializing workspace...</p>
+            </div>
+          </div>
+        </section>
+      </section>
+    );
   }
 
   if (error && !session) {
     return (
-      <div className="stack">
-        <p className="state-text error">{error}</p>
-        <Link className="link" to="/dashboard">
-          Back to catalog
-        </Link>
-      </div>
+      <section className="page">
+        <article className="panel state-surface">
+          <p className="state-text error">{error}</p>
+          <Link className="text-link" to="/dashboard">
+            Back to catalog
+          </Link>
+        </article>
+      </section>
     );
   }
 
   return (
-    <section className="workspace">
-      <header className="workspace-head">
-        <div>
-          <h1>{scenario?.title ?? "Session"}</h1>
-          <p>{statusText}</p>
-        </div>
-        <button
-          className="button subtle"
-          disabled={quitLoading || submitLoading || hintLoading}
-          onClick={onQuit}
-          type="button"
-        >
-          {quitLoading ? "Closing..." : "Quit"}
-        </button>
-      </header>
+    <section className="workspace-page">
+      <aside className="workspace-sidebar">
+        <div className="workspace-sidebar-scroll">
+          <header className="page-header">
+            <h1>{scenario?.title ?? "Session"}</h1>
+            <p>{scenario?.description ?? "No scenario metadata available."}</p>
+          </header>
 
-      <div className="workspace-grid">
-        <div className="terminal-panel">
-          <div className="terminal-header">Terminal Workspace</div>
+          <div>
+            <p className="state-text">Time Remaining</p>
+            <div className="workspace-countdown">{remaining}</div>
+          </div>
+
+          <div className="workspace-status">
+            <span className={`badge ${session?.status === "active" ? "pass" : "warn"}`}>
+              {session?.status ?? "unknown"}
+            </span>
+            <span className="mono">{statusText}</span>
+          </div>
+
+          <section className="workspace-hints">
+            <h2>Objective</h2>
+            <p>{scenario?.objective ?? "No objective available."}</p>
+          </section>
+
+          <section className="workspace-hints">
+            <h3>Hints</h3>
+            <p className="state-text">
+              Requested {revealedHints.length}/{scenario?.hints.length ?? 0}
+            </p>
+
+            {revealedHints.length === 0 ? (
+              <article className="panel">
+                <p className="state-text">No hints requested yet.</p>
+              </article>
+            ) : (
+              revealedHints.map((hint, index) => (
+                <details className="hint-details" key={`${hint.index}-${index}`} open={index === revealedHints.length - 1}>
+                  <summary>{toHintLabel(hint.index)}</summary>
+                  <p>{hint.text}</p>
+                </details>
+              ))
+            )}
+          </section>
+
+          {error && <p className="state-text error">{error}</p>}
+        </div>
+
+        <footer className="workspace-sidebar-actions">
+          <button
+            className="button button-primary button-block"
+            disabled={submitLoading || quitLoading || !session}
+            onClick={onSubmit}
+            type="button"
+          >
+            {submitLoading ? "Submitting..." : "Submit"}
+          </button>
+          <button
+            className="button button-secondary button-block"
+            disabled={quitLoading || submitLoading || hintLoading}
+            onClick={onQuit}
+            type="button"
+          >
+            {quitLoading ? "Closing..." : "Quit"}
+          </button>
+        </footer>
+      </aside>
+
+      <section className="workspace-terminal-pane">
+        <header className="workspace-terminal-header">
+          <div className="workspace-terminal-status">
+            <span className={`connection-dot ${terminalState}`} />
+            <span>{terminalState}</span>
+          </div>
+          <button
+            className="button button-secondary button-mini"
+            disabled={hintLoading || submitLoading || quitLoading || hintsExhausted || !isWorkspaceLive}
+            onClick={onHint}
+            type="button"
+          >
+            {hintLoading ? "Loading..." : hintsExhausted ? "No Hints" : "Request Hint"}
+          </button>
+        </header>
+
+        <div className="workspace-terminal-body">
           {session && isWorkspaceLive ? (
             <Suspense
               fallback={
@@ -190,7 +309,11 @@ export function SessionWorkspacePage() {
                 </div>
               }
             >
-              <SessionTerminal wsToken={session.wsToken} wsUrl={session.wsUrl} />
+              <SessionTerminal
+                onStateChange={setTerminalState}
+                wsToken={session.wsToken}
+                wsUrl={session.wsUrl}
+              />
             </Suspense>
           ) : (
             <div className="terminal-placeholder">
@@ -199,29 +322,7 @@ export function SessionWorkspacePage() {
             </div>
           )}
         </div>
-
-        <aside className="objective-panel">
-          <h2>Objective</h2>
-          <p>{scenario?.objective ?? "No objective available."}</p>
-
-          {hintText && <p className="hint-block">{hintText}</p>}
-          {error && <p className="state-text error">{error}</p>}
-
-          <div className="panel-actions">
-            <button
-              className="button subtle"
-              disabled={hintLoading || submitLoading}
-              onClick={onHint}
-              type="button"
-            >
-              {hintLoading ? "Loading hint..." : "Hint"}
-            </button>
-            <button className="button" disabled={submitLoading} onClick={onSubmit} type="button">
-              {submitLoading ? "Submitting..." : "Submit"}
-            </button>
-          </div>
-        </aside>
-      </div>
+      </section>
     </section>
   );
 }

@@ -27,7 +27,7 @@ export function HistoryPage() {
       }
     };
 
-    run();
+    void run();
   }, []);
 
   const scenarioTitleById = useMemo(() => {
@@ -35,47 +35,75 @@ export function HistoryPage() {
   }, [scenarios]);
 
   if (loading) {
-    return <p className="state-text">Loading history...</p>;
+    return (
+      <section className="page" aria-busy="true" aria-live="polite">
+        <header className="page-header">
+          <h1>Attempt History</h1>
+          <p>All attempts for your current local profile.</p>
+        </header>
+        <div className="skeleton skeleton-card" />
+      </section>
+    );
   }
 
   if (error) {
-    return <p className="state-text error">{error}</p>;
+    return (
+      <section className="page">
+        <header className="page-header">
+          <h1>Attempt History</h1>
+          <p>All attempts for your current local profile.</p>
+        </header>
+        <article className="panel state-surface">
+          <p className="state-text error">{error}</p>
+        </article>
+      </section>
+    );
   }
 
   return (
-    <section className="stack">
-      <div className="page-head">
+    <section className="page">
+      <header className="page-header">
         <h1>Attempt History</h1>
         <p>All attempts for your current local profile.</p>
-      </div>
+      </header>
 
       {attempts.length === 0 ? (
-        <article className="detail-card">
-          <p>No attempts yet. Start a scenario from the dashboard.</p>
-          <Link className="button" to="/dashboard">
+        <article className="panel state-surface">
+          <p className="state-text">No attempts yet. Start a scenario from the dashboard.</p>
+          <Link className="button button-primary" to="/dashboard">
             Browse Scenarios
           </Link>
         </article>
       ) : (
-        <div className="history-list">
-          {attempts.map((attempt) => (
-            <article className="history-item" key={attempt.id}>
-              <div>
-                <h3>{scenarioTitleById.get(attempt.scenarioId) ?? attempt.scenarioId}</h3>
-                <p>{new Date(attempt.evaluatedAt).toLocaleString()}</p>
-              </div>
-
-              <div className="history-meta">
-                <span className={`score-pill ${attempt.passed ? "pass" : "fail"}`}>
-                  {attempt.score}
-                </span>
-                <span>{attempt.passed ? "pass" : "fail"}</span>
-                <Link className="link" to={`/sessions/${attempt.sessionId}/result`}>
-                  View result
-                </Link>
-              </div>
-            </article>
-          ))}
+        <div className="history-table-wrap">
+          <table className="history-table">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Scenario</th>
+                <th>Status</th>
+                <th>Score</th>
+                <th>Result</th>
+              </tr>
+            </thead>
+            <tbody>
+              {attempts.map((attempt) => (
+                <tr key={attempt.id}>
+                  <td className="date-col">{new Date(attempt.evaluatedAt).toLocaleString()}</td>
+                  <td>{scenarioTitleById.get(attempt.scenarioId) ?? attempt.scenarioId}</td>
+                  <td>
+                    <span className={`badge ${attempt.passed ? "pass" : "fail"}`}>
+                      {attempt.passed ? "Pass" : "Fail"}
+                    </span>
+                  </td>
+                  <td className="score-col">{attempt.score}</td>
+                  <td>
+                    <Link to={`/sessions/${attempt.sessionId}/result`}>View</Link>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
     </section>

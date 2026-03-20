@@ -98,8 +98,8 @@ export function LoginPage() {
           size: "large",
           text: "signin_with",
           logo_alignment: "left",
-          theme: "outline",
-          width: 320
+          theme: "filled_blue",
+          width: 340
         });
         window.google.accounts.id.prompt();
       } catch (err) {
@@ -117,15 +117,13 @@ export function LoginPage() {
   }, [loginWithGoogleToken]);
 
   return (
-    <section className="stack">
-      <div className="page-head">
-        <h1>Welcome to GitArena</h1>
-        <p>Sign in with Google to launch isolated Git challenge sessions.</p>
-      </div>
+    <section className="auth-layout page">
+      <article className="panel login-card">
+        <p className="login-brand">GitArena</p>
+        <h1 className="login-title">Tactical Developer Dark Mode</h1>
+        <p className="login-copy">Sign in with Google to launch isolated Git challenge sessions.</p>
 
-      <article className="detail-card">
-        <h3>Sign In</h3>
-        <div ref={mountRef} />
+        <div className="google-button-slot" ref={mountRef} />
         {loading && <p className="state-text">Loading Google sign-in...</p>}
         {error && <p className="state-text error">{error}</p>}
       </article>

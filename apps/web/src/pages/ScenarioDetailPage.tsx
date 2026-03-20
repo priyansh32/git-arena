@@ -37,7 +37,7 @@ export function ScenarioDetailPage() {
       }
     };
 
-    run();
+    void run();
   }, [id]);
 
   const handleStart = async () => {
@@ -75,87 +75,122 @@ export function ScenarioDetailPage() {
   }, [attempts]);
 
   if (loading) {
-    return <p className="state-text">Loading scenario...</p>;
+    return (
+      <section className="page" aria-busy="true" aria-live="polite">
+        <div className="skeleton skeleton-title" />
+        <div className="scenario-detail-layout">
+          <div className="skeleton skeleton-card" />
+          <div className="skeleton skeleton-card" />
+        </div>
+      </section>
+    );
   }
 
   if (error) {
     return (
-      <div className="stack">
-        <p className="state-text error">{error}</p>
-        <Link className="link" to="/dashboard">
+      <section className="page">
+        <Link className="text-link" to="/dashboard">
           Back to catalog
         </Link>
-      </div>
+        <article className="panel state-surface">
+          <p className="state-text error">{error}</p>
+        </article>
+      </section>
     );
   }
 
   if (!scenario) {
-    return <p className="state-text error">Scenario not found</p>;
+    return (
+      <section className="page">
+        <article className="panel state-surface">
+          <p className="state-text error">Scenario not found</p>
+        </article>
+      </section>
+    );
   }
 
   return (
-    <section className="stack">
-      <Link className="link" to="/dashboard">
+    <section className="page">
+      <Link className="text-link" to="/dashboard">
         Back to catalog
       </Link>
 
-      <article className="detail-card">
-        <div className="card-top">
-          <span className={`badge ${scenario.difficulty}`}>{scenario.difficulty}</span>
-          <span className="time">~{scenario.estimatedTimeMinutes} min</span>
-        </div>
+      <div className="scenario-detail-layout">
+        <article className="panel scenario-main">
+          <header className="page-header">
+            <h1>{scenario.title}</h1>
+            <p>{scenario.description}</p>
+          </header>
 
-        <h1>{scenario.title}</h1>
-        <p>{scenario.description}</p>
+          <div className="scenario-card-top">
+            <span className={`badge ${scenario.difficulty}`}>{scenario.difficulty}</span>
+            <span className="mono state-text">~{scenario.estimatedTimeMinutes}m</span>
+          </div>
 
-        <h3>Objective</h3>
-        <p>{scenario.objective}</p>
+          <h2>Objective</h2>
+          <p>{scenario.objective}</p>
 
-        <div className="result-metrics">
-          <span>Hints available: {scenario.hints.length}</span>
-          <span>Attempts: {attempts.length}</span>
-          <span>Best score: {bestScore ?? "-"}</span>
-        </div>
+          <dl className="metric-grid">
+            <div className="metric-card">
+              <dt>Hints Available</dt>
+              <dd>{scenario.hints.length}</dd>
+            </div>
+            <div className="metric-card">
+              <dt>Total Attempts</dt>
+              <dd>{attempts.length}</dd>
+            </div>
+            <div className="metric-card">
+              <dt>Best Score</dt>
+              <dd>{bestScore ?? "-"}</dd>
+            </div>
+          </dl>
 
-        <div className="tag-row">
-          {scenario.tags.map((tag) => (
-            <span className="tag" key={tag}>
-              {tag}
-            </span>
-          ))}
-        </div>
-
-        <button className="button" disabled={starting} onClick={handleStart} type="button">
-          {starting ? "Provisioning session..." : "Launch workspace"}
-        </button>
-      </article>
-
-      {attempts.length > 0 && (
-        <article className="detail-card">
-          <h3>Recent Attempts</h3>
-          <div className="history-list">
-            {attempts.slice(0, 5).map((attempt) => (
-              <article className="history-item" key={attempt.id}>
-                <div>
-                  <h3>{new Date(attempt.evaluatedAt).toLocaleString()}</h3>
-                  <p>
-                    Base {attempt.baseScore} | Bonus +{attempt.timeBonus} | Penalty -
-                    {attempt.hintPenalty}
-                  </p>
-                </div>
-                <div className="history-meta">
-                  <span className={`score-pill ${attempt.passed ? "pass" : "fail"}`}>
-                    {attempt.score}
-                  </span>
-                  <Link className="link" to={`/sessions/${attempt.sessionId}/result`}>
-                    View
-                  </Link>
-                </div>
-              </article>
+          <div className="scenario-tags">
+            {scenario.tags.map((tag) => (
+              <span className="scenario-tag" key={tag}>
+                {tag}
+              </span>
             ))}
           </div>
         </article>
-      )}
+
+        <aside className="panel scenario-actions">
+          <h2>Action Panel</h2>
+          <p className="state-text">Start a fresh terminal session for this challenge.</p>
+          <button
+            className="button button-primary button-block"
+            disabled={starting}
+            onClick={handleStart}
+            type="button"
+          >
+            {starting ? "Provisioning..." : "Start Session"}
+          </button>
+
+          <h3>Recent Attempts</h3>
+          {attempts.length === 0 ? (
+            <p className="state-text">No attempts yet.</p>
+          ) : (
+            <div className="attempt-list">
+              {attempts.slice(0, 5).map((attempt) => (
+                <article className="attempt-row" key={attempt.id}>
+                  <div className="attempt-row-head">
+                    <span className={`badge ${attempt.passed ? "pass" : "fail"}`}>
+                      {attempt.passed ? "Pass" : "Fail"}
+                    </span>
+                    <span className="mono">{attempt.score}</span>
+                  </div>
+                  <p className="mono">{new Date(attempt.evaluatedAt).toLocaleString()}</p>
+                  <Link className="text-link" to={`/sessions/${attempt.sessionId}/result`}>
+                    View Result
+                  </Link>
+                </article>
+              ))}
+            </div>
+          )}
+
+          {error && <p className="state-text error">{error}</p>}
+        </aside>
+      </div>
     </section>
   );
 }
