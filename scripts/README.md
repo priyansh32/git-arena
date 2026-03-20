@@ -26,6 +26,12 @@ This directory contains local development and verification scripts.
 - `scripts/verify-phase3-gke.sh`
   - Applies/validates Phase 3 network policy behavior on GKE.
   - Fails if non-API ingress is still possible (indicates missing NetworkPolicy enforcement).
+- `scripts/verify-phase3-docker.sh`
+  - Verifies Docker provider runtime hardening on a running workspace container:
+    - no network (`--network none`)
+    - non-root uid/gid `1000`
+    - dropped capabilities / no-new-privileges
+    - memory/cpu/pids limits
 - `scripts/delete-phase3-gke.sh`
   - Tears down Phase 3 network policy verification resources.
 - `scripts/push-workspace-image-gcp.sh`

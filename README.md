@@ -141,6 +141,12 @@ This is a bootstrap foundation with:
   - `docker` (default for local dev)
   - `kubernetes` (GKE/K8s pod-backed sessions)
 - Docker mode provisions one container per active session using the host Docker socket.
+  - Docker runtime is hardened with:
+    - `--network none`
+    - `--user 1000:1000`
+    - `--cap-drop ALL`
+    - `--security-opt no-new-privileges`
+    - resource limits (`memory/cpu/pids`)
 - Kubernetes mode provisions one pod per active session in `WORKSPACE_K8S_NAMESPACE`.
 - Kubernetes network isolation policy manifest is available at:
   - `deploy/k8s/session-isolation-networkpolicy.yaml`

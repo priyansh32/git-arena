@@ -89,6 +89,7 @@ Helpful scripts:
 ```bash
 ./scripts/verify-phase2-gke.sh
 ./scripts/verify-phase3-gke.sh
+./scripts/verify-phase3-docker.sh
 ./scripts/push-workspace-image-gcp.sh
 ./scripts/delete-phase2-gke.sh
 ./scripts/delete-phase3-gke.sh

@@ -9,6 +9,11 @@ Each active session gets its own isolated runtime.
 - Docker provider:
   - Container name: `<WORKSPACE_CONTAINER_PREFIX>-<sessionId>`
   - Runtime command starts a long-running shell process (`WORKSPACE_INIT_COMMAND`)
+  - Container is started with hardening flags:
+    - non-root user (`1000:1000`)
+    - no network (`--network none`)
+    - capabilities dropped and `no-new-privileges`
+    - memory/cpu/pids limits aligned with policy envelope
 - Kubernetes provider:
   - Pod name: `session-<sessionId>`
   - Pod spec is created by API with hardened security context

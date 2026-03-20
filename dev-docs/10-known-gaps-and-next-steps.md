@@ -28,7 +28,8 @@ Working today:
 
 ## Remaining Security Gaps
 
-- Phase 3 network policy manifests are implemented; enforcement still depends on applying them to a CNI that supports `NetworkPolicy`.
+- Phase 3 network policy manifests are implemented; enforcement still depends on applying them to a cluster CNI that supports `NetworkPolicy`.
+- Docker provider now applies deny-network hardening (`--network none`) for local verification, but it does not emulate namespace/label-based Kubernetes policy semantics.
 - No session monitor loop for idle/resource termination rules yet.
 - Evaluator is not yet split into separate snapshot-driven runtime (policy Phase 6 target).
 - Full security audit event taxonomy is not yet implemented.
