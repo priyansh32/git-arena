@@ -1,36 +1,27 @@
-import { execFile, spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
-import { promisify } from "node:util";
+import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
 
 import type { AssertionResult, Session } from "@gitarena/shared";
 
 import type { WorkspaceConfig } from "./config.js";
 import { getScenarioRuntime } from "./scenario-runtime.js";
-
-const execFileAsync = promisify(execFile);
-const ASSERTION_LINE_PATTERN = /^ASSERT:([^:]+):(PASS|FAIL):([0-9]+):(.*)$/;
-const K8S_SEEDED_ANNOTATION = "gitarena.dev/seeded";
-const POLICY_ENV_ALLOWLIST = [
-  { name: "HOME", value: "/home/gituser" },
-  { name: "SHELL", value: "/bin/bash" },
-  { name: "TERM", value: "xterm-256color" },
-  { name: "GIT_AUTHOR_NAME", value: "Git Arena" },
-  { name: "GIT_AUTHOR_EMAIL", value: "user@gitarena.dev" },
-  { name: "GIT_COMMITTER_NAME", value: "Git Arena" },
-  { name: "GIT_COMMITTER_EMAIL", value: "user@gitarena.dev" },
-  { name: "LANG", value: "en_US.UTF-8" }
-] as const;
+import {
+  runDockerCommand,
+  runKubectlCommand,
+  runScriptInDockerContainer,
+  runScriptInKubernetesPod
+} from "./workspace/command-runners.js";
+import { K8S_SEEDED_ANNOTATION } from "./workspace/constants.js";
+import { buildWorkspaceContainerRunArgs } from "./workspace/docker-run-args.js";
+import { WorkspaceProvisionError } from "./workspace/errors.js";
+import { parseAssertions } from "./workspace/parsing.js";
+import { buildWorkspacePodManifest } from "./workspace/pod-manifest.js";
+import { shellEscape } from "./workspace/shell.js";
+export { WorkspaceProvisionError } from "./workspace/errors.js";
 
 interface PodState {
   exists: boolean;
   phase: string | null;
   seeded: boolean;
-}
-
-export class WorkspaceProvisionError extends Error {
-  constructor(message: string, readonly cause?: unknown) {
-    super(message);
-    this.name = "WorkspaceProvisionError";
-  }
 }
 
 export class WorkspaceManager {
@@ -194,50 +185,7 @@ export class WorkspaceManager {
   }
 
   private async createWorkspaceContainer(containerName: string, session: Session): Promise<void> {
-    const policyEnvArgs = POLICY_ENV_ALLOWLIST.flatMap((entry) => [
-      "--env",
-      `${entry.name}=${entry.value}`
-    ]);
-
-    const args = [
-      "run",
-      "-d",
-      "--rm",
-      "--name",
-      containerName,
-      "--label",
-      "gitarena.workspace=true",
-      "--label",
-      `gitarena.session.id=${session.id}`,
-      "--label",
-      `gitarena.user.id=${session.userId}`,
-      "--network",
-      "none",
-      "--user",
-      "1000:1000",
-      "--cap-drop",
-      "ALL",
-      "--security-opt",
-      "no-new-privileges",
-      "--memory",
-      "256m",
-      "--memory-reservation",
-      "128m",
-      "--memory-swap",
-      "256m",
-      "--cpus",
-      "0.5",
-      "--pids-limit",
-      "100",
-      ...policyEnvArgs,
-      "-w",
-      this.config.rootDir,
-      "--entrypoint",
-      "sh",
-      this.config.image,
-      "-lc",
-      this.config.initCommand
-    ];
+    const args = buildWorkspaceContainerRunArgs(containerName, session, this.config);
 
     try {
       await this.runDocker(args);
@@ -250,80 +198,7 @@ export class WorkspaceManager {
   }
 
   private async createWorkspacePod(podName: string, session: Session): Promise<void> {
-    const podManifest = {
-      apiVersion: "v1",
-      kind: "Pod",
-      metadata: {
-        name: podName,
-        namespace: this.config.kubernetes.namespace,
-        labels: {
-          app: "challenge-session",
-          "session-id": session.id,
-          "user-id": session.userId,
-          "scenario-id": session.scenarioId
-        },
-        annotations: {
-          [K8S_SEEDED_ANNOTATION]: "false"
-        }
-      },
-      spec: {
-        runtimeClassName: this.config.kubernetes.runtimeClassName,
-        automountServiceAccountToken: false,
-        enableServiceLinks: false,
-        serviceAccountName: "",
-        securityContext: {
-          runAsNonRoot: true,
-          runAsUser: 1000,
-          runAsGroup: 1000,
-          fsGroup: 1000,
-          seccompProfile: {
-            type: "RuntimeDefault"
-          }
-        },
-        restartPolicy: "Never",
-        terminationGracePeriodSeconds: 10,
-        containers: [
-          {
-            name: "challenge",
-            image: this.config.image,
-            imagePullPolicy: this.config.kubernetes.imagePullPolicy,
-            securityContext: {
-              allowPrivilegeEscalation: false,
-              readOnlyRootFilesystem: false,
-              capabilities: {
-                drop: ["ALL"]
-              }
-            },
-            resources: {
-              requests: {
-                memory: "128Mi",
-                cpu: "250m"
-              },
-              limits: {
-                memory: "256Mi",
-                cpu: "500m",
-                "ephemeral-storage": "1Gi"
-              }
-            },
-            env: POLICY_ENV_ALLOWLIST,
-            ports: [
-              {
-                containerPort: 7681,
-                protocol: "TCP"
-              }
-            ],
-            livenessProbe: {
-              exec: {
-                command: ["/bin/bash", "-lc", "echo > /dev/tcp/127.0.0.1/7681"]
-              },
-              initialDelaySeconds: 5,
-              timeoutSeconds: 2,
-              periodSeconds: 10
-            }
-          }
-        ]
-      }
-    };
+    const podManifest = buildWorkspacePodManifest(podName, session, this.config);
 
     try {
       await this.runKubectl(["apply", "-f", "-"], false, JSON.stringify(podManifest), 30_000, 1024 * 1024 * 4);
@@ -429,58 +304,14 @@ export class WorkspaceManager {
     containerName: string,
     script: string
   ): Promise<{ stdout: string; stderr: string }> {
-    try {
-      const { stdout, stderr } = await execFileAsync(
-        "docker",
-        ["exec", "-i", containerName, "sh", "-lc", script],
-        {
-          timeout: 60_000,
-          maxBuffer: 1024 * 1024 * 4
-        }
-      );
-
-      return {
-        stdout: stdout.trim(),
-        stderr: stderr.trim()
-      };
-    } catch (error) {
-      const message = this.formatDockerError(error);
-      throw new WorkspaceProvisionError(message, error);
-    }
+    return await runScriptInDockerContainer(containerName, script);
   }
 
   private async runScriptInPod(
     podName: string,
     script: string
   ): Promise<{ stdout: string; stderr: string }> {
-    try {
-      const { stdout, stderr } = await execFileAsync(
-        "kubectl",
-        [
-          "exec",
-          "-i",
-          "-n",
-          this.config.kubernetes.namespace,
-          podName,
-          "--",
-          "sh",
-          "-lc",
-          script
-        ],
-        {
-          timeout: 60_000,
-          maxBuffer: 1024 * 1024 * 4
-        }
-      );
-
-      return {
-        stdout: stdout.trim(),
-        stderr: stderr.trim()
-      };
-    } catch (error) {
-      const message = this.formatKubectlError(error);
-      throw new WorkspaceProvisionError(message, error);
-    }
+    return await runScriptInKubernetesPod(this.config.kubernetes.namespace, podName, script);
   }
 
   private async isContainerRunning(containerName: string): Promise<boolean> {
@@ -507,20 +338,7 @@ export class WorkspaceManager {
   }
 
   private async runDocker(args: string[], allowFailure = false): Promise<string> {
-    try {
-      const { stdout } = await execFileAsync("docker", args, {
-        timeout: 30_000,
-        maxBuffer: 1024 * 1024
-      });
-      return stdout.trim();
-    } catch (error) {
-      if (allowFailure) {
-        return "";
-      }
-
-      const message = this.formatDockerError(error);
-      throw new WorkspaceProvisionError(message, error);
-    }
+    return await runDockerCommand(args, { allowFailure });
   }
 
   private async runKubectl(
@@ -530,184 +348,6 @@ export class WorkspaceManager {
     timeout = 30_000,
     maxBuffer = 1024 * 1024
   ): Promise<string> {
-    return await new Promise<string>((resolve, reject) => {
-      const child = spawn("kubectl", args, {
-        stdio: "pipe"
-      });
-
-      let stdout = "";
-      let stderr = "";
-      let done = false;
-      let timedOut = false;
-      let exceededBuffer = false;
-
-      const finish = (callback: () => void): void => {
-        if (done) {
-          return;
-        }
-        done = true;
-        callback();
-      };
-
-      const timer = setTimeout(() => {
-        timedOut = true;
-        child.kill("SIGKILL");
-      }, timeout);
-
-      const appendAndCheck = (target: "stdout" | "stderr", chunk: Buffer): void => {
-        if (target === "stdout") {
-          stdout += chunk.toString("utf8");
-        } else {
-          stderr += chunk.toString("utf8");
-        }
-
-        if (Buffer.byteLength(stdout) + Buffer.byteLength(stderr) > maxBuffer) {
-          exceededBuffer = true;
-          child.kill("SIGKILL");
-        }
-      };
-
-      child.stdout.on("data", (chunk: Buffer) => {
-        appendAndCheck("stdout", chunk);
-      });
-
-      child.stderr.on("data", (chunk: Buffer) => {
-        appendAndCheck("stderr", chunk);
-      });
-
-      child.on("error", (error) => {
-        clearTimeout(timer);
-        finish(() => {
-          if (allowFailure) {
-            resolve("");
-            return;
-          }
-          reject(new WorkspaceProvisionError(this.formatKubectlError(error), error));
-        });
-      });
-
-      child.on("close", (code) => {
-        clearTimeout(timer);
-        finish(() => {
-          if (timedOut) {
-            if (allowFailure) {
-              resolve("");
-              return;
-            }
-            reject(
-              new WorkspaceProvisionError(
-                `kubectl command timed out after ${timeout}ms: kubectl ${args.join(" ")}`
-              )
-            );
-            return;
-          }
-
-          if (exceededBuffer) {
-            if (allowFailure) {
-              resolve("");
-              return;
-            }
-            reject(
-              new WorkspaceProvisionError(
-                `kubectl command output exceeded max buffer (${maxBuffer} bytes): kubectl ${args.join(" ")}`
-              )
-            );
-            return;
-          }
-
-          if (code === 0) {
-            resolve(stdout.trim());
-            return;
-          }
-
-          if (allowFailure) {
-            resolve("");
-            return;
-          }
-
-          reject(
-            new WorkspaceProvisionError(
-              stderr.trim().length > 0
-                ? `kubectl command failed: ${stderr.trim()}`
-                : `kubectl command failed with exit code ${code}: kubectl ${args.join(" ")}`
-            )
-          );
-        });
-      });
-
-      if (typeof input === "string") {
-        child.stdin.end(input);
-      } else {
-        child.stdin.end();
-      }
-    });
+    return await runKubectlCommand(args, { allowFailure, input, timeout, maxBuffer });
   }
-
-  private formatDockerError(error: unknown): string {
-    if (
-      typeof error === "object" &&
-      error !== null &&
-      "stderr" in error &&
-      typeof error.stderr === "string" &&
-      error.stderr.trim().length > 0
-    ) {
-      return `Docker command failed: ${error.stderr.trim()}`;
-    }
-
-    if (error instanceof Error && error.message.length > 0) {
-      return `Docker command failed: ${error.message}`;
-    }
-
-    return "Docker command failed";
-  }
-
-  private formatKubectlError(error: unknown): string {
-    if (
-      typeof error === "object" &&
-      error !== null &&
-      "stderr" in error &&
-      typeof error.stderr === "string" &&
-      error.stderr.trim().length > 0
-    ) {
-      return `kubectl command failed: ${error.stderr.trim()}`;
-    }
-
-    if (error instanceof Error && error.message.length > 0) {
-      return `kubectl command failed: ${error.message}`;
-    }
-
-    return "kubectl command failed";
-  }
-}
-
-function parseAssertions(stdout: string): AssertionResult[] {
-  return stdout
-    .split(/\r?\n/)
-    .map((line) => line.trim())
-    .filter((line) => line.length > 0)
-    .map((line) => {
-      const match = ASSERTION_LINE_PATTERN.exec(line);
-      if (!match) {
-        return null;
-      }
-
-      const [, checkId, status, rawWeight, explanation] = match;
-      const parsedWeight = Number.parseInt(rawWeight, 10);
-
-      return {
-        checkId,
-        passed: status === "PASS",
-        weight: Number.isFinite(parsedWeight) ? parsedWeight : 0,
-        explanation
-      } satisfies AssertionResult;
-    })
-    .filter((assertion): assertion is AssertionResult => assertion !== null);
-}
-
-function shellEscape(value: string): string {
-  if (/^[a-zA-Z0-9_./:-]+$/.test(value)) {
-    return value;
-  }
-
-  return `'${value.replace(/'/g, `'\\''`)}'`;
 }
