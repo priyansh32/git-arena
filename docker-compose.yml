@@ -27,6 +27,7 @@ services:
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
       SESSION_COOKIE_NAME: ${SESSION_COOKIE_NAME:-gitarena_session}
       SESSION_TTL_HOURS: ${SESSION_TTL_HOURS:-168}
+      WORKSPACE_PROVIDER: docker
       WORKSPACE_IMAGE: alpine/git:2.47.2
       WORKSPACE_ROOT: /workspace
       WORKSPACE_SHELL: /bin/sh

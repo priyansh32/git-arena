@@ -1,0 +1,67 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: session-${SESSION_ID}
+  namespace: gitarena-sessions
+  labels:
+    app: challenge-session
+    session-id: ${SESSION_ID}
+    user-id: ${USER_ID}
+    scenario-id: ${SCENARIO_ID}
+spec:
+  runtimeClassName: gvisor
+  automountServiceAccountToken: false
+  enableServiceLinks: false
+  serviceAccountName: ""
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+    runAsGroup: 1000
+    fsGroup: 1000
+    seccompProfile:
+      type: RuntimeDefault
+  restartPolicy: Never
+  terminationGracePeriodSeconds: 10
+  containers:
+    - name: challenge
+      image: us-central1-docker.pkg.dev/${GCP_PROJECT_ID}/gitarena/gitarena-base:2.43.7-alpine3.19-v1
+      imagePullPolicy: IfNotPresent
+      securityContext:
+        allowPrivilegeEscalation: false
+        readOnlyRootFilesystem: false
+        capabilities:
+          drop:
+            - ALL
+      resources:
+        requests:
+          memory: "128Mi"
+          cpu: "250m"
+        limits:
+          memory: "256Mi"
+          cpu: "500m"
+          ephemeral-storage: "1Gi"
+      env:
+        - name: HOME
+          value: /home/gituser
+        - name: SHELL
+          value: /bin/bash
+        - name: TERM
+          value: xterm-256color
+        - name: GIT_AUTHOR_NAME
+          value: "Git Arena"
+        - name: GIT_AUTHOR_EMAIL
+          value: "user@gitarena.dev"
+        - name: GIT_COMMITTER_NAME
+          value: "Git Arena"
+        - name: GIT_COMMITTER_EMAIL
+          value: "user@gitarena.dev"
+        - name: LANG
+          value: en_US.UTF-8
+      ports:
+        - containerPort: 7681
+          protocol: TCP
+      livenessProbe:
+        tcpSocket:
+          port: 7681
+        initialDelaySeconds: 5
+        periodSeconds: 10

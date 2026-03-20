@@ -1,5 +1,8 @@
 import { z } from "zod";
 
+const workspaceProviderSchema = z.enum(["docker", "kubernetes"]);
+const workspaceImagePullPolicySchema = z.enum(["Always", "IfNotPresent", "Never"]);
+
 const envSchema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
   HOST: z.string().default("0.0.0.0"),
@@ -8,6 +11,7 @@ const envSchema = z.object({
     .string()
     .default("postgres://gitarena:gitarena@localhost:5432/gitarena"),
   CORS_ORIGINS: z.string().default("http://localhost:5173,http://localhost:8080"),
+  WORKSPACE_PROVIDER: workspaceProviderSchema.default("docker"),
   WORKSPACE_IMAGE: z.string().default("alpine/git:2.47.2"),
   WORKSPACE_ROOT: z.string().default("/workspace"),
   WORKSPACE_SHELL: z.string().default("/bin/sh"),
@@ -15,17 +19,33 @@ const envSchema = z.object({
   WORKSPACE_INIT_COMMAND: z
     .string()
     .default("mkdir -p /workspace && cd /workspace && exec tail -f /dev/null"),
+  WORKSPACE_K8S_NAMESPACE: z.string().default("gitarena-sessions"),
+  WORKSPACE_K8S_RUNTIME_CLASS_NAME: z.string().default("gvisor"),
+  WORKSPACE_K8S_IMAGE_PULL_POLICY: workspaceImagePullPolicySchema.default("IfNotPresent"),
+  WORKSPACE_K8S_POD_READY_TIMEOUT_SECONDS: z.coerce.number().int().min(5).max(600).default(240),
   GOOGLE_CLIENT_ID: z.string().trim().min(1),
   SESSION_COOKIE_NAME: z.string().default("gitarena_session"),
   SESSION_TTL_HOURS: z.coerce.number().int().min(1).max(24 * 30).default(24 * 7)
 });
 
+export type WorkspaceProvider = z.infer<typeof workspaceProviderSchema>;
+export type WorkspaceImagePullPolicy = z.infer<typeof workspaceImagePullPolicySchema>;
+
+export interface WorkspaceKubernetesConfig {
+  namespace: string;
+  runtimeClassName: string;
+  imagePullPolicy: WorkspaceImagePullPolicy;
+  podReadyTimeoutSeconds: number;
+}
+
 export interface WorkspaceConfig {
+  provider: WorkspaceProvider;
   image: string;
   rootDir: string;
   shell: string;
   containerPrefix: string;
   initCommand: string;
+  kubernetes: WorkspaceKubernetesConfig;
 }
 
 export interface AppConfig {
@@ -55,11 +75,18 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     databaseUrl: parsed.DATABASE_URL,
     corsOrigins,
     workspace: {
+      provider: parsed.WORKSPACE_PROVIDER,
       image: parsed.WORKSPACE_IMAGE,
       rootDir: parsed.WORKSPACE_ROOT,
       shell: parsed.WORKSPACE_SHELL,
       containerPrefix: parsed.WORKSPACE_CONTAINER_PREFIX,
-      initCommand: parsed.WORKSPACE_INIT_COMMAND
+      initCommand: parsed.WORKSPACE_INIT_COMMAND,
+      kubernetes: {
+        namespace: parsed.WORKSPACE_K8S_NAMESPACE,
+        runtimeClassName: parsed.WORKSPACE_K8S_RUNTIME_CLASS_NAME,
+        imagePullPolicy: parsed.WORKSPACE_K8S_IMAGE_PULL_POLICY,
+        podReadyTimeoutSeconds: parsed.WORKSPACE_K8S_POD_READY_TIMEOUT_SECONDS
+      }
     },
     auth: {
       googleClientId: parsed.GOOGLE_CLIENT_ID,

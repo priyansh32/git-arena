@@ -47,3 +47,13 @@ Watch for:
 - API workspace provisioning errors (`docker` failures).
 - websocket connection failures.
 - database connectivity errors.
+
+## Kubernetes Readiness (GCP/GKE)
+
+Security-policy session pod templates are available in `deploy/k8s/`.
+
+- `deploy/k8s/challenge-session-pod.yaml` contains pod/container security context, gVisor runtime class, and env allowlist.
+- `SETUP.md` documents required cluster prerequisites (gVisor runtime class availability).
+
+Current local runtime still provisions session workspaces through Docker (`WorkspaceManager`).
+Kubernetes orchestration migration is handled separately from these manifest hardening changes.

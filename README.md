@@ -127,9 +127,11 @@ This is a bootstrap foundation with:
 
 ## Workspace Runtime Notes
 
-- The API provisions one Docker container per active session using the host Docker socket.
-- Container name format: `gitarena-ws-<sessionId>`.
-- `docker-compose.yml` mounts `/var/run/docker.sock` into the API service.
+- The API supports two workspace providers via `WORKSPACE_PROVIDER`:
+  - `docker` (default for local dev)
+  - `kubernetes` (GKE/K8s pod-backed sessions)
+- Docker mode provisions one container per active session using the host Docker socket.
+- Kubernetes mode provisions one pod per active session in `WORKSPACE_K8S_NAMESPACE`.
 
 ## Notes
 

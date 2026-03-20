@@ -25,10 +25,15 @@ Important env vars:
 - `SESSION_COOKIE_NAME`
 - `SESSION_TTL_HOURS`
 - `WORKSPACE_IMAGE`
+- `WORKSPACE_PROVIDER` (`docker` or `kubernetes`)
 - `WORKSPACE_ROOT`
 - `WORKSPACE_SHELL`
 - `WORKSPACE_CONTAINER_PREFIX`
 - `WORKSPACE_INIT_COMMAND`
+- `WORKSPACE_K8S_NAMESPACE`
+- `WORKSPACE_K8S_RUNTIME_CLASS_NAME`
+- `WORKSPACE_K8S_IMAGE_PULL_POLICY`
+- `WORKSPACE_K8S_POD_READY_TIMEOUT_SECONDS`
 
 Default workspace image is `alpine/git:2.47.2`.
 
@@ -92,11 +97,11 @@ Important invariants:
 
 `src/workspace-manager.ts`:
 
-- Creates per-session container (`docker run -d --rm ...`).
-- Seeds scenario by running `seed.sh` inside container.
+- In `docker` mode, creates per-session containers (`docker run -d --rm ...`).
+- In `kubernetes` mode, applies/deletes per-session pods via `kubectl`.
+- Seeds scenario by running `seed.sh` inside the active workspace runtime.
 - Evaluates submission by running `eval.sh`.
-- Opens interactive terminal bridge with `script -qefc "docker exec -it ..."`.
-- Cleans container on quit/submit.
+- Opens interactive terminal bridge with `script -qefc` over `docker exec` or `kubectl exec`.
 
 ## Error Handling
 
