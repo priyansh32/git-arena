@@ -63,8 +63,11 @@ Smoke script validates:
 Security verification scripts:
 
 ```bash
+./scripts/gcp-init.sh
+./scripts/test-gcp-security.sh
 ./scripts/verify-workspace-image-hardening.sh
-./scripts/verify-phase2-gke.sh
+./scripts/verify-phase3-docker.sh
+./scripts/gcp-teardown.sh
 ```
 
 ## Suggested Manual QA Checklist

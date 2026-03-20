@@ -14,8 +14,10 @@ scripts/
   dev-postgres-up.sh / dev-postgres-down.sh
   dev-api-docker.sh / dev-api-k8s.sh
   dev-web.sh
+  gcp-init.sh / gcp-teardown.sh / test-gcp-security.sh
   verify-workspace-image-hardening.sh
-  verify-phase2-gke.sh / delete-phase2-gke.sh / push-workspace-image-gcp.sh
+  verify-phase2-gke.sh / verify-phase3-gke.sh / verify-phase3-docker.sh
+  push-workspace-image-gcp.sh
   smoke-stack.mjs
   README.md
 dev-docs/   # this onboarding set

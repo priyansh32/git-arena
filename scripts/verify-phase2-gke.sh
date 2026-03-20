@@ -2,8 +2,9 @@
 set -Eeuo pipefail
 
 # Verification-only automation for Phase 2 policy checks.
-# This script can optionally create a tiny GKE cluster, deploy the Phase 2 pod,
-# validate required security settings, and leave teardown to delete-phase2-gke.sh.
+# For clean lifecycle separation, initialize infrastructure first via:
+#   ./scripts/gcp-init.sh
+# Then run this script only for security verification.
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 POD_TEMPLATE="${ROOT_DIR}/deploy/k8s/challenge-session-pod.yaml"
@@ -14,8 +15,8 @@ GKE_LOCATION="${GKE_LOCATION:-us-central1-a}"
 GKE_LOCATION_TYPE="${GKE_LOCATION_TYPE:-zone}" # zone|region
 GKE_MODE="${GKE_MODE:-standard}" # standard|autopilot
 
-CREATE_CLUSTER="${CREATE_CLUSTER:-true}"
-CREATE_GVISOR_POOL="${CREATE_GVISOR_POOL:-true}" # standard mode only
+CREATE_CLUSTER="${CREATE_CLUSTER:-false}"
+CREATE_GVISOR_POOL="${CREATE_GVISOR_POOL:-false}" # standard mode only
 SANDBOX_POOL_NAME="${SANDBOX_POOL_NAME:-sandbox-pool}"
 PUSH_IMAGE="${PUSH_IMAGE:-false}"
 IMAGE_PUSH_LOCATION="${IMAGE_PUSH_LOCATION:-us-central1}"
@@ -261,7 +262,7 @@ main() {
   check_runtime_behavior
 
   info "Phase 2 verification complete for pod ${POD_NAME} in namespace ${SESSIONS_NS}"
-  info "run scripts/delete-phase2-gke.sh to remove verification resources and optionally delete the cluster"
+  info "run scripts/gcp-teardown.sh to remove verification resources and optionally delete the cluster"
 }
 
 main "$@"

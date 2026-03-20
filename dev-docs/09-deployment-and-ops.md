@@ -87,12 +87,13 @@ For `WORKSPACE_PROVIDER=kubernetes`:
 Helpful scripts:
 
 ```bash
+./scripts/gcp-init.sh
+./scripts/test-gcp-security.sh
 ./scripts/verify-phase2-gke.sh
 ./scripts/verify-phase3-gke.sh
 ./scripts/verify-phase3-docker.sh
 ./scripts/push-workspace-image-gcp.sh
-./scripts/delete-phase2-gke.sh
-./scripts/delete-phase3-gke.sh
+./scripts/gcp-teardown.sh
 ```
 
 Cluster setup notes: `SETUP.md`

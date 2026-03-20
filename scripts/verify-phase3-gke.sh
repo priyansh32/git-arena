@@ -233,7 +233,7 @@ main() {
   run_network_checks
 
   info "Phase 3 verification complete"
-  info "run scripts/delete-phase3-gke.sh to remove phase3 verification resources"
+  info "run scripts/gcp-teardown.sh to remove verification resources and optionally delete the cluster"
 }
 
 main "$@"

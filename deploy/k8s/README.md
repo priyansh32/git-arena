@@ -63,17 +63,24 @@ Important:
 
 ## Verification Scripts
 
-Run full Phase 2 verification (cluster bootstrap + checks):
+Initialize GCP/Kubernetes resources once:
 
 ```bash
 export GCP_PROJECT_ID=my-gcp-project
-./scripts/verify-phase2-gke.sh
+./scripts/gcp-init.sh
 ```
 
-Run Phase 3 network isolation verification:
+Run full security verification:
 
 ```bash
 export GCP_PROJECT_ID=my-gcp-project
+./scripts/test-gcp-security.sh
+```
+
+Or run individual checks:
+
+```bash
+./scripts/verify-phase2-gke.sh
 ./scripts/verify-phase3-gke.sh
 ```
 
@@ -88,5 +95,5 @@ Teardown everything after verification:
 
 ```bash
 export GCP_PROJECT_ID=my-gcp-project
-./scripts/delete-phase2-gke.sh
+./scripts/gcp-teardown.sh
 ```

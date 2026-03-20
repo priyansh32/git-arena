@@ -2,6 +2,28 @@
 
 This directory contains local development and verification scripts.
 
+## GCP Lifecycle (Primary)
+
+- Typical flow:
+  - `export GCP_PROJECT_ID=my-gcp-project`
+  - `./scripts/gcp-init.sh`
+  - `./scripts/test-gcp-security.sh`
+  - `./scripts/gcp-teardown.sh`
+- `scripts/gcp-init.sh`
+  - Single bootstrap entrypoint for GCP resources:
+    - project + required services
+    - GKE cluster create/check
+    - network policy enablement
+    - gVisor node pool + RuntimeClass
+    - required namespaces/RBAC/network policy manifests
+    - optional workspace image push (`PUSH_IMAGE=true`)
+- `scripts/gcp-teardown.sh`
+  - Single teardown entrypoint for GCP resources:
+    - verification pods and network policy cleanup
+    - optional namespace delete
+    - optional cluster delete
+    - optional Artifact Registry repo delete
+
 ## Local Dev Helpers
 
 - `scripts/dev-postgres-up.sh`
@@ -17,12 +39,13 @@ This directory contains local development and verification scripts.
 
 ## Security Policy Verification
 
+- `scripts/test-gcp-security.sh`
+  - Runs Phase 2 + Phase 3 GKE verification scripts against initialized cluster.
 - `scripts/verify-workspace-image-hardening.sh`
   - Builds (or inspects) workspace image and validates hardening requirements.
 - `scripts/verify-phase2-gke.sh`
   - Verifies Phase 2 pod security context settings on GKE.
-- `scripts/delete-phase2-gke.sh`
-  - Tears down verification resources and optionally the verification cluster.
+  - Assumes cluster/bootstrap is already done (use `gcp-init.sh` first).
 - `scripts/verify-phase3-gke.sh`
   - Applies/validates Phase 3 network policy behavior on GKE.
   - Fails if non-API ingress is still possible (indicates missing NetworkPolicy enforcement).
@@ -32,10 +55,15 @@ This directory contains local development and verification scripts.
     - non-root uid/gid `1000`
     - dropped capabilities / no-new-privileges
     - memory/cpu/pids limits
-- `scripts/delete-phase3-gke.sh`
-  - Tears down Phase 3 network policy verification resources.
 - `scripts/push-workspace-image-gcp.sh`
   - Builds and pushes workspace image to Artifact Registry.
+
+## Compatibility Wrappers
+
+- `scripts/delete-phase2-gke.sh`
+  - Legacy wrapper; forwards to `scripts/gcp-teardown.sh`.
+- `scripts/delete-phase3-gke.sh`
+  - Legacy wrapper; forwards to `scripts/gcp-teardown.sh`.
 
 ## Stack Smoke Test
 
