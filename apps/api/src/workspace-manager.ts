@@ -289,10 +289,11 @@ export class WorkspaceManager {
               }
             ],
             livenessProbe: {
-              tcpSocket: {
-                port: 7681
+              exec: {
+                command: ["/bin/bash", "-lc", "echo > /dev/tcp/127.0.0.1/7681"]
               },
               initialDelaySeconds: 5,
+              timeoutSeconds: 2,
               periodSeconds: 10
             }
           }
