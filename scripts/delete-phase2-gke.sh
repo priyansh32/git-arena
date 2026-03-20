@@ -5,7 +5,7 @@ set -Eeuo pipefail
 # Deletes verification pod/namespaces (best effort) and optionally deletes the GKE cluster.
 
 GCP_PROJECT_ID="${GCP_PROJECT_ID:-}"
-GKE_CLUSTER_NAME="${GKE_CLUSTER_NAME:-gitarena-verify}"
+GKE_CLUSTER_NAME="${GKE_CLUSTER_NAME:-gitarena-verify-1}"
 GKE_LOCATION="${GKE_LOCATION:-us-central1-a}"
 GKE_LOCATION_TYPE="${GKE_LOCATION_TYPE:-zone}" # zone|region
 DELETE_CLUSTER="${DELETE_CLUSTER:-true}"

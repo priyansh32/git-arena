@@ -21,14 +21,14 @@ Read the files in order.
 GitArena is a terminal-first Git challenge platform:
 
 - Users launch a challenge session.
-- API provisions an isolated Docker workspace container.
+- API provisions an isolated workspace runtime (Docker container or Kubernetes pod).
 - User interacts with real Git repos in a browser terminal.
 - On submit, scenario-specific evaluator scripts grade the repo state.
 - Attempts are stored in Postgres and shown in history/result UI.
 
 ## Current Scope
 
-- Auth is intentionally not implemented yet.
-- API currently uses one local profile: `local-dev-user`.
+- Google Sign-In auth is enabled with server-side cookie sessions and CSRF protection.
+- Workspace provider is selectable with `WORKSPACE_PROVIDER` (`docker` or `kubernetes`).
+- Hardened workspace base image and Phase 2 pod security settings are implemented.
 - Scenarios are shell-script driven and bundled in `apps/api/scenarios`.
-

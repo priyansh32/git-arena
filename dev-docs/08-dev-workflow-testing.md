@@ -20,6 +20,15 @@ npm run build
 npm run typecheck
 ```
 
+Helper scripts:
+
+```bash
+./scripts/dev-postgres-up.sh
+./scripts/dev-api-docker.sh
+./scripts/dev-api-k8s.sh
+./scripts/dev-web.sh
+```
+
 Containerized flow:
 
 ```bash
@@ -51,6 +60,13 @@ Smoke script validates:
 - seeded repo presence
 - workspace cleanup on delete
 
+Security verification scripts:
+
+```bash
+./scripts/verify-workspace-image-hardening.sh
+./scripts/verify-phase2-gke.sh
+```
+
 ## Suggested Manual QA Checklist
 
 Before merging major changes:
@@ -67,10 +83,10 @@ Before merging major changes:
 
 Always verify these after edits in `workspace-manager.ts` or scenario scripts:
 
-- container is created with expected name prefix
+- runtime is created with expected name prefix
 - `/workspace` is a git repo after seed
 - evaluator prints parseable `ASSERT:` lines
-- container is removed on submit/quit
+- runtime is removed on submit/quit
 
 ## Branching and Commits
 

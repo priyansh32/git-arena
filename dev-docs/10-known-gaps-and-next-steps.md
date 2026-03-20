@@ -1,75 +1,57 @@
 # 10 - Known Gaps and Next Steps
 
-This document tracks current limitations and pragmatic next milestones.
+This document tracks current limitations after workspace hardening Phase 1 and Phase 2 work.
 
-## Current MVP Status
+## Current Status Snapshot
 
 Working today:
 
-- scenario catalog, detail, history UI
-- session creation with one active-session constraint
-- per-session workspace containers
-- websocket terminal bridge
-- hint and submit flow
-- scenario-specific shell evaluators
-- scoring + attempt persistence
-- local dockerized deployment path
-
-Not implemented yet:
-
-- role-based access (`learner/author/admin`)
-- scenario authoring admin UI
-- richer observability/metrics dashboards
+- Google Sign-In with backend token verification, cookie sessions, and CSRF checks
+- Scenario catalog/detail/history and per-user session isolation
+- Workspace provisioning with selectable provider:
+  - Docker (`WORKSPACE_PROVIDER=docker`)
+  - Kubernetes (`WORKSPACE_PROVIDER=kubernetes`)
+- Hardened workspace base image and CI hardening checks
+- Kubernetes pod security context hardening (gVisor runtime class, non-root, dropped caps)
+- Interactive terminal over websocket
+- Seed/eval shell runtime and scoring persistence
 
 ## Highest Priority Next
 
-1. Harden submission integrity (immutable snapshot evaluation path).
-2. Harden container/runtime restrictions (privileges, limits, network isolation).
-3. Expand automated tests beyond scoring unit tests.
-4. Add scenario authoring workflow (draft/test/publish controls).
-5. Add production guardrails (rate limiting, abuse controls, backups, alerts).
+1. Phase 3 network isolation:
+   - Kubernetes `NetworkPolicy` for challenge-session pods
+   - deny-all egress and API-only ingress
+2. Phase 4 session monitor and resource-triggered termination.
+3. Phase 5 seed script validation pipeline for scenario builds.
+4. Phase 6 snapshot/evaluator separation with object storage snapshots.
+5. Phase 7 structured audit logging and ops runbook queries.
 
-## Auth and Identity Recommendation
+## Remaining Security Gaps
 
-Near-term low-risk path:
+- No `NetworkPolicy` enforcement in repo yet.
+- No session monitor loop for idle/resource termination rules yet.
+- Evaluator is not yet split into separate snapshot-driven runtime (policy Phase 6 target).
+- Full security audit event taxonomy is not yet implemented.
 
-- Google sign-in (Firebase Auth or Google Identity + backend verification).
-- Store users in Postgres (`users` table).
-- Replace `LOCAL_USER_ID` with request-scoped authenticated user id.
-- Keep API authorization checks server-side for all session/attempt access.
+## Product / Platform Gaps
 
-## Architecture Follow-Ups
-
-As load grows:
-
-- split workspace orchestration into dedicated service/process
-- add queue for session provisioning/evaluation jobs
-- add per-session resource quotas and hard runtime caps
-- move toward private container registry and versioned workspace images
+- role-based access (`learner/author/admin`) is incomplete
+- scenario authoring admin build/publish workflow is incomplete
+- richer observability dashboards/alerts are not yet implemented
 
 ## Testing Gaps
 
 Add:
 
-- integration tests for REST session lifecycle
-- websocket terminal interaction tests
-- scenario evaluator contract tests (assertion format)
-- CI smoke test on every merge to `main`
-
-## Security Gaps
-
-Add before production scale:
-
-- authn/authz
-- stricter container isolation profiles
-- audit logging for session actions
-- secret management (no plaintext env in repo)
-- HTTPS/TLS termination and secure headers
+- integration tests for Kubernetes provider paths
+- regression tests for websocket attach across provider modes
+- tests for provider-specific failure behavior (pod ready timeout, image pull failure)
+- tests for Phase 3+ security controls as they are implemented
 
 ## Documentation Follow-Ups
 
 When features ship, update these files first:
 
-- auth -> `04-backend-api.md`, `06-web-client.md`, `07-data-model-and-scoring.md`
-- scenario authoring -> `05-workspace-runtime-and-scenarios.md`
-- infra changes -> `09-deployment-and-ops.md`
+- provider/runtime behavior -> `05-workspace-runtime-and-scenarios.md`, `09-deployment-and-ops.md`
+- security policy implementation -> `SETUP.md`, `deploy/k8s/README.md`
+- auth/session behavior -> `04-backend-api.md`, `06-web-client.md`, `07-data-model-and-scoring.md`

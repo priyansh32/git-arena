@@ -11,7 +11,13 @@ apps/
 packages/
   shared/   # shared TypeScript contracts used by api/web
 scripts/
+  dev-postgres-up.sh / dev-postgres-down.sh
+  dev-api-docker.sh / dev-api-k8s.sh
+  dev-web.sh
+  verify-workspace-image-hardening.sh
+  verify-phase2-gke.sh / delete-phase2-gke.sh / push-workspace-image-gcp.sh
   smoke-stack.mjs
+  README.md
 dev-docs/   # this onboarding set
 ```
 
@@ -24,7 +30,7 @@ Key files:
 - `src/repository.ts`
   - Postgres schema bootstrap + query methods.
 - `src/workspace-manager.ts`
-  - Docker container lifecycle, terminal spawn, scenario seed/eval execution.
+  - Docker/Kubernetes workspace lifecycle, terminal spawn, scenario seed/eval execution.
 - `src/scenario-runtime.ts`
   - Maps scenario id to `seed.sh` + `eval.sh` files.
 - `src/scenario-seed.ts`
@@ -49,7 +55,7 @@ Key files:
 - `src/index.css`
   - UI styles and layout.
 - `vite.config.ts`
-  - Dev proxy from `/api` to local API server.
+  - Dev proxy from `/api` and `/ws` to local API server.
 
 ## Shared Contracts (`packages/shared`)
 

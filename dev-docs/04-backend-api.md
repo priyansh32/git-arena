@@ -35,7 +35,7 @@ Important env vars:
 - `WORKSPACE_K8S_IMAGE_PULL_POLICY`
 - `WORKSPACE_K8S_POD_READY_TIMEOUT_SECONDS`
 
-Default workspace image is `alpine/git:2.47.2`.
+Default workspace image is `gitarena-base:2.43.7-alpine3.19-v1`.
 
 ## API Routes
 

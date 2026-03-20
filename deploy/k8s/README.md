@@ -13,6 +13,7 @@ This directory contains Kubernetes manifests for GitArena session runtime harden
   - Disables service account token mounting
   - Disables Kubernetes service-link env injection (`enableServiceLinks: false`)
   - Sets policy resource requests/limits
+  - Uses localhost exec liveness probe for ttyd (`127.0.0.1:7681`)
   - Restricts challenge-container env vars to the policy allowlist
   - Uses `restartPolicy: Never` and `terminationGracePeriodSeconds: 10`
 

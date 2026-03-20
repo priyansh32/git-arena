@@ -40,13 +40,26 @@ Use this if you want Vite HMR and direct API logs:
 
 ```bash
 cp .env.example .env
-npm run dev:api
+./scripts/dev-postgres-up.sh
+./scripts/dev-api-docker.sh
 ```
 
 In another terminal:
 
 ```bash
-npm run dev:web
+./scripts/dev-web.sh
+```
+
+Open web app at `http://localhost:5173`.
+
+## Option C: Run API in Kubernetes Workspace Mode (Host Dev)
+
+Use this when testing `WORKSPACE_PROVIDER=kubernetes` against GKE:
+
+```bash
+./scripts/dev-postgres-up.sh
+./scripts/dev-api-k8s.sh
+./scripts/dev-web.sh
 ```
 
 Open web app at `http://localhost:5173`.
@@ -91,11 +104,35 @@ Default ports:
 
 Change mapping in `docker-compose.yml` if needed.
 
+Fast check:
+
+```bash
+ss -ltnp | grep -E ':8080|:3001|:5432|:5173' || true
+```
+
+If stale root-owned docker listeners remain after compose down, restart Docker daemon/Desktop.
+
 ## Web loads but terminal does not connect
 
 Check:
 
 - `GET /api/v1/sessions/:id` returns active/submitted session.
 - Browser websocket URL is `ws://<host>/ws/sessions/:id?token=<token>`.
-- Nginx in web container proxies `/ws/` to API (see `apps/web/nginx.conf`).
+- In Vite mode, `apps/web/vite.config.ts` proxies `/ws` to API.
+- In compose mode, nginx in web container proxies `/ws/` to API (see `apps/web/nginx.conf`).
 
+## Google Sign-In fails with origin/audience errors
+
+Symptoms:
+
+- Browser logs include `The given origin is not allowed for the given client ID`.
+- API login returns `401` for `/api/v1/auth/google`.
+
+Fix:
+
+- Ensure `GOOGLE_CLIENT_ID` and `VITE_GOOGLE_CLIENT_ID` are the same OAuth web client.
+- In Google Cloud Console OAuth client, add local JS origins:
+  - `http://localhost:5173`
+  - `http://127.0.0.1:5173`
+  - `http://localhost:8080`
+  - `http://127.0.0.1:8080`

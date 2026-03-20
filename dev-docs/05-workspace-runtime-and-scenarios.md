@@ -2,19 +2,25 @@
 
 This is the core of GitArena.
 
-## Workspace Container Model
+## Workspace Runtime Model
 
-Each active session gets its own Docker container.
+Each active session gets its own isolated runtime.
 
-- Container name: `<WORKSPACE_CONTAINER_PREFIX>-<sessionId>`
-- Working directory: `WORKSPACE_ROOT` (default `/workspace`)
-- Shell: `WORKSPACE_SHELL` (default `/bin/sh`)
-- Startup command: `WORKSPACE_INIT_COMMAND`
+- Docker provider:
+  - Container name: `<WORKSPACE_CONTAINER_PREFIX>-<sessionId>`
+  - Runtime command starts a long-running shell process (`WORKSPACE_INIT_COMMAND`)
+- Kubernetes provider:
+  - Pod name: `session-<sessionId>`
+  - Pod spec is created by API with hardened security context
+  - Runtime class defaults to `gvisor`
+- Common:
+  - Working directory: `WORKSPACE_ROOT` (default `/workspace`)
+  - Shell: `WORKSPACE_SHELL` (default `/bin/bash`)
 
 Creation path in code:
 
 - `WorkspaceManager.ensureWorkspace(session)`
-- checks existing running container
+- checks existing running runtime
 - recreates if missing
 - runs scenario seed script
 
@@ -97,19 +103,25 @@ Scenario metadata is declared in `src/scenario-seed.ts` and seeded/upserted into
 Terminal bridge uses:
 
 - browser xterm input -> websocket -> spawned process stdin
-- spawned process is `script -qefc "docker exec -it ..."`
+- spawned process is:
+  - Docker: `script -qefc "docker exec -it ..."`
+  - Kubernetes: `script -qefc "kubectl exec -it ..."`
 
 This `script` wrapper is important because `docker exec -it` expects a TTY.
 
 If terminal appears non-interactive:
 
-- verify websocket route is upgraded successfully through nginx (`/ws/`).
-- verify container shell exists (`/bin/sh` by default).
+- verify websocket route is upgraded:
+  - Vite dev mode: `/ws` proxy in `apps/web/vite.config.ts`
+  - Compose/nginx mode: `/ws/` proxy in `apps/web/nginx.conf`
+- verify runtime shell exists (`/bin/bash` default).
 - inspect API logs for terminal spawn errors.
-- inspect workspace container directly:
+- inspect workspace runtime directly:
 
 ```bash
-docker exec -it <container-name> /bin/sh -i
+docker exec -it <container-name> /bin/bash -i
+# or
+kubectl -n gitarena-sessions exec -it <pod-name> -- /bin/bash -i
 ```
 
 ## Challenge Authoring Guidelines
@@ -119,4 +131,3 @@ docker exec -it <container-name> /bin/sh -i
 - Use clear assertion ids and actionable failure text.
 - Weights should sum to `100` for predictable scoring.
 - Preserve multiple valid solution paths whenever possible (evaluate outcomes, not exact command sequence).
-
