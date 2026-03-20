@@ -4,6 +4,8 @@ FROM alpine:3.19
 ARG GIT_VERSION=2.43.7-r0
 ARG TTYD_VERSION=1.7.4-r0
 
+LABEL org.gitarena.component="workspace-base"
+
 RUN apk add --no-cache \
     git=${GIT_VERSION} \
     bash \

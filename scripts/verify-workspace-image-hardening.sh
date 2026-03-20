@@ -3,6 +3,7 @@ set -Eeuo pipefail
 
 IMAGE_TAG="${1:-gitarena-base:2.43.7-alpine3.19-v1}"
 SKIP_BUILD="${2:-}"
+PRUNE_DANGLING_WORKSPACE_IMAGES="${PRUNE_DANGLING_WORKSPACE_IMAGES:-true}"
 
 if [[ "${SKIP_BUILD}" != "--skip-build" ]]; then
   docker build -f apps/workspace/Dockerfile -t "${IMAGE_TAG}" apps/workspace
@@ -16,6 +17,18 @@ fail() {
   printf 'FAIL: %s\n' "$1" >&2
   exit 1
 }
+
+prune_dangling_workspace_images() {
+  if [[ "${PRUNE_DANGLING_WORKSPACE_IMAGES}" != "true" ]]; then
+    return
+  fi
+
+  docker image prune -f \
+    --filter "dangling=true" \
+    --filter "label=org.gitarena.component=workspace-base" >/dev/null 2>&1 || true
+}
+
+prune_dangling_workspace_images
 
 run_user() {
   docker run --rm "${IMAGE_TAG}" sh -lc "$1"
