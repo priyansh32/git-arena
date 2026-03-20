@@ -21,17 +21,68 @@ SCENARIO_ID="${SCENARIO_ID:-detached-head-recovery}"
 
 VERIFY_POD_SECURITY="${VERIFY_POD_SECURITY:-true}"
 VERIFY_NETWORK_POLICY="${VERIFY_NETWORK_POLICY:-true}"
+CLEANUP_VERIFY_PODS="${CLEANUP_VERIFY_PODS:-true}"
+RUN_CLEANUP="false"
 
-POD_SECURITY_SESSION_ID="${POD_SECURITY_SESSION_ID:-phase2-verify}"
-NETWORK_SESSION_PREFIX="${NETWORK_SESSION_PREFIX:-phase3-verify}"
+POD_SECURITY_SESSION_ID="${POD_SECURITY_SESSION_ID:-${PHASE2_SESSION_ID:-phase2-verify}}"
+NETWORK_SESSION_PREFIX="${NETWORK_SESSION_PREFIX:-${PHASE3_SESSION_PREFIX:-phase3-verify}}"
 
 SESSIONS_NS="${SESSIONS_NS:-${GITARENA_SESSIONS_NAMESPACE_DEFAULT}}"
 API_NS="${API_NS:-${GITARENA_API_NAMESPACE_DEFAULT}}"
 POD_SECURITY_POD="session-${POD_SECURITY_SESSION_ID}"
 NETWORK_CHALLENGE_A="session-${NETWORK_SESSION_PREFIX}-a"
-NETWORK_INGRESS_TARGET_POD="challenge-ingress-phase3-verify"
-NETWORK_API_BACKEND_POD="api-backend-phase3-verify"
-NETWORK_API_OTHER_POD="api-other-phase3-verify"
+NETWORK_INGRESS_TARGET_POD="${NETWORK_INGRESS_TARGET_POD:-${PHASE3_INGRESS_TARGET_POD:-challenge-ingress-phase3-verify}}"
+NETWORK_API_BACKEND_POD="${NETWORK_API_BACKEND_POD:-${PHASE3_API_BACKEND_POD:-api-backend-phase3-verify}}"
+NETWORK_API_OTHER_POD="${NETWORK_API_OTHER_POD:-${PHASE3_API_OTHER_POD:-api-other-phase3-verify}}"
+
+usage() {
+  cat <<'EOF'
+Usage:
+  GCP_PROJECT_ID=<project-id> ./scripts/gcp-verify.sh
+
+Options:
+  -h, --help show this message
+
+Common env toggles:
+  GKE_CLUSTER_NAME=gitarena-verify-1
+  GKE_LOCATION=us-central1-a
+  GKE_LOCATION_TYPE=zone|region
+  FETCH_CREDENTIALS=true|false
+  VERIFY_POD_SECURITY=true|false
+  VERIFY_NETWORK_POLICY=true|false
+  CLEANUP_VERIFY_PODS=true|false
+
+Compatibility aliases accepted:
+  PHASE2_SESSION_ID, PHASE3_SESSION_PREFIX, PHASE3_INGRESS_TARGET_POD,
+  PHASE3_API_BACKEND_POD, PHASE3_API_OTHER_POD
+EOF
+}
+
+cleanup_verification_pods() {
+  info "cleaning verification pods created by this script"
+  kubectl -n "${SESSIONS_NS}" delete pod \
+    "${POD_SECURITY_POD}" \
+    "${NETWORK_CHALLENGE_A}" \
+    "${NETWORK_INGRESS_TARGET_POD}" \
+    --ignore-not-found --wait=false >/dev/null 2>&1 || true
+  kubectl -n "${API_NS}" delete pod \
+    "${NETWORK_API_BACKEND_POD}" \
+    "${NETWORK_API_OTHER_POD}" \
+    --ignore-not-found --wait=false >/dev/null 2>&1 || true
+  pass "verification pod cleanup requested"
+}
+
+handle_exit() {
+  local exit_code=$?
+  if [[ "${RUN_CLEANUP}" == "true" && "${CLEANUP_VERIFY_PODS}" == "true" ]]; then
+    cleanup_verification_pods
+  elif [[ "${RUN_CLEANUP}" == "true" ]]; then
+    info "skipping verification pod cleanup (CLEANUP_VERIFY_PODS=false)"
+  fi
+  return "${exit_code}"
+}
+
+trap handle_exit EXIT
 
 expect_eq() {
   local label="$1"
@@ -312,6 +363,15 @@ verify_network_policy() {
 }
 
 main() {
+  if [[ "${1:-}" == "-h" || "${1:-}" == "--help" || "${1:-}" == "help" ]]; then
+    usage
+    return
+  fi
+  if [[ $# -gt 0 ]]; then
+    fail "unexpected arguments: $* (this script is env-driven; use --help)"
+  fi
+
+  RUN_CLEANUP="true"
   need_cmd kubectl
   need_cmd envsubst
   if [[ "${FETCH_CREDENTIALS}" == "true" ]]; then
@@ -319,8 +379,13 @@ main() {
   fi
 
   [[ "${GKE_LOCATION_TYPE}" == "zone" || "${GKE_LOCATION_TYPE}" == "region" ]] || fail "GKE_LOCATION_TYPE must be 'zone' or 'region'"
-  [[ "${VERIFY_POD_SECURITY}" == "true" || "${VERIFY_POD_SECURITY}" == "false" ]] || fail "VERIFY_POD_SECURITY must be true or false"
-  [[ "${VERIFY_NETWORK_POLICY}" == "true" || "${VERIFY_NETWORK_POLICY}" == "false" ]] || fail "VERIFY_NETWORK_POLICY must be true or false"
+  require_bool FETCH_CREDENTIALS "${FETCH_CREDENTIALS}"
+  require_bool VERIFY_POD_SECURITY "${VERIFY_POD_SECURITY}"
+  require_bool VERIFY_NETWORK_POLICY "${VERIFY_NETWORK_POLICY}"
+  require_bool CLEANUP_VERIFY_PODS "${CLEANUP_VERIFY_PODS}"
+  if [[ "${VERIFY_POD_SECURITY}" != "true" && "${VERIFY_NETWORK_POLICY}" != "true" ]]; then
+    fail "nothing to verify: set VERIFY_POD_SECURITY=true and/or VERIFY_NETWORK_POLICY=true"
+  fi
 
   fetch_credentials
   ensure_namespaces
@@ -336,7 +401,8 @@ main() {
   fi
 
   info "GCP Kubernetes security verification complete"
-  info "run scripts/gcp-teardown.sh to remove verification resources and optionally delete the cluster"
+  info "verification pods are cleaned up automatically unless CLEANUP_VERIFY_PODS=false"
+  info "run scripts/gcp-teardown.sh to remove remaining resources and optionally delete the cluster"
 }
 
 main "$@"

@@ -15,6 +15,26 @@ REQUIRE_WORKSPACE_CONTAINER="${REQUIRE_WORKSPACE_CONTAINER:-false}"
 
 TEMP_CONTAINER_CREATED="false"
 
+usage() {
+  cat <<'EOF'
+Usage:
+  ./scripts/verify-docker-security.sh
+
+Options:
+  -h, --help show this message
+
+Env:
+  IMAGE_TAG=<image-ref>                       (default: gitarena-base:2.43.7-alpine3.19-v1)
+  SKIP_BUILD=true|false                       (default: false)
+  PRUNE_DANGLING_WORKSPACE_IMAGES=true|false  (default: true)
+  CONTAINER_NAME=<running-container-name>     (optional)
+  REQUIRE_WORKSPACE_CONTAINER=true|false      (default: false)
+
+Notes:
+  - This script validates Docker provider hardening only.
+EOF
+}
+
 ok() {
   printf 'PASS: %s\n' "$1"
 }
@@ -34,6 +54,14 @@ fail() {
 
 need_cmd() {
   command -v "$1" >/dev/null 2>&1 || fail "missing required command: $1"
+}
+
+require_bool() {
+  local name="$1"
+  local value="$2"
+  if [[ "${value}" != "true" && "${value}" != "false" ]]; then
+    fail "${name} must be true or false"
+  fi
 }
 
 expect_eq() {
@@ -287,9 +315,20 @@ check_runtime_behavior() {
 }
 
 main() {
+  if [[ "${1:-}" == "-h" || "${1:-}" == "--help" || "${1:-}" == "help" ]]; then
+    usage
+    return
+  fi
+  if [[ $# -gt 0 ]]; then
+    fail "unexpected arguments: $* (this script is env-driven; use --help)"
+  fi
+
   trap cleanup EXIT
 
   need_cmd docker
+  require_bool SKIP_BUILD "${SKIP_BUILD}"
+  require_bool PRUNE_DANGLING_WORKSPACE_IMAGES "${PRUNE_DANGLING_WORKSPACE_IMAGES}"
+  require_bool REQUIRE_WORKSPACE_CONTAINER "${REQUIRE_WORKSPACE_CONTAINER}"
 
   build_image_if_needed
   prune_dangling_workspace_images

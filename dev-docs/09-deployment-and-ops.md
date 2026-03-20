@@ -66,6 +66,7 @@ Set in `.env`:
 - for k8s image auto-resolution when `WORKSPACE_IMAGE` is unset:
   - `GCP_PROJECT_ID`
   - optional `WORKSPACE_AR_LOCATION`, `WORKSPACE_AR_REPOSITORY`, `WORKSPACE_IMAGE_TAG`
+  - `gcp-init.sh`/`gcp-teardown.sh` also accept `AR_LOCATION`, `AR_REPOSITORY`, `IMAGE_TAG` aliases
 
 ## Google Sign-In Local Origins
 
@@ -118,8 +119,12 @@ docker compose logs -f
 
 Host mode logs:
 
-- API logs are terminal output from `npm run dev:api`
-- Web logs are terminal output from `npm run dev:web`
+- Foreground mode (`./scripts/dev-up.sh api ...` / `./scripts/dev-up.sh web`):
+  - logs stream directly in the terminal
+- Background mode (`./scripts/dev-up.sh all ...`):
+  - API log: `.dev-runtime/api.log`
+  - Web log: `.dev-runtime/web.log`
+  - tail both: `npm run dev:logs`
 
 ## Common Issues
 
@@ -138,9 +143,10 @@ ss -ltnp | grep -E ':5173|:3001|:5432' || true
 
 Reset sequence:
 
-1. stop local processes (`Ctrl+C`)
-2. `docker compose down --remove-orphans`
-3. if stale root-owned listeners remain, restart Docker daemon/Desktop
+1. `./scripts/dev-down.sh all` (kills pidfile + stale repo-owned listeners)
+2. stop any non-repo processes still bound to `3001/5173`
+3. `docker compose down --remove-orphans`
+4. if stale root-owned listeners remain, restart Docker daemon/Desktop
 
 ### Websocket terminal stuck in "connecting"
 

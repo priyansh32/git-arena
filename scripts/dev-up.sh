@@ -22,6 +22,29 @@ RUNTIME_DIR="${ROOT_DIR}/.dev-runtime"
 TARGET="${1:-all}" # postgres|api|web|all
 MODE="${2:-docker}" # docker|k8s for api/all
 
+usage() {
+  cat <<'EOF'
+Usage:
+  ./scripts/dev-up.sh [target] [mode]
+
+Targets:
+  postgres             start postgres only (docker compose)
+  api [docker|k8s]     start API in foreground
+  web                  start web in foreground
+  all [docker|k8s]     start postgres + API + web (API/web in background)
+
+Options:
+  -h, --help           show this message
+
+Notes:
+  - k8s mode still uses docker compose for local postgres.
+  - In k8s mode, WORKSPACE_IMAGE is resolved from:
+    1) explicit WORKSPACE_IMAGE (full image ref), else
+    2) GCP_PROJECT_ID + WORKSPACE_AR_* + WORKSPACE_IMAGE_TAG, else
+    3) active gcloud project.
+EOF
+}
+
 read_env() {
   local key="$1"
   local fallback="${2:-}"
@@ -38,6 +61,24 @@ read_env() {
 
 ensure_env_file() {
   [[ -f "${ENV_FILE}" ]] || fail "missing .env at ${ENV_FILE}"
+}
+
+listener_pids_for_port() {
+  local port="$1"
+  ss -ltnp "sport = :${port}" 2>/dev/null | grep -oE 'pid=[0-9]+' | cut -d= -f2 | sort -u || true
+}
+
+assert_port_free() {
+  local port="$1"
+  local label="$2"
+  local pids
+  pids="$(listener_pids_for_port "${port}")"
+
+  if [[ -z "${pids}" ]]; then
+    return
+  fi
+
+  fail "${label} port :${port} is already in use (pid(s): ${pids}). Run ./scripts/dev-down.sh all and retry."
 }
 
 start_postgres() {
@@ -95,18 +136,25 @@ set_api_mode_env() {
   if [[ -n "${WORKSPACE_IMAGE:-}" ]]; then
     export WORKSPACE_IMAGE
   else
-    local image_from_env gcp_project_id image_location image_repository image_tag
+    local image_from_env gcp_project_id image_location image_repository image_tag gcloud_project
     image_from_env="$(read_env WORKSPACE_IMAGE)"
     if [[ -n "${image_from_env}" && "${image_from_env}" == */* ]]; then
       export WORKSPACE_IMAGE="${image_from_env}"
     else
       gcp_project_id="${GCP_PROJECT_ID:-$(read_env GCP_PROJECT_ID)}"
+      if [[ -z "${gcp_project_id}" ]] && command -v gcloud >/dev/null 2>&1; then
+        gcloud_project="$(gcloud config get-value project 2>/dev/null || true)"
+        gcloud_project="${gcloud_project//$'\r'/}"
+        if [[ "${gcloud_project}" != "(unset)" ]]; then
+          gcp_project_id="${gcloud_project}"
+        fi
+      fi
       image_location="${WORKSPACE_AR_LOCATION:-$(read_env WORKSPACE_AR_LOCATION ${GITARENA_AR_LOCATION_DEFAULT})}"
       image_repository="${WORKSPACE_AR_REPOSITORY:-$(read_env WORKSPACE_AR_REPOSITORY ${GITARENA_AR_REPOSITORY_DEFAULT})}"
       image_tag="${WORKSPACE_IMAGE_TAG:-$(read_env WORKSPACE_IMAGE_TAG ${GITARENA_WORKSPACE_IMAGE_TAG_DEFAULT})}"
 
       if [[ -z "${gcp_project_id}" ]]; then
-        fail "k8s mode requires WORKSPACE_IMAGE (full image ref) or GCP_PROJECT_ID in env/.env"
+        fail "k8s mode requires WORKSPACE_IMAGE or GCP_PROJECT_ID (env/.env/gcloud config)"
       fi
 
       export WORKSPACE_IMAGE="$(workspace_image_ref "${gcp_project_id}" "${image_location}" "${image_repository}" "${image_tag}")"
@@ -122,6 +170,7 @@ set_api_mode_env() {
 start_api_foreground() {
   set_common_api_env
   set_api_mode_env
+  assert_port_free "${PORT}" "api"
   cd "${ROOT_DIR}"
   info "starting API with WORKSPACE_PROVIDER=${WORKSPACE_PROVIDER} on http://localhost:${PORT}"
   exec npm run dev:api
@@ -135,6 +184,7 @@ start_web_foreground() {
   export VITE_API_PROXY_TARGET="${VITE_API_PROXY_TARGET:-http://${VITE_API_PROXY_HOST}:${API_PORT}}"
   export VITE_GOOGLE_CLIENT_ID="${VITE_GOOGLE_CLIENT_ID:-$(read_env VITE_GOOGLE_CLIENT_ID)}"
   [[ -n "${VITE_GOOGLE_CLIENT_ID}" ]] || fail "VITE_GOOGLE_CLIENT_ID is required"
+  assert_port_free "${WEB_PORT}" "web"
 
   cd "${ROOT_DIR}"
   info "starting web dev server on http://localhost:${WEB_PORT} (proxy -> ${VITE_API_PROXY_TARGET})"
@@ -164,6 +214,7 @@ start_api_background() {
   (
     set_common_api_env
     set_api_mode_env
+    assert_port_free "${PORT}" "api"
     cd "${ROOT_DIR}"
     nohup npm run dev:api >"${RUNTIME_DIR}/api.log" 2>&1 &
     echo $! >"${RUNTIME_DIR}/api.pid"
@@ -184,6 +235,7 @@ start_web_background() {
     export VITE_API_PROXY_TARGET="${VITE_API_PROXY_TARGET:-http://${VITE_API_PROXY_HOST}:${API_PORT}}"
     export VITE_GOOGLE_CLIENT_ID="${VITE_GOOGLE_CLIENT_ID:-$(read_env VITE_GOOGLE_CLIENT_ID)}"
     [[ -n "${VITE_GOOGLE_CLIENT_ID}" ]] || fail "VITE_GOOGLE_CLIENT_ID is required"
+    assert_port_free "${WEB_PORT}" "web"
     cd "${ROOT_DIR}"
     nohup npm run dev:web >"${RUNTIME_DIR}/web.log" 2>&1 &
     echo $! >"${RUNTIME_DIR}/web.pid"
@@ -193,15 +245,37 @@ start_web_background() {
 }
 
 start_all() {
+  local web_port_display api_port_display
+  api_port_display="${API_PORT:-$(read_env API_PORT 3001)}"
+  web_port_display="${WEB_PORT:-$(read_env WEB_PORT 5173)}"
+
   start_postgres
   start_api_background
   start_web_background
   info "all local dev services started"
-  info "web: http://localhost:${WEB_PORT:-5173} | api: http://localhost:${API_PORT:-3001}"
+  info "web: http://localhost:${web_port_display} | api: http://localhost:${api_port_display}"
   info "tail logs: tail -f ${RUNTIME_DIR}/api.log ${RUNTIME_DIR}/web.log"
 }
 
 main() {
+  if [[ "${TARGET}" == "-h" || "${TARGET}" == "--help" || "${TARGET}" == "help" ]]; then
+    usage
+    return
+  fi
+
+  case "${TARGET}" in
+    api|all)
+      [[ "${MODE}" == "docker" || "${MODE}" == "k8s" ]] || fail "mode must be docker or k8s for target '${TARGET}'"
+      ;;
+    postgres|web)
+      if [[ $# -gt 1 ]]; then
+        fail "mode argument is only supported for targets 'api' and 'all'"
+      fi
+      ;;
+    *)
+      ;;
+  esac
+
   case "${TARGET}" in
     postgres)
       start_postgres

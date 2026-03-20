@@ -76,9 +76,9 @@ What this verifies:
 
 - API is up and serving scenarios.
 - Session creation rules work (`201`, then `409` on duplicate active session).
-- Workspace container is created for session.
+- Workspace runtime is created for session (docker container or k8s pod).
 - Seed script created a Git repo in `/workspace`.
-- Container is removed when session is terminated.
+- Workspace runtime is removed when session is terminated.
 
 ## Common Startup Issues
 

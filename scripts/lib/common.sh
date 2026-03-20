@@ -26,6 +26,17 @@ fail() {
   exit 1
 }
 
+is_bool() {
+  local value="$1"
+  [[ "${value}" == "true" || "${value}" == "false" ]]
+}
+
+require_bool() {
+  local name="$1"
+  local value="$2"
+  is_bool "${value}" || fail "${name} must be true or false"
+}
+
 need_cmd() {
   command -v "$1" >/dev/null 2>&1 || fail "missing required command: $1"
 }

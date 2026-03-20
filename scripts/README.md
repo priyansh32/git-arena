@@ -2,6 +2,8 @@
 
 This directory contains local development and verification scripts.
 
+All shell scripts support `-h` / `--help`.
+
 ## Shared Script Library
 
 - `scripts/lib/common.sh`
@@ -24,16 +26,26 @@ This directory contains local development and verification scripts.
     - gVisor node pool + RuntimeClass
     - required namespaces/RBAC/network policy manifests
     - optional workspace image push (`PUSH_IMAGE=true`)
+  - Accepts image env aliases:
+    - `AR_LOCATION` or `WORKSPACE_AR_LOCATION`
+    - `AR_REPOSITORY` or `WORKSPACE_AR_REPOSITORY`
+    - `IMAGE_TAG` or `WORKSPACE_IMAGE_TAG`
 - `scripts/gcp-verify.sh`
   - Combined Kubernetes security verification:
     - pod security controls (`runAs`, seccomp, dropped capabilities, resource limits)
     - network isolation (`NetworkPolicy` ingress/egress checks)
+  - Automatically deletes temporary verification pods on exit (success or failure).
+  - Set `CLEANUP_VERIFY_PODS=false` to keep verification pods for debugging.
+  - Supports `--help` and backward-compatible phase aliases (`PHASE2_*`, `PHASE3_*`).
 - `scripts/gcp-teardown.sh`
   - Single teardown entrypoint for GCP resources:
     - verification pods and network policy cleanup
     - optional namespace delete
     - optional cluster delete
     - optional Artifact Registry repo delete
+  - Accepts image env aliases:
+    - `AR_LOCATION` or `WORKSPACE_AR_LOCATION`
+    - `AR_REPOSITORY` or `WORKSPACE_AR_REPOSITORY`
 
 ## Local Dev Helpers
 
@@ -44,9 +56,11 @@ This directory contains local development and verification scripts.
     - `./scripts/dev-up.sh api k8s`
     - `./scripts/dev-up.sh web`
     - `./scripts/dev-up.sh all docker|k8s` (starts api/web in background + postgres)
+  - Fails fast when API/web ports are already occupied (prints conflicting pid(s)).
 - `scripts/dev-down.sh`
   - Unified shutdown for local dev:
     - `./scripts/dev-down.sh api|web|postgres|all`
+  - Also cleans stale repo-owned listeners on API/web ports by default (`FORCE_STALE_KILL=true`).
 
 Use these as the primary host-dev entrypoints.
 `launch.sh` remains available for compose-centric lifecycle commands.
@@ -62,3 +76,8 @@ Use these as the primary host-dev entrypoints.
 
 - `scripts/smoke-stack.mjs`
   - End-to-end smoke test against running API/web stack.
+  - Workspace runtime checks support:
+    - `--provider auto` (default)
+    - `--provider docker`
+    - `--provider k8s` (or `kubernetes`)
+  - Optional `--k8s-namespace <ns>` (default: `gitarena-sessions`).

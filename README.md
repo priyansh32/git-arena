@@ -99,6 +99,13 @@ Run smoke test directly:
 npm run smoke:stack
 ```
 
+Provider-specific smoke variants:
+
+```bash
+npm run smoke:stack:docker
+npm run smoke:stack:k8s
+```
+
 ## Dev Helper Scripts
 
 For host-based dev loops, primary entrypoints are in [`scripts/README.md`](scripts/README.md):

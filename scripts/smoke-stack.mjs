@@ -8,7 +8,9 @@ const execFileAsync = promisify(execFile);
 function parseArgs(argv) {
   const apiPort = process.env.API_PORT ?? "3001";
   let apiBase = process.env.GITARENA_API_BASE ?? `http://localhost:${apiPort}/api/v1`;
+  let provider = process.env.GITARENA_WORKSPACE_PROVIDER ?? process.env.WORKSPACE_PROVIDER ?? "auto";
   let containerPrefix = process.env.GITARENA_WORKSPACE_PREFIX ?? "gitarena-ws";
+  let k8sNamespace = process.env.GITARENA_K8S_NAMESPACE ?? process.env.WORKSPACE_K8S_NAMESPACE ?? "gitarena-sessions";
 
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index];
@@ -32,9 +34,29 @@ function parseArgs(argv) {
       continue;
     }
 
+    if (arg === "--provider") {
+      const value = argv[index + 1];
+      if (!value) {
+        throw new Error("Missing value for --provider");
+      }
+      provider = value;
+      index += 1;
+      continue;
+    }
+
+    if (arg === "--k8s-namespace") {
+      const value = argv[index + 1];
+      if (!value) {
+        throw new Error("Missing value for --k8s-namespace");
+      }
+      k8sNamespace = value;
+      index += 1;
+      continue;
+    }
+
     if (arg === "-h" || arg === "--help") {
       console.log(
-        "Usage: node scripts/smoke-stack.mjs [--api-base <url>] [--container-prefix <name>]"
+        "Usage: node scripts/smoke-stack.mjs [--api-base <url>] [--provider <auto|docker|k8s>] [--container-prefix <name>] [--k8s-namespace <name>]"
       );
       process.exit(0);
     }
@@ -42,9 +64,16 @@ function parseArgs(argv) {
     throw new Error(`Unknown argument: ${arg}`);
   }
 
+  const normalizedProvider = provider.toLowerCase() === "kubernetes" ? "k8s" : provider.toLowerCase();
+  if (!["auto", "docker", "k8s"].includes(normalizedProvider)) {
+    throw new Error(`Invalid provider '${provider}'. Use auto|docker|k8s`);
+  }
+
   return {
     apiBase: apiBase.replace(/\/$/, ""),
-    containerPrefix
+    provider: normalizedProvider,
+    containerPrefix,
+    k8sNamespace
   };
 }
 
@@ -95,6 +124,51 @@ async function isContainerRunning(containerName) {
   }
 }
 
+function workspacePodName(sessionId) {
+  return `session-${sessionId}`.replace(/[^a-zA-Z0-9-]/g, "-");
+}
+
+async function getPodPhase(namespace, podName) {
+  try {
+    const { stdout } = await execFileAsync("kubectl", [
+      "-n",
+      namespace,
+      "get",
+      "pod",
+      podName,
+      "-o",
+      "jsonpath={.status.phase}"
+    ]);
+    const phase = stdout.trim();
+    return phase.length > 0 ? phase : null;
+  } catch {
+    return null;
+  }
+}
+
+async function isPodRunning(namespace, podName) {
+  const phase = await getPodPhase(namespace, podName);
+  return phase === "Running";
+}
+
+async function isK8sWorkspaceSeeded(namespace, podName) {
+  try {
+    const { stdout } = await execFileAsync("kubectl", [
+      "-n",
+      namespace,
+      "exec",
+      podName,
+      "--",
+      "sh",
+      "-lc",
+      "cd /workspace && git rev-parse --is-inside-work-tree"
+    ]);
+    return stdout.trim() === "true";
+  } catch {
+    return false;
+  }
+}
+
 async function isWorkspaceSeeded(containerName) {
   try {
     const { stdout } = await execFileAsync("docker", [
@@ -112,10 +186,10 @@ async function isWorkspaceSeeded(containerName) {
 }
 
 async function main() {
-  const { apiBase, containerPrefix } = parseArgs(process.argv.slice(2));
+  const { apiBase, provider, containerPrefix, k8sNamespace } = parseArgs(process.argv.slice(2));
   const cleanupSessionIds = new Set();
 
-  console.log(`[smoke] api=${apiBase}`);
+  console.log(`[smoke] api=${apiBase} provider=${provider}`);
 
   try {
     const ready = await requestJson(apiBase, "/health/ready");
@@ -175,13 +249,40 @@ async function main() {
     cleanupSessionIds.add(thirdSessionId);
 
     const containerName = workspaceContainerName(containerPrefix, thirdSessionId);
-    const runningBeforeDelete = await isContainerRunning(containerName);
-    console.log(`[smoke] workspace_container_running=${runningBeforeDelete}`);
-    assert(runningBeforeDelete, "Workspace container did not start");
+    const podName = workspacePodName(thirdSessionId);
+    let detectedProvider = provider;
 
-    const seededWorkspace = await isWorkspaceSeeded(containerName);
-    console.log(`[smoke] workspace_seeded_git_repo=${seededWorkspace}`);
-    assert(seededWorkspace, "Workspace did not contain a seeded git repository");
+    if (provider === "auto") {
+      if (await isContainerRunning(containerName)) {
+        detectedProvider = "docker";
+      } else if (await isPodRunning(k8sNamespace, podName)) {
+        detectedProvider = "k8s";
+      } else {
+        throw new Error(
+          `Unable to detect workspace runtime for session ${thirdSessionId} (checked docker container '${containerName}' and pod '${k8sNamespace}/${podName}')`
+        );
+      }
+    }
+
+    console.log(`[smoke] detected_provider=${detectedProvider}`);
+
+    if (detectedProvider === "docker") {
+      const runningBeforeDelete = await isContainerRunning(containerName);
+      console.log(`[smoke] workspace_container_running=${runningBeforeDelete}`);
+      assert(runningBeforeDelete, "Workspace container did not start");
+
+      const seededWorkspace = await isWorkspaceSeeded(containerName);
+      console.log(`[smoke] workspace_seeded_git_repo=${seededWorkspace}`);
+      assert(seededWorkspace, "Workspace did not contain a seeded git repository");
+    } else {
+      const podPhase = await getPodPhase(k8sNamespace, podName);
+      console.log(`[smoke] workspace_pod_phase=${podPhase ?? "missing"}`);
+      assert(podPhase === "Running", "Workspace pod did not reach Running state");
+
+      const seededWorkspace = await isK8sWorkspaceSeeded(k8sNamespace, podName);
+      console.log(`[smoke] workspace_seeded_git_repo=${seededWorkspace}`);
+      assert(seededWorkspace, "Workspace pod did not contain a seeded git repository");
+    }
 
     const finalDelete = await requestJson(apiBase, `/sessions/${thirdSessionId}`, {
       method: "DELETE"
@@ -190,9 +291,15 @@ async function main() {
     assert(finalDelete.status === 200, "Cleanup delete should return 200");
     cleanupSessionIds.delete(thirdSessionId);
 
-    const runningAfterDelete = await isContainerRunning(containerName);
-    console.log(`[smoke] workspace_container_after_delete=${runningAfterDelete}`);
-    assert(!runningAfterDelete, "Workspace container was not removed");
+    if (detectedProvider === "docker") {
+      const runningAfterDelete = await isContainerRunning(containerName);
+      console.log(`[smoke] workspace_container_after_delete=${runningAfterDelete}`);
+      assert(!runningAfterDelete, "Workspace container was not removed");
+    } else {
+      const podPhaseAfterDelete = await getPodPhase(k8sNamespace, podName);
+      console.log(`[smoke] workspace_pod_after_delete=${podPhaseAfterDelete ?? "missing"}`);
+      assert(podPhaseAfterDelete === null, "Workspace pod was not removed");
+    }
 
     console.log("[smoke] ok");
   } finally {

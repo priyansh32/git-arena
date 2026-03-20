@@ -54,15 +54,17 @@ Smoke test for integrated stack:
 
 ```bash
 npm run smoke:stack
+npm run smoke:stack:docker
+npm run smoke:stack:k8s
 ```
 
 Smoke script validates:
 
 - health endpoints
 - session create conflict behavior
-- workspace container startup
+- workspace runtime startup (docker container or k8s pod)
 - seeded repo presence
-- workspace cleanup on delete
+- workspace runtime cleanup on delete
 
 Security verification scripts:
 

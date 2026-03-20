@@ -17,6 +17,8 @@
     "build": "npm run build -w @gitarena/shared && npm run build -w @gitarena/api && npm run build -w @gitarena/web",
     "typecheck": "npm run build -w @gitarena/shared && npm run typecheck -w @gitarena/api && npm run typecheck -w @gitarena/web",
     "smoke:stack": "node scripts/smoke-stack.mjs",
+    "smoke:stack:docker": "node scripts/smoke-stack.mjs --provider docker",
+    "smoke:stack:k8s": "node scripts/smoke-stack.mjs --provider k8s",
     "docker:up": "docker compose up --build",
     "docker:down": "docker compose down"
   }

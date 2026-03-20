@@ -32,14 +32,40 @@ APPLY_SESSION_NETWORK_POLICY="${APPLY_SESSION_NETWORK_POLICY:-true}"
 ENSURE_RUNTIMECLASS="${ENSURE_RUNTIMECLASS:-true}"
 
 PUSH_IMAGE="${PUSH_IMAGE:-false}"
-AR_LOCATION="${AR_LOCATION:-${GITARENA_AR_LOCATION_DEFAULT}}"
-AR_REPOSITORY="${AR_REPOSITORY:-${GITARENA_AR_REPOSITORY_DEFAULT}}"
-IMAGE_TAG="${IMAGE_TAG:-${GITARENA_WORKSPACE_IMAGE_TAG_DEFAULT}}"
+AR_LOCATION="${AR_LOCATION:-${WORKSPACE_AR_LOCATION:-${GITARENA_AR_LOCATION_DEFAULT}}}"
+AR_REPOSITORY="${AR_REPOSITORY:-${WORKSPACE_AR_REPOSITORY:-${GITARENA_AR_REPOSITORY_DEFAULT}}}"
+IMAGE_TAG="${IMAGE_TAG:-${WORKSPACE_IMAGE_TAG:-${GITARENA_WORKSPACE_IMAGE_TAG_DEFAULT}}}"
 LOCAL_IMAGE_TAG="${LOCAL_IMAGE_TAG:-gitarena-base:${IMAGE_TAG}}"
 PRUNE_DANGLING_WORKSPACE_IMAGES="${PRUNE_DANGLING_WORKSPACE_IMAGES:-true}"
 
 SESSIONS_NS="${SESSIONS_NS:-${GITARENA_SESSIONS_NAMESPACE_DEFAULT}}"
 API_NS="${API_NS:-${GITARENA_API_NAMESPACE_DEFAULT}}"
+
+usage() {
+  cat <<'EOF'
+Usage:
+  GCP_PROJECT_ID=<project-id> ./scripts/gcp-init.sh
+
+Options:
+  -h, --help show this message
+
+Common env toggles:
+  GKE_CLUSTER_NAME=gitarena-verify-1
+  GKE_LOCATION=us-central1-a
+  GKE_LOCATION_TYPE=zone|region
+  GKE_MODE=standard|autopilot
+  CREATE_CLUSTER=true|false
+  ENABLE_NETWORK_POLICY=true|false
+  CREATE_GVISOR_POOL=true|false
+  FETCH_CREDENTIALS=true|false
+  PUSH_IMAGE=true|false
+
+Image env:
+  AR_LOCATION / WORKSPACE_AR_LOCATION
+  AR_REPOSITORY / WORKSPACE_AR_REPOSITORY
+  IMAGE_TAG / WORKSPACE_IMAGE_TAG
+EOF
+}
 
 ensure_project_and_services() {
   info "setting active gcloud project to ${GCP_PROJECT_ID}"
@@ -249,12 +275,30 @@ push_workspace_image_if_requested() {
 }
 
 main() {
+  if [[ "${1:-}" == "-h" || "${1:-}" == "--help" || "${1:-}" == "help" ]]; then
+    usage
+    return
+  fi
+  if [[ $# -gt 0 ]]; then
+    fail "unexpected arguments: $* (this script is env-driven; use --help)"
+  fi
+
   need_cmd gcloud
   need_cmd kubectl
 
   [[ -n "${GCP_PROJECT_ID}" ]] || fail "set GCP_PROJECT_ID"
   [[ "${GKE_LOCATION_TYPE}" == "zone" || "${GKE_LOCATION_TYPE}" == "region" ]] || fail "GKE_LOCATION_TYPE must be 'zone' or 'region'"
   [[ "${GKE_MODE}" == "standard" || "${GKE_MODE}" == "autopilot" ]] || fail "GKE_MODE must be 'standard' or 'autopilot'"
+  require_bool CREATE_CLUSTER "${CREATE_CLUSTER}"
+  require_bool ENABLE_NETWORK_POLICY "${ENABLE_NETWORK_POLICY}"
+  require_bool CREATE_GVISOR_POOL "${CREATE_GVISOR_POOL}"
+  require_bool FETCH_CREDENTIALS "${FETCH_CREDENTIALS}"
+  require_bool ENSURE_NAMESPACES "${ENSURE_NAMESPACES}"
+  require_bool APPLY_API_RBAC "${APPLY_API_RBAC}"
+  require_bool APPLY_SESSION_NETWORK_POLICY "${APPLY_SESSION_NETWORK_POLICY}"
+  require_bool ENSURE_RUNTIMECLASS "${ENSURE_RUNTIMECLASS}"
+  require_bool PUSH_IMAGE "${PUSH_IMAGE}"
+  require_bool PRUNE_DANGLING_WORKSPACE_IMAGES "${PRUNE_DANGLING_WORKSPACE_IMAGES}"
 
   ensure_project_and_services
   ensure_cluster
