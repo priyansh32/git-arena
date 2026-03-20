@@ -36,9 +36,9 @@ Or run each app separately:
 
 ```bash
 cp .env.example .env
-./scripts/dev-postgres-up.sh
-./scripts/dev-api-docker.sh
-./scripts/dev-web.sh
+./scripts/dev-up.sh postgres
+./scripts/dev-up.sh api docker
+./scripts/dev-up.sh web
 ```
 
 Required env for auth:
@@ -90,10 +90,11 @@ npm run smoke:stack
 
 For host-based dev loops, helper scripts are in [`scripts/README.md`](scripts/README.md):
 
-- `./scripts/dev-postgres-up.sh`
-- `./scripts/dev-api-docker.sh`
-- `./scripts/dev-api-k8s.sh`
-- `./scripts/dev-web.sh`
+- `./scripts/dev-up.sh`
+- `./scripts/dev-down.sh`
+- `./scripts/gcp-init.sh`
+- `./scripts/gcp-verify.sh`
+- `./scripts/gcp-teardown.sh`
 
 ## Current status
 

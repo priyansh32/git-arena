@@ -20,11 +20,11 @@ AR_REPOSITORY="${AR_REPOSITORY:-gitarena}"
 SESSIONS_NS="gitarena-sessions"
 API_NS="gitarena-api"
 
-PHASE2_SESSION_ID="${PHASE2_SESSION_ID:-phase2-verify}"
-PHASE3_SESSION_PREFIX="${PHASE3_SESSION_PREFIX:-phase3-verify}"
-PHASE3_INGRESS_TARGET_POD="${PHASE3_INGRESS_TARGET_POD:-challenge-ingress-phase3-verify}"
-PHASE3_API_BACKEND_POD="${PHASE3_API_BACKEND_POD:-api-backend-phase3-verify}"
-PHASE3_API_OTHER_POD="${PHASE3_API_OTHER_POD:-api-other-phase3-verify}"
+POD_SECURITY_SESSION_ID="${POD_SECURITY_SESSION_ID:-${PHASE2_SESSION_ID:-phase2-verify}}"
+NETWORK_SESSION_PREFIX="${NETWORK_SESSION_PREFIX:-${PHASE3_SESSION_PREFIX:-phase3-verify}}"
+NETWORK_INGRESS_TARGET_POD="${NETWORK_INGRESS_TARGET_POD:-${PHASE3_INGRESS_TARGET_POD:-challenge-ingress-phase3-verify}}"
+NETWORK_API_BACKEND_POD="${NETWORK_API_BACKEND_POD:-${PHASE3_API_BACKEND_POD:-api-backend-phase3-verify}}"
+NETWORK_API_OTHER_POD="${NETWORK_API_OTHER_POD:-${PHASE3_API_OTHER_POD:-api-other-phase3-verify}}"
 SESSION_NETWORK_POLICY_NAME="${SESSION_NETWORK_POLICY_NAME:-session-isolation}"
 
 info() {
@@ -82,13 +82,13 @@ delete_verification_resources() {
   fi
 
   local phase2_pod phase3_a phase3_b
-  phase2_pod="session-${PHASE2_SESSION_ID}"
-  phase3_a="session-${PHASE3_SESSION_PREFIX}-a"
-  phase3_b="session-${PHASE3_SESSION_PREFIX}-b"
+  phase2_pod="session-${POD_SECURITY_SESSION_ID}"
+  phase3_a="session-${NETWORK_SESSION_PREFIX}-a"
+  phase3_b="session-${NETWORK_SESSION_PREFIX}-b"
 
   info "deleting verification pods (best effort)"
-  kubectl -n "${SESSIONS_NS}" delete pod "${phase2_pod}" "${phase3_a}" "${phase3_b}" "${PHASE3_INGRESS_TARGET_POD}" --ignore-not-found --wait=false >/dev/null 2>&1 || true
-  kubectl -n "${API_NS}" delete pod "${PHASE3_API_BACKEND_POD}" "${PHASE3_API_OTHER_POD}" --ignore-not-found --wait=false >/dev/null 2>&1 || true
+  kubectl -n "${SESSIONS_NS}" delete pod "${phase2_pod}" "${phase3_a}" "${phase3_b}" "${NETWORK_INGRESS_TARGET_POD}" --ignore-not-found --wait=false >/dev/null 2>&1 || true
+  kubectl -n "${API_NS}" delete pod "${NETWORK_API_BACKEND_POD}" "${NETWORK_API_OTHER_POD}" --ignore-not-found --wait=false >/dev/null 2>&1 || true
 
   pass "verification pods cleaned up"
 }

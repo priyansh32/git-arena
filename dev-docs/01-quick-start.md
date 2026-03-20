@@ -40,14 +40,14 @@ Use this if you want Vite HMR and direct API logs:
 
 ```bash
 cp .env.example .env
-./scripts/dev-postgres-up.sh
-./scripts/dev-api-docker.sh
+./scripts/dev-up.sh postgres
+./scripts/dev-up.sh api docker
 ```
 
 In another terminal:
 
 ```bash
-./scripts/dev-web.sh
+./scripts/dev-up.sh web
 ```
 
 Open web app at `http://localhost:5173`.
@@ -57,9 +57,9 @@ Open web app at `http://localhost:5173`.
 Use this when testing `WORKSPACE_PROVIDER=kubernetes` against GKE:
 
 ```bash
-./scripts/dev-postgres-up.sh
-./scripts/dev-api-k8s.sh
-./scripts/dev-web.sh
+./scripts/dev-up.sh postgres
+./scripts/dev-up.sh api k8s
+./scripts/dev-up.sh web
 ```
 
 Open web app at `http://localhost:5173`.

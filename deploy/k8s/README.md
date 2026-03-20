@@ -74,21 +74,14 @@ Run full security verification:
 
 ```bash
 export GCP_PROJECT_ID=my-gcp-project
-./scripts/test-gcp-security.sh
-```
-
-Or run individual checks:
-
-```bash
-./scripts/verify-phase2-gke.sh
-./scripts/verify-phase3-gke.sh
+./scripts/gcp-verify.sh
 ```
 
 If the workspace image is not in Artifact Registry yet:
 
 ```bash
 export GCP_PROJECT_ID=my-gcp-project
-./scripts/push-workspace-image-gcp.sh
+PUSH_IMAGE=true ./scripts/gcp-init.sh
 ```
 
 Teardown everything after verification:

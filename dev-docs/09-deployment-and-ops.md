@@ -30,25 +30,25 @@ docker compose down --remove-orphans
 Start Postgres:
 
 ```bash
-./scripts/dev-postgres-up.sh
+./scripts/dev-up.sh postgres
 ```
 
 Run API in Docker workspace mode:
 
 ```bash
-./scripts/dev-api-docker.sh
+./scripts/dev-up.sh api docker
 ```
 
 Run API in Kubernetes workspace mode:
 
 ```bash
-./scripts/dev-api-k8s.sh
+./scripts/dev-up.sh api k8s
 ```
 
 Run web:
 
 ```bash
-./scripts/dev-web.sh
+./scripts/dev-up.sh web
 ```
 
 Web URL: `http://localhost:5173`
@@ -88,11 +88,8 @@ Helpful scripts:
 
 ```bash
 ./scripts/gcp-init.sh
-./scripts/test-gcp-security.sh
-./scripts/verify-phase2-gke.sh
-./scripts/verify-phase3-gke.sh
-./scripts/verify-phase3-docker.sh
-./scripts/push-workspace-image-gcp.sh
+./scripts/gcp-verify.sh
+./scripts/verify-docker-security.sh
 ./scripts/gcp-teardown.sh
 ```
 

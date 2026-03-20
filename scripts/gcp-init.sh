@@ -34,6 +34,8 @@ PUSH_IMAGE="${PUSH_IMAGE:-false}"
 AR_LOCATION="${AR_LOCATION:-us-central1}"
 AR_REPOSITORY="${AR_REPOSITORY:-gitarena}"
 IMAGE_TAG="${IMAGE_TAG:-2.43.7-alpine3.19-v1}"
+LOCAL_IMAGE_TAG="${LOCAL_IMAGE_TAG:-gitarena-base:${IMAGE_TAG}}"
+PRUNE_DANGLING_WORKSPACE_IMAGES="${PRUNE_DANGLING_WORKSPACE_IMAGES:-true}"
 
 SESSIONS_NS="gitarena-sessions"
 API_NS="gitarena-api"
@@ -135,24 +137,32 @@ ensure_network_policy_enabled() {
     return
   fi
 
-  local location_arg np_enabled np_addon_disabled
+  local location_arg np_enabled np_provider np_addon_disabled
   location_arg="$(cluster_flag)"
 
   np_enabled="$(gcloud container clusters describe "${GKE_CLUSTER_NAME}" "${location_arg}" --format='value(networkPolicy.enabled)' 2>/dev/null || true)"
-  if [[ "${np_enabled}" == "true" ]]; then
+  np_provider="$(gcloud container clusters describe "${GKE_CLUSTER_NAME}" "${location_arg}" --format='value(networkPolicy.provider)' 2>/dev/null || true)"
+  np_addon_disabled="$(gcloud container clusters describe "${GKE_CLUSTER_NAME}" "${location_arg}" --format='value(addonsConfig.networkPolicyConfig.disabled)' 2>/dev/null || true)"
+
+  if [[ "${np_enabled}" == "true" || "${np_provider}" == "CALICO" || "${np_addon_disabled}" == "false" ]]; then
     pass "network policy enforcement already enabled"
     return
   fi
 
-  np_addon_disabled="$(gcloud container clusters describe "${GKE_CLUSTER_NAME}" "${location_arg}" --format='value(addonsConfig.networkPolicyConfig.disabled)' 2>/dev/null || true)"
+  if [[ "${np_enabled}" != "false" && "${np_addon_disabled}" != "true" ]]; then
+    warn "could not conclusively determine network policy state; skipping automatic update"
+    warn "if needed, run: gcloud container clusters update ${GKE_CLUSTER_NAME} ${location_arg} --update-addons=NetworkPolicy=ENABLED"
+    warn "then run: gcloud container clusters update ${GKE_CLUSTER_NAME} ${location_arg} --enable-network-policy"
+    return
+  fi
 
-  if [[ "${np_addon_disabled}" == "true" || -z "${np_addon_disabled}" ]]; then
+  if [[ "${np_addon_disabled}" == "true" ]]; then
     info "enabling NetworkPolicy addon on control plane"
-    gcloud container clusters update "${GKE_CLUSTER_NAME}" "${location_arg}" --update-addons=NetworkPolicy=ENABLED
+    gcloud container clusters update "${GKE_CLUSTER_NAME}" "${location_arg}" --update-addons=NetworkPolicy=ENABLED --quiet
   fi
 
   info "enabling network policy enforcement on nodes (rolling update)"
-  gcloud container clusters update "${GKE_CLUSTER_NAME}" "${location_arg}" --enable-network-policy
+  gcloud container clusters update "${GKE_CLUSTER_NAME}" "${location_arg}" --enable-network-policy --quiet
 
   pass "network policy enforcement enabled"
 }
@@ -238,12 +248,32 @@ push_workspace_image_if_requested() {
     return
   fi
 
-  info "building and pushing workspace image"
-  GCP_PROJECT_ID="${GCP_PROJECT_ID}" \
-    AR_LOCATION="${AR_LOCATION}" \
-    AR_REPOSITORY="${AR_REPOSITORY}" \
-    IMAGE_TAG="${IMAGE_TAG}" \
-    "${ROOT_DIR}/scripts/push-workspace-image-gcp.sh"
+  local image_uri
+  image_uri="${AR_LOCATION}-docker.pkg.dev/${GCP_PROJECT_ID}/${AR_REPOSITORY}/gitarena-base:${IMAGE_TAG}"
+
+  info "ensuring Artifact Registry repository '${AR_REPOSITORY}' exists"
+  gcloud artifacts repositories create "${AR_REPOSITORY}" \
+    --repository-format=docker \
+    --location="${AR_LOCATION}" \
+    --description="GitArena workspace images" >/dev/null 2>&1 || true
+
+  info "configuring docker auth for ${AR_LOCATION}-docker.pkg.dev"
+  gcloud auth configure-docker "${AR_LOCATION}-docker.pkg.dev" --quiet >/dev/null
+
+  info "building workspace image ${image_uri}"
+  docker build -f "${ROOT_DIR}/apps/workspace/Dockerfile" -t "${image_uri}" -t "${LOCAL_IMAGE_TAG}" "${ROOT_DIR}/apps/workspace"
+
+  info "pushing workspace image ${image_uri}"
+  docker push "${image_uri}"
+
+  if [[ "${PRUNE_DANGLING_WORKSPACE_IMAGES}" == "true" ]]; then
+    docker image prune -f \
+      --filter "dangling=true" \
+      --filter "label=org.gitarena.component=workspace-base" >/dev/null 2>&1 || true
+  fi
+
+  pass "workspace image pushed (${image_uri})"
+  pass "local image tag available (${LOCAL_IMAGE_TAG})"
 }
 
 main() {
@@ -266,7 +296,7 @@ main() {
   push_workspace_image_if_requested
 
   pass "GCP init complete"
-  info "next: run scripts/verify-phase2-gke.sh and scripts/verify-phase3-gke.sh"
+  info "next: run scripts/gcp-verify.sh"
 }
 
 main "$@"

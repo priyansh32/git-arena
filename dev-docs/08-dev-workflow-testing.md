@@ -23,10 +23,11 @@ npm run typecheck
 Helper scripts:
 
 ```bash
-./scripts/dev-postgres-up.sh
-./scripts/dev-api-docker.sh
-./scripts/dev-api-k8s.sh
-./scripts/dev-web.sh
+./scripts/dev-up.sh postgres
+./scripts/dev-up.sh api docker
+./scripts/dev-up.sh api k8s
+./scripts/dev-up.sh web
+./scripts/dev-down.sh all
 ```
 
 Containerized flow:
@@ -64,9 +65,8 @@ Security verification scripts:
 
 ```bash
 ./scripts/gcp-init.sh
-./scripts/test-gcp-security.sh
-./scripts/verify-workspace-image-hardening.sh
-./scripts/verify-phase3-docker.sh
+./scripts/gcp-verify.sh
+./scripts/verify-docker-security.sh
 ./scripts/gcp-teardown.sh
 ```
 

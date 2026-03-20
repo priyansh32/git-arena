@@ -32,7 +32,7 @@ jobs:
         run: npm run build
 
       - name: Verify hardened workspace image
-        run: ./scripts/verify-workspace-image-hardening.sh gitarena-base:2.43.7-alpine3.19-v1
+        run: IMAGE_TAG=gitarena-base:2.43.7-alpine3.19-v1 ./scripts/verify-docker-security.sh
 
       - name: Start stack
         run: ./launch.sh start
