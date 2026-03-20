@@ -1,0 +1,2 @@
+# Minimal shell profile for GitArena workspace sessions.
+export PS1="gitarena:\w$ "
