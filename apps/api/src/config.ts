@@ -12,9 +12,9 @@ const envSchema = z.object({
     .default("postgres://gitarena:gitarena@localhost:5432/gitarena"),
   CORS_ORIGINS: z.string().default("http://localhost:5173,http://localhost:8080"),
   WORKSPACE_PROVIDER: workspaceProviderSchema.default("docker"),
-  WORKSPACE_IMAGE: z.string().default("alpine/git:2.47.2"),
+  WORKSPACE_IMAGE: z.string().default("gitarena-base:2.43.7-alpine3.19-v1"),
   WORKSPACE_ROOT: z.string().default("/workspace"),
-  WORKSPACE_SHELL: z.string().default("/bin/sh"),
+  WORKSPACE_SHELL: z.string().default("/bin/bash"),
   WORKSPACE_CONTAINER_PREFIX: z.string().default("gitarena-ws"),
   WORKSPACE_INIT_COMMAND: z
     .string()

@@ -15,6 +15,14 @@ services:
       timeout: 5s
       retries: 5
 
+  workspace-image:
+    image: ${WORKSPACE_IMAGE:-gitarena-base:2.43.7-alpine3.19-v1}
+    build:
+      context: .
+      dockerfile: apps/workspace/Dockerfile
+    command: ["sh", "-lc", "echo workspace image prepared"]
+    restart: "no"
+
   api:
     build:
       context: .
@@ -28,14 +36,16 @@ services:
       SESSION_COOKIE_NAME: ${SESSION_COOKIE_NAME:-gitarena_session}
       SESSION_TTL_HOURS: ${SESSION_TTL_HOURS:-168}
       WORKSPACE_PROVIDER: docker
-      WORKSPACE_IMAGE: alpine/git:2.47.2
+      WORKSPACE_IMAGE: ${WORKSPACE_IMAGE:-gitarena-base:2.43.7-alpine3.19-v1}
       WORKSPACE_ROOT: /workspace
-      WORKSPACE_SHELL: /bin/sh
+      WORKSPACE_SHELL: /bin/bash
       WORKSPACE_CONTAINER_PREFIX: gitarena-ws
       WORKSPACE_INIT_COMMAND: mkdir -p /workspace && cd /workspace && exec tail -f /dev/null
     depends_on:
       postgres:
         condition: service_healthy
+      workspace-image:
+        condition: service_completed_successfully
     ports:
       - "3001:3001"
     volumes:
