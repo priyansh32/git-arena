@@ -1,0 +1,24 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: session-isolation
+  namespace: gitarena-sessions
+spec:
+  podSelector:
+    matchLabels:
+      app: challenge-session
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: gitarena-api
+          podSelector:
+            matchLabels:
+              app: api-backend
+      ports:
+        - protocol: TCP
+          port: 7681
+  egress: []

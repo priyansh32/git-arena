@@ -23,6 +23,11 @@ This directory contains local development and verification scripts.
   - Verifies Phase 2 pod security context settings on GKE.
 - `scripts/delete-phase2-gke.sh`
   - Tears down verification resources and optionally the verification cluster.
+- `scripts/verify-phase3-gke.sh`
+  - Applies/validates Phase 3 network policy behavior on GKE.
+  - Fails if non-API ingress is still possible (indicates missing NetworkPolicy enforcement).
+- `scripts/delete-phase3-gke.sh`
+  - Tears down Phase 3 network policy verification resources.
 - `scripts/push-workspace-image-gcp.sh`
   - Builds and pushes workspace image to Artifact Registry.
 

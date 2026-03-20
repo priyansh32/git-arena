@@ -64,3 +64,33 @@ Then run the API deployment with:
 
 - namespace: `gitarena-api`
 - service account: `api-backend`
+
+## Phase 3 Prerequisites (Network Isolation)
+
+### 1) NetworkPolicy Enforcement by CNI
+
+Phase 3 uses Kubernetes `NetworkPolicy` (`deploy/k8s/session-isolation-networkpolicy.yaml`) to enforce:
+
+- ingress allowed only from `gitarena-api` pods labeled `app: api-backend` to port `7681`
+- all egress denied for challenge pods
+
+This requires a CNI implementation that enforces `NetworkPolicy`.
+
+Examples:
+
+- GKE Dataplane V2
+- Calico
+- Cilium
+
+If your cluster does not enforce `NetworkPolicy`, the manifest applies but has no effect.
+
+### 2) API Pod Label/Namespace Contract
+
+The network policy allows ingress from:
+
+- namespace: `gitarena-api`
+- pod label: `app: api-backend`
+
+Ensure your in-cluster API deployment matches both.
+
+If API is running outside the cluster (for example on a developer laptop), session pod ingress on `7681` will be blocked by Phase 3 policy as designed.

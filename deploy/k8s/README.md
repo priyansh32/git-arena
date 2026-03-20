@@ -17,6 +17,13 @@ This directory contains Kubernetes manifests for GitArena session runtime harden
   - Restricts challenge-container env vars to the policy allowlist
   - Uses `restartPolicy: Never` and `terminationGracePeriodSeconds: 10`
 
+## Included in Phase 3
+
+- `session-isolation-networkpolicy.yaml`
+  - Applies to pods labeled `app: challenge-session` in namespace `gitarena-sessions`
+  - Allows ingress only from pods labeled `app: api-backend` in namespace `gitarena-api` on TCP `7681`
+  - Denies all pod egress (`egress: []`), including DNS
+
 ## Template Variables
 
 `challenge-session-pod.yaml` is a template and expects these substitutions:
@@ -43,9 +50,16 @@ Apply API RBAC once:
 kubectl apply -f deploy/k8s/api-workspace-rbac.yaml
 ```
 
-## Note
+Apply network isolation policy:
 
-Network isolation (`NetworkPolicy`) is intentionally not included in this phase and is implemented in Phase 3.
+```bash
+kubectl apply -f deploy/k8s/session-isolation-networkpolicy.yaml
+```
+
+Important:
+
+- API pods must run in namespace `gitarena-api` with label `app: api-backend`.
+- If the API is running outside the cluster (host machine), this policy blocks terminal ingress by design.
 
 ## Verification Scripts
 
@@ -54,6 +68,13 @@ Run full Phase 2 verification (cluster bootstrap + checks):
 ```bash
 export GCP_PROJECT_ID=my-gcp-project
 ./scripts/verify-phase2-gke.sh
+```
+
+Run Phase 3 network isolation verification:
+
+```bash
+export GCP_PROJECT_ID=my-gcp-project
+./scripts/verify-phase3-gke.sh
 ```
 
 If the workspace image is not in Artifact Registry yet:

@@ -142,6 +142,8 @@ This is a bootstrap foundation with:
   - `kubernetes` (GKE/K8s pod-backed sessions)
 - Docker mode provisions one container per active session using the host Docker socket.
 - Kubernetes mode provisions one pod per active session in `WORKSPACE_K8S_NAMESPACE`.
+- Kubernetes network isolation policy manifest is available at:
+  - `deploy/k8s/session-isolation-networkpolicy.yaml`
 
 ## Notes
 
