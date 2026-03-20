@@ -58,13 +58,6 @@ This directory contains local development and verification scripts.
 - `scripts/push-workspace-image-gcp.sh`
   - Builds and pushes workspace image to Artifact Registry.
 
-## Compatibility Wrappers
-
-- `scripts/delete-phase2-gke.sh`
-  - Legacy wrapper; forwards to `scripts/gcp-teardown.sh`.
-- `scripts/delete-phase3-gke.sh`
-  - Legacy wrapper; forwards to `scripts/gcp-teardown.sh`.
-
 ## Stack Smoke Test
 
 - `scripts/smoke-stack.mjs`
