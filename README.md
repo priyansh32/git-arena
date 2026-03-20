@@ -70,8 +70,13 @@ docker compose up --build
 
 Endpoints:
 
-- Web app: `http://localhost:8080`
+- Web app: `http://localhost:5173`
 - API readiness: `http://localhost:3001/api/v1/health/ready`
+
+Default local ports are aligned across host-dev and compose:
+
+- `WEB_PORT` (default `5173`)
+- `API_PORT` (default `3001`)
 
 Stop and remove containers:
 

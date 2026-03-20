@@ -6,7 +6,8 @@ import { promisify } from "node:util";
 const execFileAsync = promisify(execFile);
 
 function parseArgs(argv) {
-  let apiBase = process.env.GITARENA_API_BASE ?? "http://localhost:3001/api/v1";
+  const apiPort = process.env.API_PORT ?? "3001";
+  let apiBase = process.env.GITARENA_API_BASE ?? `http://localhost:${apiPort}/api/v1`;
   let containerPrefix = process.env.GITARENA_WORKSPACE_PREFIX ?? "gitarena-ws";
 
   for (let index = 0; index < argv.length; index += 1) {

@@ -4,7 +4,7 @@ This doc explains runtime behavior from user click to score.
 
 ## Runtime Components
 
-- Web SPA (`apps/web`) served by Vite dev server or nginx (compose runtime).
+- Web SPA (`apps/web`) served by Vite in both host-dev and compose runtime.
 - API service (`apps/api`) using Fastify + websocket plugin.
 - Postgres for scenarios, sessions, attempts.
 - Workspace runtime managed by API:

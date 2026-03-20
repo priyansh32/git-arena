@@ -7,10 +7,11 @@ const envSchema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
   HOST: z.string().default("0.0.0.0"),
   PORT: z.coerce.number().int().min(1).max(65535).default(3001),
+  WEB_PORT: z.coerce.number().int().min(1).max(65535).default(5173),
   DATABASE_URL: z
     .string()
     .default("postgres://gitarena:gitarena@localhost:5432/gitarena"),
-  CORS_ORIGINS: z.string().default("http://localhost:5173,http://localhost:8080"),
+  CORS_ORIGINS: z.string().optional(),
   WORKSPACE_PROVIDER: workspaceProviderSchema.default("docker"),
   WORKSPACE_IMAGE: z.string().default("gitarena-base:2.43.7-alpine3.19-v1"),
   WORKSPACE_ROOT: z.string().default("/workspace"),
@@ -64,7 +65,11 @@ export interface AppConfig {
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
   const parsed = envSchema.parse(env);
-  const corsOrigins = parsed.CORS_ORIGINS.split(",")
+  const corsOriginSource =
+    parsed.CORS_ORIGINS && parsed.CORS_ORIGINS.trim().length > 0
+      ? parsed.CORS_ORIGINS
+      : `http://localhost:${parsed.WEB_PORT}`;
+  const corsOrigins = corsOriginSource.split(",")
     .map((origin) => origin.trim())
     .filter((origin) => origin.length > 0);
 

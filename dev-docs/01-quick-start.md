@@ -25,7 +25,7 @@ npm install
 
 Open:
 
-- Web UI: `http://localhost:8080`
+- Web UI: `http://localhost:5173`
 - API readiness: `http://localhost:3001/api/v1/health/ready`
 
 Stop:
@@ -98,7 +98,7 @@ Fix:
 
 Default ports:
 
-- `8080` web
+- `5173` web
 - `3001` api
 - `5432` postgres
 
@@ -107,7 +107,7 @@ Change mapping in `docker-compose.yml` if needed.
 Fast check:
 
 ```bash
-ss -ltnp | grep -E ':8080|:3001|:5432|:5173' || true
+ss -ltnp | grep -E ':5173|:3001|:5432' || true
 ```
 
 If stale root-owned docker listeners remain after compose down, restart Docker daemon/Desktop.
@@ -118,8 +118,7 @@ Check:
 
 - `GET /api/v1/sessions/:id` returns active/submitted session.
 - Browser websocket URL is `ws://<host>/ws/sessions/:id?token=<token>`.
-- In Vite mode, `apps/web/vite.config.ts` proxies `/ws` to API.
-- In compose mode, nginx in web container proxies `/ws/` to API (see `apps/web/nginx.conf`).
+- In both host-dev and compose modes, Vite proxies `/ws` to API (`apps/web/vite.config.ts`).
 
 ## Google Sign-In fails with origin/audience errors
 
@@ -134,5 +133,3 @@ Fix:
 - In Google Cloud Console OAuth client, add local JS origins:
   - `http://localhost:5173`
   - `http://127.0.0.1:5173`
-  - `http://localhost:8080`
-  - `http://127.0.0.1:8080`

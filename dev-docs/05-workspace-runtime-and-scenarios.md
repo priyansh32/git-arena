@@ -117,8 +117,7 @@ This `script` wrapper is important because `docker exec -it` expects a TTY.
 If terminal appears non-interactive:
 
 - verify websocket route is upgraded:
-  - Vite dev mode: `/ws` proxy in `apps/web/vite.config.ts`
-  - Compose/nginx mode: `/ws/` proxy in `apps/web/nginx.conf`
+  - Vite proxy mode (host-dev and compose): `/ws` proxy in `apps/web/vite.config.ts`
 - verify runtime shell exists (`/bin/bash` default).
 - inspect API logs for terminal spawn errors.
 - inspect workspace runtime directly:

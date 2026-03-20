@@ -77,9 +77,35 @@ require_node() {
   fi
 }
 
+read_env_with_default() {
+  local key="$1"
+  local fallback="$2"
+  local env_file="${ROOT_DIR}/.env"
+
+  if [[ -n "${!key:-}" ]]; then
+    printf '%s' "${!key}"
+    return
+  fi
+
+  if [[ -f "${env_file}" ]]; then
+    local value
+    value="$(grep -E "^${key}=" "${env_file}" 2>/dev/null | tail -n 1 | cut -d= -f2- || true)"
+    if [[ -n "${value}" ]]; then
+      printf '%s' "${value}"
+      return
+    fi
+  fi
+
+  printf '%s' "${fallback}"
+}
+
 main() {
   require_docker
   trap cleanup EXIT
+
+  local web_port api_port
+  web_port="$(read_env_with_default WEB_PORT 5173)"
+  api_port="$(read_env_with_default API_PORT 3001)"
 
   local command="${1:-start}"
   if [[ $# -gt 0 ]]; then
@@ -126,10 +152,10 @@ main() {
       run_compose "${up_args[@]}"
 
       if [[ "${detached}" -eq 1 ]]; then
-        cat <<'EOF'
+        cat <<EOF
 GitArena is running.
-Web: http://localhost:8080
-API: http://localhost:3001/api/v1/health/ready
+Web: http://localhost:${web_port}
+API: http://localhost:${api_port}/api/v1/health/ready
 EOF
       fi
       ;;
@@ -139,10 +165,10 @@ EOF
     restart)
       run_compose down
       run_compose up --build -d "$@"
-      cat <<'EOF'
+      cat <<EOF
 GitArena is running.
-Web: http://localhost:8080
-API: http://localhost:3001/api/v1/health/ready
+Web: http://localhost:${web_port}
+API: http://localhost:${api_port}/api/v1/health/ready
 EOF
       ;;
     status|ps)

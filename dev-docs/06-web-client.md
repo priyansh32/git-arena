@@ -92,19 +92,12 @@ Main style file: `src/index.css`
 
 No CSS framework is used; styling is handcrafted and repo-local.
 
-## Dev Server vs Docker Runtime
+## Dev Server and Docker Runtime
 
-Vite dev mode:
+Both host-dev and compose runtime use Vite server configuration:
 
-- `vite.config.ts` proxies `/api` to `http://localhost:3001`
-- websocket path `/ws` reaches API directly in local setup
-
-Docker runtime:
-
-- Nginx serves static web bundle
-- `apps/web/nginx.conf` proxies:
-  - `/api/` -> `api:3001`
-  - `/ws/` -> `api:3001` with websocket upgrade headers
+- `vite.config.ts` proxies `/api` to API (`localhost:${API_PORT}` in host mode, `api:${API_PORT}` in compose)
+- websocket path `/ws` is proxied to API with `ws: true`
 
 ## UI Change Workflow
 

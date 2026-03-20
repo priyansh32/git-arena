@@ -1,8 +1,10 @@
-FROM node:20-alpine AS build
+FROM node:20-alpine
 WORKDIR /app
 
 ARG VITE_GOOGLE_CLIENT_ID
 ENV VITE_GOOGLE_CLIENT_ID=$VITE_GOOGLE_CLIENT_ID
+ENV WEB_PORT=5173
+ENV API_PORT=3001
 
 COPY package.json package-lock.json ./
 COPY tsconfig.base.json ./
@@ -14,11 +16,7 @@ RUN npm ci
 COPY apps/web ./apps/web
 COPY packages/shared ./packages/shared
 
-RUN npm run build -w @gitarena/shared && npm run build -w @gitarena/web
+RUN npm run build -w @gitarena/shared
 
-FROM nginx:1.27-alpine AS runtime
-COPY apps/web/nginx.conf /etc/nginx/conf.d/default.conf
-COPY --from=build /app/apps/web/dist /usr/share/nginx/html
-
-EXPOSE 80
-CMD ["nginx", "-g", "daemon off;"]
+EXPOSE 5173
+CMD ["sh", "-lc", "npm run dev -w @gitarena/web -- --host 0.0.0.0 --port ${WEB_PORT:-5173}"]

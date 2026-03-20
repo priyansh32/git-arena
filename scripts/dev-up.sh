@@ -60,11 +60,15 @@ start_postgres() {
 set_common_api_env() {
   ensure_env_file
 
+  export API_PORT="${API_PORT:-$(read_env API_PORT 3001)}"
+  export WEB_PORT="${WEB_PORT:-$(read_env WEB_PORT 5173)}"
+  export PORT="${PORT:-${API_PORT}}"
+
   export GOOGLE_CLIENT_ID="${GOOGLE_CLIENT_ID:-$(read_env GOOGLE_CLIENT_ID)}"
   [[ -n "${GOOGLE_CLIENT_ID}" ]] || fail "GOOGLE_CLIENT_ID is required"
 
   export DATABASE_URL="${DATABASE_URL:-postgres://gitarena:gitarena@localhost:5432/gitarena}"
-  export CORS_ORIGINS="${CORS_ORIGINS:-http://localhost:5173}"
+  export CORS_ORIGINS="${CORS_ORIGINS:-http://localhost:${WEB_PORT}}"
   export SESSION_COOKIE_NAME="${SESSION_COOKIE_NAME:-$(read_env SESSION_COOKIE_NAME gitarena_session)}"
   export SESSION_TTL_HOURS="${SESSION_TTL_HOURS:-$(read_env SESSION_TTL_HOURS 168)}"
 
@@ -119,17 +123,21 @@ start_api_foreground() {
   set_common_api_env
   set_api_mode_env
   cd "${ROOT_DIR}"
-  info "starting API with WORKSPACE_PROVIDER=${WORKSPACE_PROVIDER}"
+  info "starting API with WORKSPACE_PROVIDER=${WORKSPACE_PROVIDER} on http://localhost:${PORT}"
   exec npm run dev:api
 }
 
 start_web_foreground() {
   ensure_env_file
+  export API_PORT="${API_PORT:-$(read_env API_PORT 3001)}"
+  export WEB_PORT="${WEB_PORT:-$(read_env WEB_PORT 5173)}"
+  export VITE_API_PROXY_HOST="${VITE_API_PROXY_HOST:-$(read_env VITE_API_PROXY_HOST localhost)}"
+  export VITE_API_PROXY_TARGET="${VITE_API_PROXY_TARGET:-http://${VITE_API_PROXY_HOST}:${API_PORT}}"
   export VITE_GOOGLE_CLIENT_ID="${VITE_GOOGLE_CLIENT_ID:-$(read_env VITE_GOOGLE_CLIENT_ID)}"
   [[ -n "${VITE_GOOGLE_CLIENT_ID}" ]] || fail "VITE_GOOGLE_CLIENT_ID is required"
 
   cd "${ROOT_DIR}"
-  info "starting web dev server on http://localhost:5173"
+  info "starting web dev server on http://localhost:${WEB_PORT} (proxy -> ${VITE_API_PROXY_TARGET})"
   exec npm run dev:web
 }
 
@@ -170,6 +178,10 @@ start_web_background() {
 
   (
     ensure_env_file
+    export API_PORT="${API_PORT:-$(read_env API_PORT 3001)}"
+    export WEB_PORT="${WEB_PORT:-$(read_env WEB_PORT 5173)}"
+    export VITE_API_PROXY_HOST="${VITE_API_PROXY_HOST:-$(read_env VITE_API_PROXY_HOST localhost)}"
+    export VITE_API_PROXY_TARGET="${VITE_API_PROXY_TARGET:-http://${VITE_API_PROXY_HOST}:${API_PORT}}"
     export VITE_GOOGLE_CLIENT_ID="${VITE_GOOGLE_CLIENT_ID:-$(read_env VITE_GOOGLE_CLIENT_ID)}"
     [[ -n "${VITE_GOOGLE_CLIENT_ID}" ]] || fail "VITE_GOOGLE_CLIENT_ID is required"
     cd "${ROOT_DIR}"
@@ -185,6 +197,7 @@ start_all() {
   start_api_background
   start_web_background
   info "all local dev services started"
+  info "web: http://localhost:${WEB_PORT:-5173} | api: http://localhost:${API_PORT:-3001}"
   info "tail logs: tail -f ${RUNTIME_DIR}/api.log ${RUNTIME_DIR}/web.log"
 }
 

@@ -14,10 +14,10 @@ docker compose ps
 Services:
 
 - `postgres` on `5432`
-- `api` on `3001`
-- `web` on `8080`
+- `api` on `${API_PORT}` (default `3001`)
+- `web` on `${WEB_PORT}` (default `5173`)
 
-Web URL: `http://localhost:8080`
+Web URL: `http://localhost:5173`
 
 Stop:
 
@@ -73,8 +73,6 @@ OAuth web client must include these JavaScript origins:
 
 - `http://localhost:5173`
 - `http://127.0.0.1:5173`
-- `http://localhost:8080`
-- `http://127.0.0.1:8080`
 
 If missing, Google Sign-In fails with origin/audience errors and API login returns `401`.
 
@@ -130,12 +128,12 @@ Host mode logs:
 Symptoms:
 
 - `EADDRINUSE` on `3001`
-- intermittent `502` from `localhost:8080`
+- intermittent proxy failures from `localhost:5173`
 
 Checks:
 
 ```bash
-ss -ltnp | grep -E ':8080|:3001|:5432|:5173' || true
+ss -ltnp | grep -E ':5173|:3001|:5432' || true
 ```
 
 Reset sequence:
@@ -148,8 +146,7 @@ Reset sequence:
 
 Check:
 
-- In Vite dev mode, `/ws` proxy must be enabled (`apps/web/vite.config.ts`)
-- In Compose mode, nginx `/ws/` proxy must be present (`apps/web/nginx.conf`)
+- Vite `/ws` proxy must be enabled (`apps/web/vite.config.ts`)
 - Workspace runtime must be `Running` (not `Completed`)
 
 ### GKE auth plugin errors
