@@ -1,6 +1,6 @@
 # 10 - Known Gaps and Next Steps
 
-This document tracks current limitations after workspace hardening Phase 1 and Phase 2 work.
+This document tracks current limitations after workspace hardening Phase 1 through Phase 3 work.
 
 ## Current Status Snapshot
 
@@ -18,17 +18,14 @@ Working today:
 
 ## Highest Priority Next
 
-1. Phase 3 network isolation:
-   - Kubernetes `NetworkPolicy` for challenge-session pods
-   - deny-all egress and API-only ingress
-2. Phase 4 session monitor and resource-triggered termination.
-3. Phase 5 seed script validation pipeline for scenario builds.
-4. Phase 6 snapshot/evaluator separation with object storage snapshots.
-5. Phase 7 structured audit logging and ops runbook queries.
+1. Phase 4 session monitor and resource-triggered termination.
+2. Phase 5 seed script validation pipeline for scenario builds.
+3. Phase 6 snapshot/evaluator separation with object storage snapshots.
+4. Phase 7 structured audit logging and ops runbook queries.
 
 ## Remaining Security Gaps
 
-- Phase 3 network policy manifests are implemented; enforcement still depends on applying them to a cluster CNI that supports `NetworkPolicy`.
+- Phase 3 network policy is implemented; enforcement depends on a cluster CNI that supports `NetworkPolicy` (for example Calico/Cilium/Dataplane V2).
 - Docker provider now applies deny-network hardening (`--network none`) for local verification, but it does not emulate namespace/label-based Kubernetes policy semantics.
 - No session monitor loop for idle/resource termination rules yet.
 - Evaluator is not yet split into separate snapshot-driven runtime (policy Phase 6 target).

@@ -2,6 +2,8 @@
 set -Eeuo pipefail
 
 # Unified teardown script for GitArena GCP verification resources.
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+source "${ROOT_DIR}/scripts/lib/common.sh"
 
 GCP_PROJECT_ID="${GCP_PROJECT_ID:-}"
 GKE_CLUSTER_NAME="${GKE_CLUSTER_NAME:-gitarena-verify-1}"
@@ -14,11 +16,11 @@ DELETE_NAMESPACES="${DELETE_NAMESPACES:-true}"
 DELETE_VERIFICATION_RESOURCES="${DELETE_VERIFICATION_RESOURCES:-true}"
 DELETE_NETWORK_POLICY="${DELETE_NETWORK_POLICY:-true}"
 DELETE_AR_REPOSITORY="${DELETE_AR_REPOSITORY:-false}"
-AR_LOCATION="${AR_LOCATION:-us-central1}"
-AR_REPOSITORY="${AR_REPOSITORY:-gitarena}"
+AR_LOCATION="${AR_LOCATION:-${GITARENA_AR_LOCATION_DEFAULT}}"
+AR_REPOSITORY="${AR_REPOSITORY:-${GITARENA_AR_REPOSITORY_DEFAULT}}"
 
-SESSIONS_NS="gitarena-sessions"
-API_NS="gitarena-api"
+SESSIONS_NS="${SESSIONS_NS:-${GITARENA_SESSIONS_NAMESPACE_DEFAULT}}"
+API_NS="${API_NS:-${GITARENA_API_NAMESPACE_DEFAULT}}"
 
 POD_SECURITY_SESSION_ID="${POD_SECURITY_SESSION_ID:-${PHASE2_SESSION_ID:-phase2-verify}}"
 NETWORK_SESSION_PREFIX="${NETWORK_SESSION_PREFIX:-${PHASE3_SESSION_PREFIX:-phase3-verify}}"
@@ -27,38 +29,9 @@ NETWORK_API_BACKEND_POD="${NETWORK_API_BACKEND_POD:-${PHASE3_API_BACKEND_POD:-ap
 NETWORK_API_OTHER_POD="${NETWORK_API_OTHER_POD:-${PHASE3_API_OTHER_POD:-api-other-phase3-verify}}"
 SESSION_NETWORK_POLICY_NAME="${SESSION_NETWORK_POLICY_NAME:-session-isolation}"
 
-info() {
-  printf 'INFO: %s\n' "$1"
-}
-
-warn() {
-  printf 'WARN: %s\n' "$1" >&2
-}
-
-pass() {
-  printf 'PASS: %s\n' "$1"
-}
-
-fail() {
-  printf 'FAIL: %s\n' "$1" >&2
-  exit 1
-}
-
-need_cmd() {
-  command -v "$1" >/dev/null 2>&1 || fail "missing required command: $1"
-}
-
-cluster_flag() {
-  if [[ "${GKE_LOCATION_TYPE}" == "region" ]]; then
-    printf -- "--region=%s" "${GKE_LOCATION}"
-  else
-    printf -- "--zone=%s" "${GKE_LOCATION}"
-  fi
-}
-
 cluster_exists() {
   local location_arg
-  location_arg="$(cluster_flag)"
+  location_arg="$(cluster_flag "${GKE_LOCATION_TYPE}" "${GKE_LOCATION}")"
 
   gcloud container clusters describe "${GKE_CLUSTER_NAME}" "${location_arg}" >/dev/null 2>&1
 }
@@ -69,7 +42,7 @@ fetch_credentials() {
   fi
 
   local location_arg
-  location_arg="$(cluster_flag)"
+  location_arg="$(cluster_flag "${GKE_LOCATION_TYPE}" "${GKE_LOCATION}")"
 
   info "fetching kube credentials for cluster '${GKE_CLUSTER_NAME}'"
   gcloud container clusters get-credentials "${GKE_CLUSTER_NAME}" "${location_arg}" >/dev/null
@@ -120,7 +93,7 @@ delete_cluster() {
   fi
 
   local location_arg
-  location_arg="$(cluster_flag)"
+  location_arg="$(cluster_flag "${GKE_LOCATION_TYPE}" "${GKE_LOCATION}")"
 
   info "deleting GKE cluster '${GKE_CLUSTER_NAME}'"
   gcloud container clusters delete "${GKE_CLUSTER_NAME}" "${location_arg}" --quiet

@@ -9,26 +9,18 @@ set -Eeuo pipefail
 #   ./scripts/dev-up.sh web
 #   ./scripts/dev-up.sh all docker
 #   ./scripts/dev-up.sh all k8s
+#
+# Notes:
+# - In k8s mode, if WORKSPACE_IMAGE is not set, the script resolves it from:
+#   GCP_PROJECT_ID + WORKSPACE_AR_LOCATION/WORKSPACE_AR_REPOSITORY/WORKSPACE_IMAGE_TAG.
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+source "${ROOT_DIR}/scripts/lib/common.sh"
 ENV_FILE="${ROOT_DIR}/.env"
 RUNTIME_DIR="${ROOT_DIR}/.dev-runtime"
 
 TARGET="${1:-all}" # postgres|api|web|all
 MODE="${2:-docker}" # docker|k8s for api/all
-
-fail() {
-  printf 'FAIL: %s\n' "$1" >&2
-  exit 1
-}
-
-info() {
-  printf 'INFO: %s\n' "$1"
-}
-
-pass() {
-  printf 'PASS: %s\n' "$1"
-}
 
 read_env() {
   local key="$1"
@@ -82,7 +74,7 @@ set_common_api_env() {
 set_api_mode_env() {
   if [[ "${MODE}" == "docker" ]]; then
     export WORKSPACE_PROVIDER="docker"
-    export WORKSPACE_IMAGE="${WORKSPACE_IMAGE:-$(read_env WORKSPACE_IMAGE gitarena-base:2.43.7-alpine3.19-v1)}"
+    export WORKSPACE_IMAGE="${WORKSPACE_IMAGE:-$(read_env WORKSPACE_IMAGE gitarena-base:${GITARENA_WORKSPACE_IMAGE_TAG_DEFAULT})}"
     export WORKSPACE_ROOT="${WORKSPACE_ROOT:-$(read_env WORKSPACE_ROOT /workspace)}"
     export WORKSPACE_CONTAINER_PREFIX="${WORKSPACE_CONTAINER_PREFIX:-$(read_env WORKSPACE_CONTAINER_PREFIX gitarena-ws)}"
     export WORKSPACE_INIT_COMMAND="${WORKSPACE_INIT_COMMAND:-$(read_env WORKSPACE_INIT_COMMAND 'mkdir -p /workspace && cd /workspace && exec tail -f /dev/null')}"
@@ -99,16 +91,25 @@ set_api_mode_env() {
   if [[ -n "${WORKSPACE_IMAGE:-}" ]]; then
     export WORKSPACE_IMAGE
   else
-    local image_from_env
+    local image_from_env gcp_project_id image_location image_repository image_tag
     image_from_env="$(read_env WORKSPACE_IMAGE)"
     if [[ -n "${image_from_env}" && "${image_from_env}" == */* ]]; then
       export WORKSPACE_IMAGE="${image_from_env}"
     else
-      export WORKSPACE_IMAGE="us-central1-docker.pkg.dev/git-arena-490721/gitarena/gitarena-base:2.43.7-alpine3.19-v1"
+      gcp_project_id="${GCP_PROJECT_ID:-$(read_env GCP_PROJECT_ID)}"
+      image_location="${WORKSPACE_AR_LOCATION:-$(read_env WORKSPACE_AR_LOCATION ${GITARENA_AR_LOCATION_DEFAULT})}"
+      image_repository="${WORKSPACE_AR_REPOSITORY:-$(read_env WORKSPACE_AR_REPOSITORY ${GITARENA_AR_REPOSITORY_DEFAULT})}"
+      image_tag="${WORKSPACE_IMAGE_TAG:-$(read_env WORKSPACE_IMAGE_TAG ${GITARENA_WORKSPACE_IMAGE_TAG_DEFAULT})}"
+
+      if [[ -z "${gcp_project_id}" ]]; then
+        fail "k8s mode requires WORKSPACE_IMAGE (full image ref) or GCP_PROJECT_ID in env/.env"
+      fi
+
+      export WORKSPACE_IMAGE="$(workspace_image_ref "${gcp_project_id}" "${image_location}" "${image_repository}" "${image_tag}")"
     fi
   fi
 
-  export WORKSPACE_K8S_NAMESPACE="${WORKSPACE_K8S_NAMESPACE:-$(read_env WORKSPACE_K8S_NAMESPACE gitarena-sessions)}"
+  export WORKSPACE_K8S_NAMESPACE="${WORKSPACE_K8S_NAMESPACE:-$(read_env WORKSPACE_K8S_NAMESPACE ${GITARENA_SESSIONS_NAMESPACE_DEFAULT})}"
   export WORKSPACE_K8S_RUNTIME_CLASS_NAME="${WORKSPACE_K8S_RUNTIME_CLASS_NAME:-$(read_env WORKSPACE_K8S_RUNTIME_CLASS_NAME gvisor)}"
   export WORKSPACE_K8S_IMAGE_PULL_POLICY="${WORKSPACE_K8S_IMAGE_PULL_POLICY:-$(read_env WORKSPACE_K8S_IMAGE_PULL_POLICY IfNotPresent)}"
   export WORKSPACE_K8S_POD_READY_TIMEOUT_SECONDS="${WORKSPACE_K8S_POD_READY_TIMEOUT_SECONDS:-$(read_env WORKSPACE_K8S_POD_READY_TIMEOUT_SECONDS 240)}"

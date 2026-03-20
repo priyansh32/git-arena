@@ -30,5 +30,5 @@ GitArena is a terminal-first Git challenge platform:
 
 - Google Sign-In auth is enabled with server-side cookie sessions and CSRF protection.
 - Workspace provider is selectable with `WORKSPACE_PROVIDER` (`docker` or `kubernetes`).
-- Hardened workspace base image and Phase 2 pod security settings are implemented.
+- Hardened workspace base image, pod security settings, and session NetworkPolicy are implemented.
 - Scenarios are shell-script driven and bundled in `apps/api/scenarios`.

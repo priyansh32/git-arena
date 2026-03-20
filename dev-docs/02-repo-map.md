@@ -13,8 +13,11 @@ packages/
 scripts/
   dev-up.sh / dev-down.sh
   gcp-init.sh / gcp-verify.sh / gcp-teardown.sh
+  lib/common.sh
   verify-docker-security.sh
   smoke-stack.mjs
+  README.md
+deploy/gcp/
   README.md
 dev-docs/   # this onboarding set
 ```

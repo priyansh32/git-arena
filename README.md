@@ -41,6 +41,14 @@ cp .env.example .env
 ./scripts/dev-up.sh web
 ```
 
+For Kubernetes workspace mode in host dev:
+
+```bash
+./scripts/dev-up.sh postgres
+GCP_PROJECT_ID=<your-project-id> ./scripts/dev-up.sh api k8s
+./scripts/dev-up.sh web
+```
+
 Required env for auth:
 
 - `GOOGLE_CLIENT_ID` (API token audience validation)
@@ -88,7 +96,7 @@ npm run smoke:stack
 
 ## Dev Helper Scripts
 
-For host-based dev loops, helper scripts are in [`scripts/README.md`](scripts/README.md):
+For host-based dev loops, primary entrypoints are in [`scripts/README.md`](scripts/README.md):
 
 - `./scripts/dev-up.sh`
 - `./scripts/dev-down.sh`

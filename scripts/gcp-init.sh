@@ -6,6 +6,7 @@ set -Eeuo pipefail
 # applies core Kubernetes manifests required for policy verification.
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+source "${ROOT_DIR}/scripts/lib/common.sh"
 
 GCP_PROJECT_ID="${GCP_PROJECT_ID:-}"
 GKE_CLUSTER_NAME="${GKE_CLUSTER_NAME:-gitarena-verify-1}"
@@ -31,43 +32,14 @@ APPLY_SESSION_NETWORK_POLICY="${APPLY_SESSION_NETWORK_POLICY:-true}"
 ENSURE_RUNTIMECLASS="${ENSURE_RUNTIMECLASS:-true}"
 
 PUSH_IMAGE="${PUSH_IMAGE:-false}"
-AR_LOCATION="${AR_LOCATION:-us-central1}"
-AR_REPOSITORY="${AR_REPOSITORY:-gitarena}"
-IMAGE_TAG="${IMAGE_TAG:-2.43.7-alpine3.19-v1}"
+AR_LOCATION="${AR_LOCATION:-${GITARENA_AR_LOCATION_DEFAULT}}"
+AR_REPOSITORY="${AR_REPOSITORY:-${GITARENA_AR_REPOSITORY_DEFAULT}}"
+IMAGE_TAG="${IMAGE_TAG:-${GITARENA_WORKSPACE_IMAGE_TAG_DEFAULT}}"
 LOCAL_IMAGE_TAG="${LOCAL_IMAGE_TAG:-gitarena-base:${IMAGE_TAG}}"
 PRUNE_DANGLING_WORKSPACE_IMAGES="${PRUNE_DANGLING_WORKSPACE_IMAGES:-true}"
 
-SESSIONS_NS="gitarena-sessions"
-API_NS="gitarena-api"
-
-info() {
-  printf 'INFO: %s\n' "$1"
-}
-
-warn() {
-  printf 'WARN: %s\n' "$1" >&2
-}
-
-pass() {
-  printf 'PASS: %s\n' "$1"
-}
-
-fail() {
-  printf 'FAIL: %s\n' "$1" >&2
-  exit 1
-}
-
-need_cmd() {
-  command -v "$1" >/dev/null 2>&1 || fail "missing required command: $1"
-}
-
-cluster_flag() {
-  if [[ "${GKE_LOCATION_TYPE}" == "region" ]]; then
-    printf -- "--region=%s" "${GKE_LOCATION}"
-  else
-    printf -- "--zone=%s" "${GKE_LOCATION}"
-  fi
-}
+SESSIONS_NS="${SESSIONS_NS:-${GITARENA_SESSIONS_NAMESPACE_DEFAULT}}"
+API_NS="${API_NS:-${GITARENA_API_NAMESPACE_DEFAULT}}"
 
 ensure_project_and_services() {
   info "setting active gcloud project to ${GCP_PROJECT_ID}"
@@ -80,7 +52,7 @@ ensure_project_and_services() {
 
 ensure_cluster() {
   local location_arg
-  location_arg="$(cluster_flag)"
+  location_arg="$(cluster_flag "${GKE_LOCATION_TYPE}" "${GKE_LOCATION}")"
 
   if gcloud container clusters describe "${GKE_CLUSTER_NAME}" "${location_arg}" >/dev/null 2>&1; then
     info "cluster '${GKE_CLUSTER_NAME}' already exists"
@@ -120,7 +92,7 @@ fetch_credentials() {
   fi
 
   local location_arg
-  location_arg="$(cluster_flag)"
+  location_arg="$(cluster_flag "${GKE_LOCATION_TYPE}" "${GKE_LOCATION}")"
 
   info "fetching kube credentials for cluster '${GKE_CLUSTER_NAME}'"
   gcloud container clusters get-credentials "${GKE_CLUSTER_NAME}" "${location_arg}" >/dev/null
@@ -138,7 +110,7 @@ ensure_network_policy_enabled() {
   fi
 
   local location_arg np_enabled np_provider np_addon_disabled
-  location_arg="$(cluster_flag)"
+  location_arg="$(cluster_flag "${GKE_LOCATION_TYPE}" "${GKE_LOCATION}")"
 
   np_enabled="$(gcloud container clusters describe "${GKE_CLUSTER_NAME}" "${location_arg}" --format='value(networkPolicy.enabled)' 2>/dev/null || true)"
   np_provider="$(gcloud container clusters describe "${GKE_CLUSTER_NAME}" "${location_arg}" --format='value(networkPolicy.provider)' 2>/dev/null || true)"
@@ -173,7 +145,7 @@ ensure_gvisor_pool() {
   fi
 
   local location_arg
-  location_arg="$(cluster_flag)"
+  location_arg="$(cluster_flag "${GKE_LOCATION_TYPE}" "${GKE_LOCATION}")"
 
   if gcloud container node-pools describe "${SANDBOX_POOL_NAME}" --cluster "${GKE_CLUSTER_NAME}" "${location_arg}" >/dev/null 2>&1; then
     pass "gVisor node pool '${SANDBOX_POOL_NAME}' exists"
@@ -249,7 +221,7 @@ push_workspace_image_if_requested() {
   fi
 
   local image_uri
-  image_uri="${AR_LOCATION}-docker.pkg.dev/${GCP_PROJECT_ID}/${AR_REPOSITORY}/gitarena-base:${IMAGE_TAG}"
+  image_uri="$(workspace_image_ref "${GCP_PROJECT_ID}" "${AR_LOCATION}" "${AR_REPOSITORY}" "${IMAGE_TAG}")"
 
   info "ensuring Artifact Registry repository '${AR_REPOSITORY}' exists"
   gcloud artifacts repositories create "${AR_REPOSITORY}" \

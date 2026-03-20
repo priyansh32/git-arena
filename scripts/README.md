@@ -2,6 +2,13 @@
 
 This directory contains local development and verification scripts.
 
+## Shared Script Library
+
+- `scripts/lib/common.sh`
+  - Shared logging helpers (`info`, `pass`, `warn`, `fail`)
+  - Shared cluster location flag helper (`cluster_flag`)
+  - Shared default constants (workspace image tag, namespaces, Artifact Registry defaults)
+
 ## GCP Lifecycle (Primary)
 
 - Typical flow:
@@ -40,6 +47,9 @@ This directory contains local development and verification scripts.
 - `scripts/dev-down.sh`
   - Unified shutdown for local dev:
     - `./scripts/dev-down.sh api|web|postgres|all`
+
+Use these as the primary host-dev entrypoints.
+`launch.sh` remains available for compose-centric lifecycle commands.
 
 ## Security Policy Verification
 

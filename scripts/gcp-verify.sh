@@ -7,6 +7,7 @@ set -Eeuo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 POD_TEMPLATE="${ROOT_DIR}/deploy/k8s/challenge-session-pod.yaml"
 NETWORK_POLICY_MANIFEST="${ROOT_DIR}/deploy/k8s/session-isolation-networkpolicy.yaml"
+source "${ROOT_DIR}/scripts/lib/common.sh"
 
 GCP_PROJECT_ID="${GCP_PROJECT_ID:-}"
 GKE_CLUSTER_NAME="${GKE_CLUSTER_NAME:-gitarena-verify-1}"
@@ -24,42 +25,13 @@ VERIFY_NETWORK_POLICY="${VERIFY_NETWORK_POLICY:-true}"
 POD_SECURITY_SESSION_ID="${POD_SECURITY_SESSION_ID:-phase2-verify}"
 NETWORK_SESSION_PREFIX="${NETWORK_SESSION_PREFIX:-phase3-verify}"
 
-SESSIONS_NS="gitarena-sessions"
-API_NS="gitarena-api"
+SESSIONS_NS="${SESSIONS_NS:-${GITARENA_SESSIONS_NAMESPACE_DEFAULT}}"
+API_NS="${API_NS:-${GITARENA_API_NAMESPACE_DEFAULT}}"
 POD_SECURITY_POD="session-${POD_SECURITY_SESSION_ID}"
 NETWORK_CHALLENGE_A="session-${NETWORK_SESSION_PREFIX}-a"
 NETWORK_INGRESS_TARGET_POD="challenge-ingress-phase3-verify"
 NETWORK_API_BACKEND_POD="api-backend-phase3-verify"
 NETWORK_API_OTHER_POD="api-other-phase3-verify"
-
-info() {
-  printf 'INFO: %s\n' "$1"
-}
-
-warn() {
-  printf 'WARN: %s\n' "$1" >&2
-}
-
-pass() {
-  printf 'PASS: %s\n' "$1"
-}
-
-fail() {
-  printf 'FAIL: %s\n' "$1" >&2
-  exit 1
-}
-
-need_cmd() {
-  command -v "$1" >/dev/null 2>&1 || fail "missing required command: $1"
-}
-
-cluster_flag() {
-  if [[ "${GKE_LOCATION_TYPE}" == "region" ]]; then
-    printf -- "--region=%s" "${GKE_LOCATION}"
-  else
-    printf -- "--zone=%s" "${GKE_LOCATION}"
-  fi
-}
 
 expect_eq() {
   local label="$1"
@@ -97,7 +69,7 @@ fetch_credentials() {
   [[ -n "${GCP_PROJECT_ID}" ]] || fail "set GCP_PROJECT_ID when FETCH_CREDENTIALS=true"
 
   local location_arg
-  location_arg="$(cluster_flag)"
+  location_arg="$(cluster_flag "${GKE_LOCATION_TYPE}" "${GKE_LOCATION}")"
 
   gcloud config set project "${GCP_PROJECT_ID}" >/dev/null
   info "fetching kube credentials for cluster '${GKE_CLUSTER_NAME}'"

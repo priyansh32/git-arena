@@ -63,6 +63,9 @@ Set in `.env`:
 - `SESSION_TTL_HOURS`
 - `WORKSPACE_IMAGE`
 - optional provider-specific `WORKSPACE_K8S_*`
+- for k8s image auto-resolution when `WORKSPACE_IMAGE` is unset:
+  - `GCP_PROJECT_ID`
+  - optional `WORKSPACE_AR_LOCATION`, `WORKSPACE_AR_REPOSITORY`, `WORKSPACE_IMAGE_TAG`
 
 ## Google Sign-In Local Origins
 

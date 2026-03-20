@@ -1,50 +1,33 @@
-# React + TypeScript + Vite
+# GitArena Web App
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+React + Vite frontend for GitArena.
 
-Currently, two official plugins are available:
+## Purpose
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react/README.md) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- Google Sign-In entrypoint
+- Scenario browse/start flow
+- Terminal workspace UI (`xterm`) over WebSocket
+- Result/history views
 
-## Expanding the ESLint configuration
+## Local Run
 
-If you are developing a production application, we recommend updating the configuration to enable type aware lint rules:
+From repo root:
 
-- Configure the top-level `parserOptions` property like this:
-
-```js
-export default tseslint.config({
-  languageOptions: {
-    // other options...
-    parserOptions: {
-      project: ['./tsconfig.node.json', './tsconfig.app.json'],
-      tsconfigRootDir: import.meta.dirname,
-    },
-  },
-})
+```bash
+./scripts/dev-up.sh web
 ```
 
-- Replace `tseslint.configs.recommended` to `tseslint.configs.recommendedTypeChecked` or `tseslint.configs.strictTypeChecked`
-- Optionally add `...tseslint.configs.stylisticTypeChecked`
-- Install [eslint-plugin-react](https://github.com/jsx-eslint/eslint-plugin-react) and update the config:
+Default URL: `http://localhost:5173`
 
-```js
-// eslint.config.js
-import react from 'eslint-plugin-react'
+## Proxy Expectations
 
-export default tseslint.config({
-  // Set the react version
-  settings: { react: { version: '18.3' } },
-  plugins: {
-    // Add the react plugin
-    react,
-  },
-  rules: {
-    // other rules...
-    // Enable its recommended rules
-    ...react.configs.recommended.rules,
-    ...react.configs['jsx-runtime'].rules,
-  },
-})
-```
+In local dev mode, Vite proxies:
+
+- `/api` -> API server
+- `/ws` -> API WebSocket endpoint
+
+This proxy behavior is defined in `apps/web/vite.config.ts`.
+
+## Required Env
+
+- `VITE_GOOGLE_CLIENT_ID` must be set in repo `.env`.

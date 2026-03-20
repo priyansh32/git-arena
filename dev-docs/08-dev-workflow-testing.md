@@ -8,12 +8,15 @@ From repo root:
 
 ```bash
 npm install
-npm run dev
+./scripts/dev-up.sh postgres
+./scripts/dev-up.sh api docker
+./scripts/dev-up.sh web
 ```
 
-Useful targeted commands:
+Alternative direct npm dev commands:
 
 ```bash
+npm run dev
 npm run dev:api
 npm run dev:web
 npm run build
