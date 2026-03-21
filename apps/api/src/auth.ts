@@ -1,4 +1,4 @@
-import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
+import { createHash, randomBytes, timingSafeEqual, webcrypto } from "node:crypto";
 
 import { createRemoteJWKSet, jwtVerify } from "jose";
 
@@ -6,6 +6,14 @@ const GOOGLE_JWKS = createRemoteJWKSet(
   new URL("https://www.googleapis.com/oauth2/v3/certs")
 );
 const GOOGLE_ISSUERS = ["https://accounts.google.com", "accounts.google.com"];
+
+// jose expects WebCrypto on globalThis in Node 18; Node 20+ already provides it.
+if (!globalThis.crypto) {
+  Object.defineProperty(globalThis, "crypto", {
+    value: webcrypto,
+    configurable: true
+  });
+}
 
 export interface VerifiedGoogleIdentity {
   googleSub: string;

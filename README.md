@@ -22,6 +22,7 @@ Detailed onboarding + architecture docs live in [`dev-docs/`](dev-docs/README.md
 ## Quick start
 
 ```bash
+# optional (if using nvm): nvm use 24 || nvm install 24
 npm install
 npm run dev
 ```

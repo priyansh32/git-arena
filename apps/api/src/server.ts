@@ -375,7 +375,7 @@ app.post("/api/v1/auth/google", async (request, reply) => {
   try {
     identity = await verifyGoogleIdToken(payload.idToken, config.auth.googleClientId);
   } catch (error) {
-    app.log.warn({ error }, "Rejected invalid Google ID token");
+    app.log.warn({ err: error }, "Rejected invalid Google ID token");
     return reply.code(401).send({ message: "Invalid Google ID token" });
   }
 

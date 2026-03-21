@@ -4,7 +4,7 @@ This guide gets the full stack running locally, then validates that workspace co
 
 ## Prerequisites
 
-- Node.js 20+
+- Node.js 24.x
 - npm 10+
 - Docker with Docker Compose plugin
 - Linux/macOS recommended (Windows with WSL2 is fine)
