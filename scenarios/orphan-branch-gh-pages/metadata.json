@@ -1,0 +1,20 @@
+{
+  "id": "orphan-branch-gh-pages",
+  "title": "Orphan Branch — Unrelated History",
+  "description": "You need to create a `gh-pages` branch for publishing documentation. This branch must have no commit history shared with `main` — it's a completely fresh start within the same repository.",
+  "objective": "A branch named `gh-pages` must exist with its own independent root commit (no common ancestor with `main`). The branch must contain an `index.html` file. The `gh-pages` branch must have exactly one commit. `main` must be unchanged.",
+  "difficulty": "intermediate",
+  "estimatedTimeMinutes": 25,
+  "timeLimitSeconds": 1500,
+  "tags": [
+    "orphan-branch",
+    "branch-management",
+    "git-internals"
+  ],
+  "hints": [
+    "`git checkout --orphan gh-pages` creates a branch with no parent commits.",
+    "After checking out the orphan branch, the index still has all the files from `main` — you need to `git rm -rf .` to clear it before making your first commit.",
+    "An orphan branch's first commit becomes a root commit with no parent."
+  ],
+  "status": "published"
+}

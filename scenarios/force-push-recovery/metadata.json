@@ -1,0 +1,21 @@
+{
+  "id": "force-push-recovery",
+  "title": "Force Push Recovery via Reflog",
+  "description": "A teammate force-pushed to `origin/main` and overwrote three commits that contained critical work. Your local repo still has those commits in its reflog. Recover the lost commits and restore the remote.",
+  "objective": "The branch `main` on both local and `origin` must contain the three lost commits. The commit history must be linear. You may need to use `--force-with-lease` or `--force` to push the restored history back to origin.",
+  "difficulty": "advanced",
+  "estimatedTimeMinutes": 35,
+  "timeLimitSeconds": 2100,
+  "tags": [
+    "reflog",
+    "force-push",
+    "recovery",
+    "remote-simulation"
+  ],
+  "hints": [
+    "`git reflog` on your local repo will show the SHAs of commits that existed before the force push.",
+    "Find the last good SHA and use `git reset --hard <sha>` to restore your local branch.",
+    "`git push --force-with-lease origin main` updates the remote with your restored history."
+  ],
+  "status": "published"
+}

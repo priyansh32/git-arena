@@ -1,0 +1,21 @@
+{
+  "id": "bisect-broken-build",
+  "title": "Bisect the Broken Build",
+  "description": "Something broke the test suite between ten commits ago and now. You know the oldest commit was good. Use `git bisect` to identify the exact commit that introduced the regression, then record its SHA in a file called `bad-commit.txt`.",
+  "objective": "The file `bad-commit.txt` must exist in `/workspace` and contain the full SHA of the commit that first caused `test.sh` to exit non-zero. The SHA must be correct.",
+  "difficulty": "advanced",
+  "estimatedTimeMinutes": 35,
+  "timeLimitSeconds": 2100,
+  "tags": [
+    "bisect",
+    "debugging",
+    "history-traversal",
+    "automation"
+  ],
+  "hints": [
+    "Start with `git bisect start`, then mark the current commit bad and the oldest commit good.",
+    "Git will check out commits for you to test — run `test.sh` at each step and mark the result.",
+    "`git bisect run ./test.sh` automates the entire process if the test is scripted."
+  ],
+  "status": "published"
+}

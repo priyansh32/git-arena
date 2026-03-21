@@ -1,0 +1,21 @@
+{
+  "id": "amend-preserve-author",
+  "title": "Amend Without Changing Authorship",
+  "description": "The last commit has a typo in the commit message and is missing one small file. You need to fix both by amending the commit — but the original author information (name and email) must be preserved exactly as it was. The committer can change, but not the author.",
+  "objective": "The most recent commit must have a corrected message (no typo), must include the missing file `CHANGELOG.md`, and must retain the original author name `Jane Doe` and email `jane@example.com`. The commit count must remain the same.",
+  "difficulty": "intermediate",
+  "estimatedTimeMinutes": 20,
+  "timeLimitSeconds": 1200,
+  "tags": [
+    "amend",
+    "commit-metadata",
+    "authorship",
+    "history-editing"
+  ],
+  "hints": [
+    "`git commit --amend --no-edit` amends the commit without changing the message. Add `--author` to override author info.",
+    "`git commit --amend --author=\"Jane Doe <jane@example.com>\"` explicitly sets the author on the amended commit.",
+    "Stage the missing file with `git add CHANGELOG.md` before amending."
+  ],
+  "status": "published"
+}

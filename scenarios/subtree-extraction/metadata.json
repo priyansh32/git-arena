@@ -1,0 +1,21 @@
+{
+  "id": "subtree-extraction",
+  "title": "Subtree Extraction — Move Directory to New Repo",
+  "description": "The `packages/logger` directory has grown into its own concern and needs to be extracted into a new standalone repository `logger-repo` while preserving the full commit history for that directory only.",
+  "objective": "A new repository must exist at `/workspace/logger-repo`. It must contain the contents of the `packages/logger` directory at the top level (not nested). It must contain only the commits that touched `packages/logger` — commits that didn't touch that path must not appear. The working tree of `logger-repo` must be clean.",
+  "difficulty": "advanced",
+  "estimatedTimeMinutes": 45,
+  "timeLimitSeconds": 2700,
+  "tags": [
+    "filter-repo",
+    "subtree",
+    "monorepo",
+    "history-rewriting"
+  ],
+  "hints": [
+    "`git filter-branch --subdirectory-filter packages/logger` or `git filter-repo --path packages/logger --path-rename packages/logger:` can extract a subdirectory with its history.",
+    "Clone the repo first, then run the filter on the clone so the original repo is preserved.",
+    "After filtering, the contents of `packages/logger` should be at the root of the new repo."
+  ],
+  "status": "published"
+}

@@ -1,0 +1,21 @@
+{
+  "id": "annotated-tag-release",
+  "title": "Annotated Tag Release and Signed Verification",
+  "description": "The project is ready for release. You need to create a proper annotated tag `v2.0.0` on the current HEAD of `main` with a meaningful release message, then verify the tag exists and points to the right commit.",
+  "objective": "An annotated tag `v2.0.0` must exist pointing to the HEAD of `main`. The tag must have a tag message (not a lightweight tag). The tag must be pushed to `origin`. The tag object type must be `tag` (not `commit`).",
+  "difficulty": "intermediate",
+  "estimatedTimeMinutes": 20,
+  "timeLimitSeconds": 1200,
+  "tags": [
+    "tags",
+    "release",
+    "annotated-tags",
+    "versioning"
+  ],
+  "hints": [
+    "`git tag -a v2.0.0 -m \"Release 2.0.0: ...\"` creates an annotated tag with a message.",
+    "Lightweight tags (`git tag v2.0.0` without `-a`) create a tag pointing directly to a commit object — the evaluator will check the object type.",
+    "`git push origin v2.0.0` pushes the tag to origin specifically."
+  ],
+  "status": "published"
+}

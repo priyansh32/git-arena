@@ -1,0 +1,21 @@
+{
+  "id": "recover-deleted-branch",
+  "title": "Recovering a Deleted Branch",
+  "description": "A colleague deleted the branch `feat/search` thinking it had been merged. It wasn't. The commits exist in the reflog. You need to bring them back.",
+  "objective": "A branch named `feat/search` must exist and must contain the three commits that were on it before deletion. The search feature code must be present and the branch must be in a clean state.",
+  "difficulty": "intermediate",
+  "estimatedTimeMinutes": 20,
+  "timeLimitSeconds": 1200,
+  "tags": [
+    "reflog",
+    "recovery",
+    "branching",
+    "data-loss-prevention"
+  ],
+  "hints": [
+    "`git reflog` shows the history of HEAD movements and branch updates.",
+    "Look for the last known SHA of `feat/search` — it will be there even after the branch is deleted.",
+    "`git checkout -b feat/search <sha>` recreates the branch at the right point."
+  ],
+  "status": "published"
+}

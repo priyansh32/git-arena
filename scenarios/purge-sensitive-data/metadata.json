@@ -1,0 +1,21 @@
+{
+  "id": "purge-sensitive-data",
+  "title": "Clean Up Sensitive Data from History",
+  "description": "A developer accidentally committed a file containing an API key (`secrets.env`) three commits ago. It's been on the feature branch only and not yet merged. You need to completely remove every trace of this file from the entire commit history of the branch.",
+  "objective": "The file `secrets.env` must not exist in any commit in the branch's history — not the current HEAD, not any past commit tree. The rest of the branch history must be intact. The working tree must be clean.",
+  "difficulty": "advanced",
+  "estimatedTimeMinutes": 45,
+  "timeLimitSeconds": 2700,
+  "tags": [
+    "history-rewriting",
+    "security",
+    "filter-branch",
+    "sensitive-data"
+  ],
+  "hints": [
+    "`git filter-branch` or `git filter-repo` can rewrite history to remove a file from all commits.",
+    "If using `git filter-branch`: `git filter-branch --force --index-filter 'git rm --cached --ignore-unmatch secrets.env' HEAD`.",
+    "After rewriting, verify with `git log --all --full-history -- secrets.env` that no commits reference the file."
+  ],
+  "status": "published"
+}
