@@ -10,6 +10,7 @@ import {
   type CreateSessionResponse,
   type CurrentUserResponse,
   type RequestHintResponse,
+  type Session,
   type SubmitSessionResponse,
   type UserProfile
 } from "@gitarena/shared";
@@ -24,6 +25,7 @@ import {
 } from "./auth.js";
 import { loadConfig } from "./config.js";
 import { Repository } from "./repository.js";
+import { SessionMonitor } from "./session-monitor.js";
 import {
   WorkspaceManager,
   WorkspaceProvisionError
@@ -61,6 +63,182 @@ const app = Fastify({
   logger: {
     level: config.nodeEnv === "production" ? "info" : "debug"
   }
+});
+
+interface WebsocketLike {
+  OPEN: number;
+  readyState: number;
+  send: (data: string) => void;
+  close: (code?: number, reason?: string) => void;
+}
+
+const sessionSockets = new Map<string, Set<WebsocketLike>>();
+const websocketActivityMs = new Map<string, number>();
+const commandBuffersBySession = new Map<string, string>();
+
+function logAuditEvent(
+  session: Session,
+  eventType: string,
+  details: Record<string, unknown> = {}
+): void {
+  app.log.info({
+    timestamp: new Date().toISOString(),
+    session_id: session.id,
+    user_id: session.userId,
+    scenario_id: session.scenarioId,
+    event_type: eventType,
+    ...details
+  });
+}
+
+function noteWebsocketActivity(sessionId: string): void {
+  websocketActivityMs.set(sessionId, Date.now());
+}
+
+function getLastWebsocketActivityMs(sessionId: string): number | null {
+  return websocketActivityMs.get(sessionId) ?? null;
+}
+
+function registerSocket(sessionId: string, socket: WebsocketLike): void {
+  const sockets = sessionSockets.get(sessionId);
+  if (sockets) {
+    sockets.add(socket);
+    return;
+  }
+
+  sessionSockets.set(sessionId, new Set([socket]));
+}
+
+function unregisterSocket(sessionId: string, socket: WebsocketLike): void {
+  const sockets = sessionSockets.get(sessionId);
+  if (!sockets) {
+    return;
+  }
+
+  sockets.delete(socket);
+  if (sockets.size === 0) {
+    sessionSockets.delete(sessionId);
+  }
+}
+
+function clearSessionTracking(sessionId: string): void {
+  sessionSockets.delete(sessionId);
+  websocketActivityMs.delete(sessionId);
+  commandBuffersBySession.delete(sessionId);
+}
+
+function notifyAndCloseSessionSocket(sessionId: string, message: string): void {
+  const sockets = sessionSockets.get(sessionId);
+  if (sockets && sockets.size > 0) {
+    for (const socket of sockets.values()) {
+      if (socket.readyState !== socket.OPEN) {
+        continue;
+      }
+
+      socket.send(`\r\n${message}\r\n`);
+      socket.close(1000, message);
+    }
+  }
+
+  clearSessionTracking(sessionId);
+}
+
+function decodeSocketMessage(data: unknown): { raw: Buffer; text: string } | null {
+  if (typeof data === "string") {
+    const raw = Buffer.from(data, "utf8");
+    return { raw, text: data };
+  }
+
+  if (Array.isArray(data)) {
+    const chunks = data.map((chunk) => {
+      if (Buffer.isBuffer(chunk)) {
+        return chunk;
+      }
+      if (chunk instanceof ArrayBuffer) {
+        return Buffer.from(chunk);
+      }
+      return Buffer.from(chunk as string);
+    });
+    const raw = Buffer.concat(chunks);
+    return { raw, text: raw.toString("utf8") };
+  }
+
+  if (data instanceof ArrayBuffer) {
+    const raw = Buffer.from(data);
+    return { raw, text: raw.toString("utf8") };
+  }
+
+  if (Buffer.isBuffer(data)) {
+    return { raw: data, text: data.toString("utf8") };
+  }
+
+  return null;
+}
+
+function normalizeCommand(raw: string): string {
+  const withoutAnsi = raw.replace(/\u001b\[[0-9;]*[A-Za-z]/g, "");
+  const withoutBackspaces = withoutAnsi.replace(/.\u0008/g, "");
+  return withoutBackspaces.replace(/\s+/g, " ").trim();
+}
+
+function detectMonitoredOperation(session: Session, command: string): void {
+  const normalized = normalizeCommand(command);
+  if (!normalized) {
+    return;
+  }
+
+  if (/^find\s+\/\s+-type\s+f(\s|$)/.test(normalized)) {
+    logAuditEvent(session, "session.anomaly_detected", {
+      anomaly_type: "filesystem_enumeration",
+      command: normalized
+    });
+    return;
+  }
+
+  if (/^cat\s+\/proc\/self\/status(\s|$)/.test(normalized)) {
+    logAuditEvent(session, "session.anomaly_detected", {
+      anomaly_type: "process_inspection",
+      command: normalized
+    });
+    return;
+  }
+
+  if (/^git\s+config\s+--global(\s|$)/.test(normalized)) {
+    logAuditEvent(session, "session.anomaly_detected", {
+      anomaly_type: "global_git_config_update",
+      command: normalized
+    });
+  }
+}
+
+function trackCommandsFromSocketInput(session: Session, chunk: string): void {
+  const previousBuffer = commandBuffersBySession.get(session.id) ?? "";
+  let pending = previousBuffer + chunk;
+
+  while (true) {
+    const newlineIndex = pending.search(/[\r\n]/);
+    if (newlineIndex < 0) {
+      break;
+    }
+
+    const command = pending.slice(0, newlineIndex);
+    detectMonitoredOperation(session, command);
+    pending = pending.slice(newlineIndex + 1);
+  }
+
+  if (pending.length > 4096) {
+    pending = pending.slice(-4096);
+  }
+
+  commandBuffersBySession.set(session.id, pending);
+}
+
+const sessionMonitor = new SessionMonitor({
+  repository,
+  workspaceManager,
+  logger: app.log,
+  getLastWebsocketActivityMs,
+  notifyAndCloseSessionSocket
 });
 
 const sessionCookieOptions = {
@@ -414,10 +592,19 @@ app.get("/ws/sessions/:id", { websocket: true } as any, (connection: any, reques
       return;
     }
 
+    const hadPreviousActivity = websocketActivityMs.has(session.id);
+    noteWebsocketActivity(session.id);
+    logAuditEvent(
+      session,
+      hadPreviousActivity ? "session.ws_reconnected" : "session.ws_connected"
+    );
+    registerSocket(session.id, connection.socket as WebsocketLike);
+
     const terminal = workspaceManager.openTerminal(session.id);
 
     const writeToSocket = (chunk: Buffer): void => {
       if (connection.socket.readyState === connection.socket.OPEN) {
+        noteWebsocketActivity(session.id);
         connection.socket.send(chunk.toString("utf8"));
       }
     };
@@ -449,25 +636,20 @@ app.get("/ws/sessions/:id", { websocket: true } as any, (connection: any, reques
         return;
       }
 
-      if (typeof data === "string") {
-        terminal.stdin.write(data);
+      const decoded = decodeSocketMessage(data);
+      if (!decoded) {
         return;
       }
 
-      if (Array.isArray(data)) {
-        terminal.stdin.write(Buffer.concat(data));
-        return;
-      }
-
-      if (data instanceof ArrayBuffer) {
-        terminal.stdin.write(Buffer.from(data));
-        return;
-      }
-
-      terminal.stdin.write(data);
+      noteWebsocketActivity(session.id);
+      trackCommandsFromSocketInput(session, decoded.text);
+      terminal.stdin.write(decoded.raw);
     });
 
     connection.socket.on("close", () => {
+      unregisterSocket(session.id, connection.socket as WebsocketLike);
+      logAuditEvent(session, "session.ws_disconnected");
+
       if (!terminal.killed) {
         terminal.kill("SIGKILL");
       }
@@ -521,6 +703,7 @@ app.delete("/api/v1/sessions/:id", async (request, reply) => {
       app.log.warn({ error, sessionId: id }, "Workspace cleanup failed");
     }
   }
+  clearSessionTracking(id);
 
   return { session: terminatedSession };
 });
@@ -614,11 +797,13 @@ app.post("/api/v1/sessions/:id/submit", async (request, reply) => {
       app.log.warn({ error, sessionId: id }, "Workspace cleanup after submit failed");
     }
   }
+  clearSessionTracking(id);
 
   return response;
 });
 
 app.addHook("onClose", async () => {
+  sessionMonitor.stop();
   await repository.close();
 });
 
@@ -629,6 +814,7 @@ async function start(): Promise<void> {
       host: config.host,
       port: config.port
     });
+    sessionMonitor.start();
   } catch (error) {
     app.log.error(error);
     process.exit(1);

@@ -94,3 +94,30 @@ The network policy allows ingress from:
 Ensure your in-cluster API deployment matches both.
 
 If API is running outside the cluster (for example on a developer laptop), session pod ingress on `7681` will be blocked by Phase 3 policy as designed.
+
+## Phase 4 Prerequisites (Session Monitor + Resource Termination)
+
+### 1) Kubernetes Metrics API (`metrics.k8s.io`)
+
+Phase 4 monitor logic collects per-pod CPU and memory usage through the Kubernetes Metrics API:
+
+- API path: `/apis/metrics.k8s.io/v1beta1/namespaces/<namespace>/pods/<pod>`
+- Required for CPU/memory monitor triggers (`cpu_limit`, `memory_limit`)
+
+For Kubernetes clusters, ensure `metrics-server` is installed and healthy:
+
+```bash
+kubectl get apiservice v1beta1.metrics.k8s.io
+kubectl top pods -n gitarena-sessions
+```
+
+If `kubectl top` fails, install or repair `metrics-server` before relying on Phase 4 enforcement.
+
+### 2) API Runtime Permissions for Monitor Polling
+
+When API runs with `WORKSPACE_PROVIDER=kubernetes`, the service account used by the API must be able to:
+
+- read pod metrics (`metrics.k8s.io`)
+- exec into session pods in `gitarena-sessions` (used for process-count and workspace-size checks)
+
+Phase 2 RBAC (`deploy/k8s/api-workspace-rbac.yaml`) remains required.

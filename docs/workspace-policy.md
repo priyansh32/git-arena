@@ -618,9 +618,12 @@ handler: runsc
 
 ### 5.6 Seed Script Execution and Validation
 
-Before a seed script is published, it must pass automated validation:
+In v1, scenario scripts are source-controlled files in the repository (`apps/api/scenarios/<scenario-id>/seed.sh` and `eval.sh`).
+There is no in-product admin authoring endpoint in scope for v1.
 
-**Validation pipeline (runs as part of scenario build):**
+Before scripts are merged/deployed, they must pass automated validation.
+
+**Validation pipeline (runs in CI and local pre-release checks):**
 
 ```bash
 #!/bin/bash
@@ -628,6 +631,7 @@ Before a seed script is published, it must pass automated validation:
 
 set -e
 SEED_SCRIPT=$1
+EVAL_SCRIPT=$2
 CONTAINER_IMAGE="gitarena-base:latest"
 
 # Step 1: bash syntax check
@@ -646,13 +650,21 @@ timeout 10 docker run --rm \
 # Step 3: verify /workspace is a valid git repo after seed
 docker run --rm \
   --network none \
+  --memory 128m \
+  --cpus 0.5 \
   -v "$SEED_SCRIPT:/tmp/seed.sh:ro" \
+  -v "$EVAL_SCRIPT:/tmp/eval.sh:ro" \
   "$CONTAINER_IMAGE" \
-  bash -c "bash /tmp/seed.sh && git -C /workspace status" \
+  bash -c "bash /tmp/seed.sh && git -C /workspace status && bash /tmp/eval.sh > /tmp/eval.out && grep -q '^PASS:' /tmp/eval.out && grep -q '^SCORE:' /tmp/eval.out" \
   || { echo "FAIL: /workspace is not a valid git repo after seeding"; exit 1; }
 
 echo "OK: seed script validated"
 ```
+
+**Status workflow note (v1):**
+
+- Scenario statuses (`draft`, `testing`, `published`) remain in database metadata.
+- Status changes are managed through developer/ops workflows (DB/tooling) until admin authoring APIs are introduced.
 
 **Seed script author guidelines (enforced by linter):**
 

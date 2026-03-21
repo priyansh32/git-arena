@@ -1,4 +1,5 @@
 import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
+import { cpus } from "node:os";
 
 import type { AssertionResult, Session } from "@gitarena/shared";
 
@@ -24,6 +25,112 @@ interface PodState {
   seeded: boolean;
 }
 
+export interface WorkspaceRuntimeMetrics {
+  cpuMillicores: number;
+  memoryMb: number;
+  ephemeralStorageMb: number;
+  processCount: number;
+}
+
+export interface WorkspaceHealthStatus {
+  status: "healthy" | "unhealthy" | "unknown" | "unsupported";
+  reason: string;
+}
+
+const BYTES_PER_MB = 1024 * 1024;
+
+function toMb(bytes: number): number {
+  return Math.max(0, Math.round(bytes / BYTES_PER_MB));
+}
+
+function parseCpuMillicores(value: string): number {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return 0;
+  }
+
+  if (trimmed.endsWith("n")) {
+    return Math.round(Number.parseFloat(trimmed.slice(0, -1)) / 1_000_000);
+  }
+
+  if (trimmed.endsWith("u")) {
+    return Math.round(Number.parseFloat(trimmed.slice(0, -1)) / 1_000);
+  }
+
+  if (trimmed.endsWith("m")) {
+    return Math.round(Number.parseFloat(trimmed.slice(0, -1)));
+  }
+
+  return Math.round(Number.parseFloat(trimmed) * 1000);
+}
+
+function parseMemoryBytes(value: string): number {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return 0;
+  }
+
+  const match = trimmed.match(/^([0-9]*\.?[0-9]+)([a-zA-Z]+)?$/);
+  if (!match) {
+    return 0;
+  }
+
+  const amount = Number.parseFloat(match[1]);
+  let unit = (match[2] ?? "B").toUpperCase();
+  if (unit.endsWith("B") && unit !== "B") {
+    unit = unit.slice(0, -1);
+  }
+  const unitTable: Record<string, number> = {
+    B: 1,
+    KI: 1024,
+    MI: 1024 ** 2,
+    GI: 1024 ** 3,
+    TI: 1024 ** 4,
+    K: 1000,
+    M: 1000 ** 2,
+    G: 1000 ** 3,
+    T: 1000 ** 4
+  };
+
+  const multiplier = unitTable[unit] ?? 1;
+  return Math.round(amount * multiplier);
+}
+
+function parseDockerMemUsageBytes(value: string): number {
+  const [usage] = value.split("/");
+  return parseMemoryBytes((usage ?? "").trim());
+}
+
+function parseDockerCpuMillicores(value: string): number {
+  const trimmed = value.trim().replace("%", "");
+  if (!trimmed) {
+    return 0;
+  }
+
+  const cpuPercent = Number.parseFloat(trimmed);
+  if (!Number.isFinite(cpuPercent) || cpuPercent <= 0) {
+    return 0;
+  }
+
+  const hostCpuCount = Math.max(1, cpus().length);
+  const usedCores = (cpuPercent / 100) * hostCpuCount;
+  return Math.round(usedCores * 1000);
+}
+
+function parseInteger(value: string): number {
+  const parsed = Number.parseInt(value.trim(), 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
+}
+
+function parseKilobytes(value: string): number {
+  const parsed = Number.parseFloat(value.trim());
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    return 0;
+  }
+
+  return Math.round(parsed * 1024);
+}
+
 export class WorkspaceManager {
   constructor(private readonly config: WorkspaceConfig) {}
 
@@ -33,6 +140,14 @@ export class WorkspaceManager {
 
   getPodName(sessionId: string): string {
     return `session-${sessionId}`.replace(/[^a-zA-Z0-9-]/g, "-");
+  }
+
+  getRuntimeHandle(sessionId: string): string {
+    if (this.config.provider === "kubernetes") {
+      return `${this.config.kubernetes.namespace}/${this.getPodName(sessionId)}`;
+    }
+
+    return this.getContainerName(sessionId);
   }
 
   async ensureWorkspace(session: Session): Promise<void> {
@@ -76,6 +191,40 @@ export class WorkspaceManager {
     }
 
     return this.openDockerTerminal(sessionId);
+  }
+
+  async collectRuntimeMetrics(sessionId: string): Promise<WorkspaceRuntimeMetrics> {
+    if (this.config.provider === "kubernetes") {
+      return await this.collectKubernetesRuntimeMetrics(this.getPodName(sessionId));
+    }
+
+    return await this.collectDockerRuntimeMetrics(this.getContainerName(sessionId));
+  }
+
+  async findLargeWorkspaceFile(sessionId: string): Promise<string | null> {
+    if (this.config.provider === "kubernetes") {
+      const output = await this.runScriptInPod(
+        this.getPodName(sessionId),
+        "find /workspace -xdev -type f -size +50M -print -quit 2>/dev/null"
+      );
+      const firstPath = output.stdout.split("\n")[0]?.trim();
+      return firstPath && firstPath.length > 0 ? firstPath : null;
+    }
+
+    const output = await this.runScriptInContainer(
+      this.getContainerName(sessionId),
+      "find /workspace -xdev -type f -size +50M -print -quit 2>/dev/null"
+    );
+    const firstPath = output.stdout.split("\n")[0]?.trim();
+    return firstPath && firstPath.length > 0 ? firstPath : null;
+  }
+
+  async collectHealthStatus(sessionId: string): Promise<WorkspaceHealthStatus> {
+    if (this.config.provider === "kubernetes") {
+      return await this.collectKubernetesHealthStatus(this.getPodName(sessionId));
+    }
+
+    return await this.collectDockerHealthStatus(this.getContainerName(sessionId));
   }
 
   private async ensureDockerWorkspace(session: Session): Promise<void> {
@@ -312,6 +461,290 @@ export class WorkspaceManager {
     script: string
   ): Promise<{ stdout: string; stderr: string }> {
     return await runScriptInKubernetesPod(this.config.kubernetes.namespace, podName, script);
+  }
+
+  private async collectDockerRuntimeMetrics(
+    containerName: string
+  ): Promise<WorkspaceRuntimeMetrics> {
+    const statsOutput = await this.runDocker(
+      ["stats", "--no-stream", "--format", "{{.CPUPerc}}|{{.MemUsage}}", containerName],
+      true
+    );
+    if (!statsOutput) {
+      throw new WorkspaceProvisionError(
+        `Unable to collect runtime metrics for container '${containerName}'`
+      );
+    }
+
+    const [cpuRaw, memoryRaw] = statsOutput.split("|");
+    const cpuMillicores = parseDockerCpuMillicores(cpuRaw ?? "");
+    const memoryMb = toMb(parseDockerMemUsageBytes(memoryRaw ?? ""));
+
+    const processOutput = await this.runScriptInContainer(
+      containerName,
+      "ps -eo pid= | wc -l"
+    );
+    const processCount = parseInteger(processOutput.stdout);
+
+    const sizeOutput = await this.runDocker(
+      ["inspect", "--size", "--format", "{{.SizeRw}}", containerName],
+      true
+    );
+    const storageBytesFromInspect = Number.parseInt(sizeOutput.trim(), 10);
+
+    let ephemeralStorageBytes = Number.isFinite(storageBytesFromInspect)
+      ? storageBytesFromInspect
+      : 0;
+    if (ephemeralStorageBytes <= 0) {
+      const duOutput = await this.runScriptInContainer(
+        containerName,
+        "du -sk /workspace /repos /tmp 2>/dev/null | awk '{total += $1} END {print total + 0}'"
+      );
+      ephemeralStorageBytes = parseKilobytes(duOutput.stdout);
+    }
+
+    return {
+      cpuMillicores,
+      memoryMb,
+      ephemeralStorageMb: toMb(ephemeralStorageBytes),
+      processCount
+    };
+  }
+
+  private async collectKubernetesRuntimeMetrics(
+    podName: string
+  ): Promise<WorkspaceRuntimeMetrics> {
+    const metricsPath = `/apis/metrics.k8s.io/v1beta1/namespaces/${this.config.kubernetes.namespace}/pods/${podName}`;
+    const metricsOutput = await this.runKubectl(
+      ["get", "--raw", metricsPath],
+      true,
+      undefined,
+      30_000,
+      1024 * 1024 * 2
+    );
+
+    let cpuMillicores = 0;
+    let memoryMb = 0;
+    if (metricsOutput) {
+      try {
+        const parsed = JSON.parse(metricsOutput) as {
+          containers?: Array<{
+            usage?: {
+              cpu?: string;
+              memory?: string;
+            };
+          }>;
+        };
+        const containers = Array.isArray(parsed.containers) ? parsed.containers : [];
+        let totalCpu = 0;
+        let totalMemory = 0;
+
+        for (const container of containers) {
+          totalCpu += parseCpuMillicores(container.usage?.cpu ?? "");
+          totalMemory += parseMemoryBytes(container.usage?.memory ?? "");
+        }
+
+        cpuMillicores = Math.max(0, totalCpu);
+        memoryMb = toMb(totalMemory);
+      } catch {
+        cpuMillicores = 0;
+        memoryMb = 0;
+      }
+    }
+
+    const processOutput = await this.runScriptInPod(podName, "ps -eo pid= | wc -l");
+    const processCount = parseInteger(processOutput.stdout);
+
+    const duOutput = await this.runScriptInPod(
+      podName,
+      "du -sk /workspace /repos /tmp 2>/dev/null | awk '{total += $1} END {print total + 0}'"
+    );
+    const ephemeralStorageMb = toMb(parseKilobytes(duOutput.stdout));
+
+    return {
+      cpuMillicores,
+      memoryMb,
+      ephemeralStorageMb,
+      processCount
+    };
+  }
+
+  private async collectDockerHealthStatus(
+    containerName: string
+  ): Promise<WorkspaceHealthStatus> {
+    const output = await this.runDocker(
+      [
+        "inspect",
+        "--format",
+        "{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}|{{.State.Status}}",
+        containerName
+      ],
+      true
+    );
+
+    if (!output) {
+      return {
+        status: "unhealthy",
+        reason: "container_missing"
+      };
+    }
+
+    const [healthStatusRaw, stateStatusRaw] = output.split("|");
+    const healthStatus = (healthStatusRaw ?? "").trim().toLowerCase();
+    const stateStatus = (stateStatusRaw ?? "").trim().toLowerCase();
+
+    if (stateStatus !== "running") {
+      return {
+        status: "unhealthy",
+        reason: stateStatus.length > 0 ? `container_state_${stateStatus}` : "container_not_running"
+      };
+    }
+
+    if (healthStatus === "none") {
+      return {
+        status: "unsupported",
+        reason: "docker_healthcheck_not_configured"
+      };
+    }
+
+    if (healthStatus === "healthy") {
+      return {
+        status: "healthy",
+        reason: "container_healthy"
+      };
+    }
+
+    if (healthStatus === "unhealthy") {
+      return {
+        status: "unhealthy",
+        reason: "container_healthcheck_unhealthy"
+      };
+    }
+
+    if (healthStatus === "starting") {
+      return {
+        status: "unknown",
+        reason: "container_healthcheck_starting"
+      };
+    }
+
+    return {
+      status: "unknown",
+      reason: healthStatus.length > 0 ? `container_healthcheck_${healthStatus}` : "container_health_unknown"
+    };
+  }
+
+  private async collectKubernetesHealthStatus(
+    podName: string
+  ): Promise<WorkspaceHealthStatus> {
+    const output = await this.runKubectl(
+      ["get", "pod", podName, "-n", this.config.kubernetes.namespace, "-o", "json"],
+      true,
+      undefined,
+      30_000,
+      1024 * 1024 * 2
+    );
+
+    if (!output) {
+      return {
+        status: "unhealthy",
+        reason: "pod_missing"
+      };
+    }
+
+    try {
+      const parsed = JSON.parse(output) as {
+        status?: {
+          phase?: unknown;
+          containerStatuses?: Array<{
+            name?: unknown;
+            ready?: unknown;
+            state?: {
+              waiting?: { reason?: unknown };
+              terminated?: { reason?: unknown };
+            };
+          }>;
+        };
+      };
+
+      const phase = typeof parsed.status?.phase === "string" ? parsed.status.phase : "";
+      const normalizedPhase = phase.toLowerCase();
+
+      if (normalizedPhase === "pending") {
+        return {
+          status: "unknown",
+          reason: "pod_pending"
+        };
+      }
+
+      if (normalizedPhase === "failed" || normalizedPhase === "succeeded") {
+        return {
+          status: "unhealthy",
+          reason: normalizedPhase.length > 0 ? `pod_phase_${normalizedPhase}` : "pod_not_running"
+        };
+      }
+
+      const statuses = Array.isArray(parsed.status?.containerStatuses)
+        ? parsed.status?.containerStatuses
+        : [];
+      const challengeStatus =
+        statuses.find((status) => status?.name === "challenge") ??
+        statuses[0];
+
+      if (!challengeStatus) {
+        return {
+          status: normalizedPhase === "running" ? "unknown" : "unhealthy",
+          reason:
+            normalizedPhase === "running"
+              ? "container_status_missing"
+              : `pod_phase_${normalizedPhase || "unknown"}`
+        };
+      }
+
+      const ready = challengeStatus.ready === true;
+      if (normalizedPhase === "running" && ready) {
+        return {
+          status: "healthy",
+          reason: "pod_ready"
+        };
+      }
+
+      const waitingReason =
+        typeof challengeStatus.state?.waiting?.reason === "string"
+          ? challengeStatus.state.waiting.reason
+          : "";
+      const terminatedReason =
+        typeof challengeStatus.state?.terminated?.reason === "string"
+          ? challengeStatus.state.terminated.reason
+          : "";
+
+      if (
+        waitingReason === "ContainerCreating" ||
+        waitingReason === "PodInitializing"
+      ) {
+        return {
+          status: "unknown",
+          reason: waitingReason.toLowerCase()
+        };
+      }
+
+      if (normalizedPhase === "running" && !ready) {
+        return {
+          status: "unhealthy",
+          reason: waitingReason || terminatedReason || "pod_not_ready"
+        };
+      }
+
+      return {
+        status: "unknown",
+        reason: waitingReason || terminatedReason || `pod_phase_${normalizedPhase || "unknown"}`
+      };
+    } catch {
+      return {
+        status: "unknown",
+        reason: "pod_status_parse_failed"
+      };
+    }
   }
 
   private async isContainerRunning(containerName: string): Promise<boolean> {

@@ -19,6 +19,7 @@ interface ScenarioRow {
   objective: string;
   difficulty: Scenario["difficulty"];
   estimated_time_minutes: number;
+  time_limit_seconds?: number;
   tags: unknown;
   hints: unknown;
   status: Scenario["status"];
@@ -34,6 +35,7 @@ interface SessionRow {
   ws_token: string;
   expires_at: Date;
   hint_count: number;
+  termination_reason?: string | null;
 }
 
 interface AttemptRow {
@@ -82,6 +84,10 @@ interface SessionScenarioRow extends SessionRow {
   scenario_objective: string;
   scenario_hints: unknown;
   scenario_estimated_time_minutes: number;
+}
+
+interface MonitorSessionRow extends SessionRow {
+  time_limit_seconds: number;
 }
 
 function parseStringArray(value: unknown): string[] {
@@ -424,11 +430,24 @@ export class Repository {
   }
 
   async createSession(userId: string, scenarioId: string): Promise<Session> {
-    await this.expireActiveSessions(userId);
-
     const sessionId = randomUUID();
     const startedAt = new Date();
-    const expiresAt = new Date(startedAt.getTime() + 30 * 60 * 1000);
+    const timingResult = await this.pool.query<{ time_limit_seconds: number }>(
+      `
+      SELECT time_limit_seconds
+      FROM scenarios
+      WHERE id = $1
+      LIMIT 1
+      `,
+      [scenarioId]
+    );
+
+    if (!timingResult.rowCount) {
+      throw new Error(`Scenario not found for session creation: ${scenarioId}`);
+    }
+
+    const timeLimitSeconds = Math.max(60, timingResult.rows[0].time_limit_seconds);
+    const expiresAt = new Date(startedAt.getTime() + timeLimitSeconds * 1000);
 
     const insert: Session = {
       id: sessionId,
@@ -484,8 +503,6 @@ export class Repository {
   }
 
   async getActiveSessionByUser(userId: string): Promise<Session | null> {
-    await this.expireActiveSessions(userId);
-
     const result = await this.pool.query<SessionRow>(
       `
       SELECT
@@ -515,8 +532,6 @@ export class Repository {
   }
 
   async getSessionById(id: string): Promise<Session | null> {
-    await this.expireSessionById(this.pool, id);
-
     const result = await this.pool.query<SessionRow>(
       `
       SELECT
@@ -547,8 +562,6 @@ export class Repository {
     sessionId: string,
     userId: string
   ): Promise<{ hintIndex: number; hint: string; session: Session } | null> {
-    await this.expireSessionById(this.pool, sessionId, userId);
-
     const result = await this.pool.query<SessionScenarioRow>(
       `
       UPDATE sessions AS s
@@ -598,7 +611,6 @@ export class Repository {
 
     try {
       await client.query("BEGIN");
-      await this.expireSessionById(client, sessionId, userId);
 
       const lockResult = await client.query<SessionScenarioRow>(
         `
@@ -816,7 +828,8 @@ export class Repository {
       `
       UPDATE sessions
       SET status = 'terminated',
-          submitted_at = COALESCE(submitted_at, NOW())
+          submitted_at = COALESCE(submitted_at, NOW()),
+          termination_reason = COALESCE(termination_reason, 'user_terminated')
       WHERE id = $1
         AND user_id = $2
         AND status IN ('active', 'submitted')
@@ -839,6 +852,70 @@ export class Repository {
     }
 
     return mapSession(result.rows[0]);
+  }
+
+  async terminateSessionByMonitor(
+    sessionId: string,
+    reason: string
+  ): Promise<Session | null> {
+    const result = await this.pool.query<SessionRow>(
+      `
+      UPDATE sessions
+      SET status = 'terminated',
+          submitted_at = COALESCE(submitted_at, NOW()),
+          termination_reason = $2
+      WHERE id = $1
+        AND status IN ('active', 'submitted', 'evaluated')
+      RETURNING
+        id,
+        user_id,
+        scenario_id,
+        status,
+        started_at,
+        ws_url,
+        ws_token,
+        expires_at,
+        hint_count
+      `,
+      [sessionId, reason]
+    );
+
+    if (!result.rowCount) {
+      return null;
+    }
+
+    return mapSession(result.rows[0]);
+  }
+
+  async listActiveSessionsForMonitor(): Promise<
+    Array<{ session: Session; timeLimitSeconds: number }>
+  > {
+    const result = await this.pool.query<MonitorSessionRow>(
+      `
+      SELECT
+        s.id,
+        s.user_id,
+        s.scenario_id,
+        s.status,
+        s.started_at,
+        s.ws_url,
+        s.ws_token,
+        s.expires_at,
+        s.hint_count,
+        s.termination_reason,
+        sc.time_limit_seconds
+      FROM sessions AS s
+      JOIN scenarios AS sc
+        ON sc.id = s.scenario_id
+      WHERE s.status IN ('active', 'submitted')
+      ORDER BY s.started_at ASC
+      `
+    );
+
+    return result.rows.map((row) => ({
+      session: mapSession(row),
+      timeLimitSeconds: row.time_limit_seconds
+    }));
   }
 
   private async getLatestAttemptForSession(
@@ -906,42 +983,6 @@ export class Repository {
     return mapAttempt(result.rows[0]);
   }
 
-  private async expireActiveSessions(userId: string): Promise<void> {
-    await this.pool.query(
-      `
-      UPDATE sessions
-      SET status = 'terminated',
-          submitted_at = COALESCE(submitted_at, NOW())
-      WHERE user_id = $1
-        AND status IN ('active', 'submitted')
-        AND expires_at < NOW()
-      `,
-      [userId]
-    );
-  }
-
-  private async expireSessionById(
-    queryable: Pool | PoolClient,
-    sessionId: string,
-    userId?: string
-  ): Promise<void> {
-    const values = userId ? [sessionId, userId] : [sessionId];
-    const userClause = userId ? "AND user_id = $2" : "";
-
-    await queryable.query(
-      `
-      UPDATE sessions
-      SET status = 'terminated',
-          submitted_at = COALESCE(submitted_at, NOW())
-      WHERE id = $1
-        ${userClause}
-        AND status IN ('active', 'submitted')
-        AND expires_at < NOW()
-      `,
-      values
-    );
-  }
-
   private async createSchema(client: PoolClient): Promise<void> {
     await client.query(`
       CREATE TABLE IF NOT EXISTS users (
@@ -1004,6 +1045,7 @@ export class Repository {
         objective TEXT NOT NULL,
         difficulty TEXT NOT NULL CHECK (difficulty IN ('beginner', 'intermediate', 'advanced')),
         estimated_time_minutes INTEGER NOT NULL CHECK (estimated_time_minutes > 0),
+        time_limit_seconds INTEGER NOT NULL CHECK (time_limit_seconds > 0),
         tags JSONB NOT NULL DEFAULT '[]'::jsonb,
         hints JSONB NOT NULL DEFAULT '[]'::jsonb,
         status TEXT NOT NULL CHECK (status IN ('draft', 'testing', 'published', 'deprecated')),
@@ -1013,6 +1055,16 @@ export class Repository {
     `);
     await client.query(
       "ALTER TABLE scenarios ADD COLUMN IF NOT EXISTS hints JSONB NOT NULL DEFAULT '[]'::jsonb"
+    );
+    await client.query(
+      "ALTER TABLE scenarios ADD COLUMN IF NOT EXISTS time_limit_seconds INTEGER NOT NULL DEFAULT 1800"
+    );
+    await client.query(
+      `
+      UPDATE scenarios
+      SET time_limit_seconds = GREATEST(estimated_time_minutes * 60, 60)
+      WHERE time_limit_seconds <= 0
+      `
     );
 
     await client.query(`
@@ -1027,6 +1079,7 @@ export class Repository {
         expires_at TIMESTAMPTZ NOT NULL,
         hint_count INTEGER NOT NULL DEFAULT 0,
         submitted_at TIMESTAMPTZ,
+        termination_reason TEXT,
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       )
     `);
@@ -1036,6 +1089,9 @@ export class Repository {
     );
     await client.query(
       "ALTER TABLE sessions ADD COLUMN IF NOT EXISTS submitted_at TIMESTAMPTZ"
+    );
+    await client.query(
+      "ALTER TABLE sessions ADD COLUMN IF NOT EXISTS termination_reason TEXT"
     );
 
     await client.query(`
@@ -1092,16 +1148,6 @@ export class Repository {
   private async normalizeActiveSessions(client: PoolClient): Promise<void> {
     await client.query(
       `
-      UPDATE sessions
-      SET status = 'terminated',
-          submitted_at = COALESCE(submitted_at, NOW())
-      WHERE status IN ('active', 'submitted')
-        AND expires_at < NOW()
-      `
-    );
-
-    await client.query(
-      `
       WITH ranked AS (
         SELECT
           id,
@@ -1114,7 +1160,8 @@ export class Repository {
       )
       UPDATE sessions AS s
       SET status = 'terminated',
-          submitted_at = COALESCE(submitted_at, NOW())
+          submitted_at = COALESCE(submitted_at, NOW()),
+          termination_reason = COALESCE(termination_reason, 'superseded_active_session')
       FROM ranked AS r
       WHERE s.id = r.id
         AND r.rn > 1
@@ -1143,12 +1190,13 @@ export class Repository {
           objective,
           difficulty,
           estimated_time_minutes,
+          time_limit_seconds,
           tags,
           hints,
           status,
           updated_at
         )
-        VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, $8::jsonb, $9, NOW())
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb, $9::jsonb, $10, NOW())
         ON CONFLICT (id)
         DO UPDATE SET
           title = EXCLUDED.title,
@@ -1156,6 +1204,7 @@ export class Repository {
           objective = EXCLUDED.objective,
           difficulty = EXCLUDED.difficulty,
           estimated_time_minutes = EXCLUDED.estimated_time_minutes,
+          time_limit_seconds = EXCLUDED.time_limit_seconds,
           tags = EXCLUDED.tags,
           hints = EXCLUDED.hints,
           status = EXCLUDED.status,
@@ -1168,6 +1217,7 @@ export class Repository {
           scenario.objective,
           scenario.difficulty,
           scenario.estimatedTimeMinutes,
+          Math.max(scenario.estimatedTimeMinutes * 60, 60),
           JSON.stringify(scenario.tags),
           JSON.stringify(scenario.hints),
           scenario.status
