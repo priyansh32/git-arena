@@ -11,6 +11,16 @@ if (!rootElement) {
   throw new Error("Root element '#root' was not found.");
 }
 
+const PRERENDERED_ROUTES = new Set(["/", "/privacy", "/terms"]);
+
+function normalizePathname(pathname: string): string {
+  if (pathname.length > 1 && pathname.endsWith("/")) {
+    return pathname.slice(0, -1);
+  }
+
+  return pathname;
+}
+
 const app = (
   <React.StrictMode>
     <AuthProvider>
@@ -19,7 +29,10 @@ const app = (
   </React.StrictMode>
 );
 
-if (rootElement.hasChildNodes()) {
+const currentPath = normalizePathname(window.location.pathname);
+const shouldHydrate = rootElement.hasChildNodes() && PRERENDERED_ROUTES.has(currentPath);
+
+if (shouldHydrate) {
   hydrateRoot(rootElement, app);
 } else {
   createRoot(rootElement).render(app);

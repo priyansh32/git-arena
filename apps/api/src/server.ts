@@ -70,11 +70,16 @@ interface WebsocketLike {
   readyState: number;
   send: (data: string) => void;
   close: (code?: number, reason?: string) => void;
+  ping?: () => void;
+  terminate?: () => void;
+  on?: (event: string, listener: (...args: any[]) => void) => void;
 }
 
 const sessionSockets = new Map<string, Set<WebsocketLike>>();
 const websocketActivityMs = new Map<string, number>();
 const commandBuffersBySession = new Map<string, string>();
+const WEBSOCKET_HEARTBEAT_INTERVAL_MS = 25_000;
+const WEBSOCKET_HEARTBEAT_MISS_THRESHOLD = 2;
 
 function logAuditEvent(
   session: Session,
@@ -628,6 +633,8 @@ app.get("/ws/sessions/:id", { websocket: true } as any, (connection: any, reques
     registerSocket(session.id, connection.socket as WebsocketLike);
 
     const terminal = workspaceManager.openTerminal(session.id);
+    let missedPongCount = 0;
+    let heartbeatInterval: NodeJS.Timeout | null = null;
 
     const writeToSocket = (chunk: Buffer): void => {
       if (connection.socket.readyState === connection.socket.OPEN) {
@@ -658,6 +665,30 @@ app.get("/ws/sessions/:id", { websocket: true } as any, (connection: any, reques
       }
     });
 
+    if (typeof connection.socket.ping === "function") {
+      connection.socket.on?.("pong", () => {
+        missedPongCount = 0;
+      });
+
+      heartbeatInterval = setInterval(() => {
+        if (connection.socket.readyState !== connection.socket.OPEN) {
+          return;
+        }
+
+        missedPongCount += 1;
+        if (missedPongCount > WEBSOCKET_HEARTBEAT_MISS_THRESHOLD) {
+          app.log.warn(
+            { sessionId: session.id },
+            "WebSocket heartbeat missed pong threshold; terminating stale connection"
+          );
+          connection.socket.terminate?.();
+          return;
+        }
+
+        connection.socket.ping?.();
+      }, WEBSOCKET_HEARTBEAT_INTERVAL_MS);
+    }
+
     connection.socket.on("message", (data: any) => {
       if (!terminal.stdin.writable) {
         return;
@@ -674,6 +705,9 @@ app.get("/ws/sessions/:id", { websocket: true } as any, (connection: any, reques
     });
 
     connection.socket.on("close", () => {
+      if (heartbeatInterval) {
+        clearInterval(heartbeatInterval);
+      }
       unregisterSocket(session.id, connection.socket as WebsocketLike);
       logAuditEvent(session, "session.ws_disconnected");
 
