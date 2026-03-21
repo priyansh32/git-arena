@@ -46,6 +46,15 @@ All shell scripts support `-h` / `--help`.
   - Accepts image env aliases:
     - `AR_LOCATION` or `WORKSPACE_AR_LOCATION`
     - `AR_REPOSITORY` or `WORKSPACE_AR_REPOSITORY`
+- `scripts/gcp-stack.sh`
+  - One-command stack lifecycle with shared static IP + pre-shared SSL cert reuse:
+    - `./scripts/gcp-stack.sh down`
+    - `./scripts/gcp-stack.sh up`
+    - `./scripts/gcp-stack.sh redeploy`
+    - `./scripts/gcp-stack.sh status`
+  - Uses `deploy/k8s/api-deploy.env` (or `API_ENV_FILE`) for API deploy values.
+  - Ensures `API_GLOBAL_STATIC_IP_NAME` exists and reuses `API_PRE_SHARED_CERT_NAME`.
+  - Designed for "tear down everything, redeploy everything" without changing API IP/cert identity.
 
 ## Local Dev Helpers
 
@@ -55,7 +64,9 @@ All shell scripts support `-h` / `--help`.
     - `./scripts/dev-up.sh api docker`
     - `./scripts/dev-up.sh api k8s`
     - `./scripts/dev-up.sh web`
-    - `./scripts/dev-up.sh all docker|k8s` (starts api/web in background + postgres)
+    - `./scripts/dev-up.sh all docker|k8s` (starts api/web in background; postgres starts only when applicable)
+  - `k8s` mode defaults to Cloud SQL via `.dev-runtime/cloudsql.env`.
+  - Set `K8S_USE_CLOUDSQL=false` to force local docker-compose postgres in `k8s` mode.
   - Fails fast when API/web ports are already occupied (prints conflicting pid(s)).
 - `scripts/dev-down.sh`
   - Unified shutdown for local dev:
