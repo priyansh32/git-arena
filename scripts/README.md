@@ -61,6 +61,9 @@ All shell scripts support `-h` / `--help`.
   - Unified shutdown for local dev:
     - `./scripts/dev-down.sh api|web|postgres|all`
   - Also cleans stale repo-owned listeners on API/web ports by default (`FORCE_STALE_KILL=true`).
+- `scripts/scenario-publish.sh`
+  - Publishes `seed.sh` + `eval.sh` from `apps/api/scenarios/<scenario-id>` into DB-backed immutable scenario revisions.
+  - Passes through to `npm run scenario:publish`.
 
 Use these as the primary host-dev entrypoints.
 `launch.sh` remains available for compose-centric lifecycle commands.

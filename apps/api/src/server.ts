@@ -496,8 +496,19 @@ app.post("/api/v1/sessions", async (request, reply) => {
   }
 
   const session = await repository.createSession(user.id, payload.scenarioId);
+  const scenarioRuntime = await repository.getScenarioRuntimeForSession(session.id);
+  if (!scenarioRuntime) {
+    app.log.error(
+      { sessionId: session.id, scenarioId: session.scenarioId },
+      "Missing scenario runtime for newly created session"
+    );
+    await repository.terminateSession(session.id, user.id);
+    return reply.code(500).send({
+      message: "Scenario runtime is not available. Contact support."
+    });
+  }
   try {
-    await workspaceManager.ensureWorkspace(session);
+    await workspaceManager.ensureWorkspace(session, scenarioRuntime);
   } catch (error) {
     app.log.error(
       { error, sessionId: session.id },
@@ -528,8 +539,18 @@ app.get("/api/v1/sessions/:id", async (request, reply) => {
   }
 
   if (session.status === "active" || session.status === "submitted") {
+    const scenarioRuntime = await repository.getScenarioRuntimeForSession(session.id);
+    if (!scenarioRuntime) {
+      app.log.error(
+        { sessionId: session.id, scenarioId: session.scenarioId },
+        "Missing scenario runtime while ensuring session workspace"
+      );
+      return reply.code(503).send({
+        message: "Workspace is unavailable. Retry in a moment."
+      });
+    }
     try {
-      await workspaceManager.ensureWorkspace(session);
+      await workspaceManager.ensureWorkspace(session, scenarioRuntime);
     } catch (error) {
       app.log.error(
         { error, sessionId: session.id },
@@ -581,8 +602,14 @@ app.get("/ws/sessions/:id", { websocket: true } as any, (connection: any, reques
       return;
     }
 
+    const scenarioRuntime = await repository.getScenarioRuntimeForSession(session.id);
+    if (!scenarioRuntime) {
+      connection.socket.close(1011, "Scenario runtime unavailable");
+      return;
+    }
+
     try {
-      await workspaceManager.ensureWorkspace(session);
+      await workspaceManager.ensureWorkspace(session, scenarioRuntime);
     } catch (error) {
       app.log.error(
         { error, sessionId: session.id },
@@ -744,8 +771,18 @@ app.post("/api/v1/sessions/:id/submit", async (request, reply) => {
 
   let assertionResults: AssertionResult[] | undefined;
   if (session.status === "active" || session.status === "submitted") {
+    const scenarioRuntime = await repository.getScenarioRuntimeForSession(session.id);
+    if (!scenarioRuntime) {
+      app.log.error(
+        { sessionId: session.id, scenarioId: session.scenarioId },
+        "Missing scenario runtime while submitting session"
+      );
+      return reply.code(503).send({
+        message: "Workspace evaluator is unavailable. Try again shortly."
+      });
+    }
     try {
-      await workspaceManager.ensureWorkspace(session);
+      await workspaceManager.ensureWorkspace(session, scenarioRuntime);
     } catch (error) {
       app.log.error(
         { error, sessionId: session.id },
@@ -757,7 +794,7 @@ app.post("/api/v1/sessions/:id/submit", async (request, reply) => {
     }
 
     try {
-      assertionResults = await workspaceManager.evaluateWorkspace(session);
+      assertionResults = await workspaceManager.evaluateWorkspace(session, scenarioRuntime);
     } catch (error) {
       app.log.error(
         { error, sessionId: session.id, scenarioId: session.scenarioId },

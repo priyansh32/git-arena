@@ -33,7 +33,7 @@ Key files:
 - `src/workspace-manager.ts`
   - Docker/Kubernetes workspace lifecycle, terminal spawn, scenario seed/eval execution.
 - `src/scenario-runtime.ts`
-  - Maps scenario id to `seed.sh` + `eval.sh` files.
+  - Loads scenario `seed.sh` + `eval.sh` from `scenarios/<id>/` by convention.
 - `src/scenario-seed.ts`
   - Published scenario metadata inserted into DB.
 - `src/evaluation.ts`

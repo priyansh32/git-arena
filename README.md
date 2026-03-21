@@ -60,6 +60,14 @@ Run API scoring tests:
 npm run test -w @gitarena/api
 ```
 
+Publish scenario scripts to DB-backed revisions:
+
+```bash
+npm run scenario:publish -- --id detached-head-recovery
+# or
+./scripts/scenario-publish.sh --id detached-head-recovery
+```
+
 ## Docker
 
 Build and run the full stack:
@@ -128,7 +136,7 @@ This is a bootstrap foundation with:
 - Static scenario-authored hints served progressively per session
 - Docker-backed workspace container provisioning per active session
 - Scenario seed scripts that create a real Git challenge repository per workspace
-- Scenario scripts are modularized in `apps/api/scenarios/<scenario-id>/{seed.sh,eval.sh}`
+- Scenario runtime is DB-backed with immutable scenario revisions; local files are published via `scenario:publish`
 - Interactive terminal over websocket at session workspace route
 - Dashboard, workspace, result, and history routes
 - Google Sign-In with server-side session cookies and per-user API isolation

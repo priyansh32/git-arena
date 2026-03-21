@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 
 import type {
   AssertionResult,
@@ -10,6 +10,7 @@ import type {
 import { Pool, type PoolClient } from "pg";
 
 import { evaluateSubmission } from "./evaluation.js";
+import { getScenarioRuntime as getScenarioRuntimeFromFiles } from "./scenario-runtime.js";
 import { defaultScenarios } from "./scenario-seed.js";
 
 interface ScenarioRow {
@@ -29,6 +30,7 @@ interface SessionRow {
   id: string;
   user_id: string;
   scenario_id: string;
+  scenario_revision?: number;
   status: Session["status"];
   started_at: Date;
   ws_url: string;
@@ -90,6 +92,65 @@ interface MonitorSessionRow extends SessionRow {
   time_limit_seconds: number;
 }
 
+export interface ScenarioRuntime {
+  scenarioId: string;
+  version: number;
+  seedScript: string;
+  evaluatorScript: string;
+}
+
+export interface ScenarioPublishMetadata {
+  title: string;
+  description: string;
+  objective: string;
+  difficulty: Scenario["difficulty"];
+  estimatedTimeMinutes: number;
+  tags: string[];
+  hints: string[];
+  status: Scenario["status"];
+  timeLimitSeconds: number;
+}
+
+export interface PublishScenarioRevisionInput {
+  scenarioId: string;
+  seedScript: string;
+  evaluatorScript: string;
+  metadata?: ScenarioPublishMetadata;
+}
+
+export interface PublishedScenarioRevision {
+  scenarioId: string;
+  version: number;
+  checksum: string;
+  created: boolean;
+}
+
+interface ScenarioRevisionRow {
+  version: number;
+  checksum: string;
+  seed_script: string;
+  evaluator_script: string;
+}
+
+interface ScenarioRuntimeRow {
+  scenario_id: string;
+  version: number;
+  seed_script: string;
+  evaluator_script: string;
+}
+
+interface ScenarioPublishRow {
+  title: string;
+  description: string;
+  objective: string;
+  difficulty: Scenario["difficulty"];
+  estimated_time_minutes: number;
+  tags: unknown;
+  hints: unknown;
+  status: Scenario["status"];
+  time_limit_seconds: number;
+}
+
 function parseStringArray(value: unknown): string[] {
   if (!Array.isArray(value)) {
     return [];
@@ -131,6 +192,24 @@ function parseAssertions(value: unknown): AssertionResult[] {
       } satisfies AssertionResult;
     })
     .filter((item): item is AssertionResult => item !== null);
+}
+
+function computeScenarioRevisionChecksum(input: {
+  seedScript: string;
+  evaluatorScript: string;
+  objective: string;
+  hints: string[];
+  timeLimitSeconds: number;
+}): string {
+  const payload = JSON.stringify({
+    seedScript: input.seedScript.trim(),
+    evaluatorScript: input.evaluatorScript.trim(),
+    objective: input.objective.trim(),
+    hints: input.hints,
+    timeLimitSeconds: input.timeLimitSeconds
+  });
+
+  return createHash("sha256").update(payload).digest("hex");
 }
 
 function mapScenario(row: ScenarioRow): Scenario {
@@ -384,17 +463,20 @@ export class Repository {
     const result = await this.pool.query<ScenarioRow>(
       `
       SELECT
-        id,
-        title,
-        description,
-        objective,
-        difficulty,
-        estimated_time_minutes,
-        tags,
-        hints,
-        status
-      FROM scenarios
-      WHERE status = 'published'
+        sc.id,
+        sc.title,
+        sc.description,
+        sr.objective,
+        sc.difficulty,
+        sc.estimated_time_minutes,
+        sc.tags,
+        sr.hints,
+        sc.status
+      FROM scenarios AS sc
+      JOIN scenario_revisions AS sr
+        ON sr.scenario_id = sc.id
+       AND sr.version = sc.active_revision
+      WHERE sc.status = 'published'
       ORDER BY title ASC
       `
     );
@@ -406,17 +488,20 @@ export class Repository {
     const result = await this.pool.query<ScenarioRow>(
       `
       SELECT
-        id,
-        title,
-        description,
-        objective,
-        difficulty,
-        estimated_time_minutes,
-        tags,
-        hints,
-        status
-      FROM scenarios
-      WHERE id = $1
+        sc.id,
+        sc.title,
+        sc.description,
+        sr.objective,
+        sc.difficulty,
+        sc.estimated_time_minutes,
+        sc.tags,
+        sr.hints,
+        sc.status
+      FROM scenarios AS sc
+      JOIN scenario_revisions AS sr
+        ON sr.scenario_id = sc.id
+       AND sr.version = sc.active_revision
+      WHERE sc.id = $1
       LIMIT 1
       `,
       [id]
@@ -432,11 +517,19 @@ export class Repository {
   async createSession(userId: string, scenarioId: string): Promise<Session> {
     const sessionId = randomUUID();
     const startedAt = new Date();
-    const timingResult = await this.pool.query<{ time_limit_seconds: number }>(
+    const timingResult = await this.pool.query<{
+      time_limit_seconds: number;
+      active_revision: number;
+    }>(
       `
-      SELECT time_limit_seconds
-      FROM scenarios
-      WHERE id = $1
+      SELECT
+        sr.time_limit_seconds,
+        sc.active_revision
+      FROM scenarios AS sc
+      JOIN scenario_revisions AS sr
+        ON sr.scenario_id = sc.id
+       AND sr.version = sc.active_revision
+      WHERE sc.id = $1
       LIMIT 1
       `,
       [scenarioId]
@@ -447,6 +540,7 @@ export class Repository {
     }
 
     const timeLimitSeconds = Math.max(60, timingResult.rows[0].time_limit_seconds);
+    const scenarioRevision = Math.max(1, timingResult.rows[0].active_revision);
     const expiresAt = new Date(startedAt.getTime() + timeLimitSeconds * 1000);
 
     const insert: Session = {
@@ -467,6 +561,7 @@ export class Repository {
         id,
         user_id,
         scenario_id,
+        scenario_revision,
         status,
         started_at,
         ws_url,
@@ -474,11 +569,12 @@ export class Repository {
         expires_at,
         hint_count
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
       RETURNING
         id,
         user_id,
         scenario_id,
+        scenario_revision,
         status,
         started_at,
         ws_url,
@@ -490,6 +586,7 @@ export class Repository {
         insert.id,
         insert.userId,
         insert.scenarioId,
+        scenarioRevision,
         insert.status,
         insert.startedAt,
         insert.wsUrl,
@@ -509,6 +606,7 @@ export class Repository {
         id,
         user_id,
         scenario_id,
+        scenario_revision,
         status,
         started_at,
         ws_url,
@@ -538,6 +636,7 @@ export class Repository {
         id,
         user_id,
         scenario_id,
+        scenario_revision,
         status,
         started_at,
         ws_url,
@@ -567,23 +666,27 @@ export class Repository {
       UPDATE sessions AS s
       SET hint_count = s.hint_count + 1
       FROM scenarios AS sc
+      JOIN scenario_revisions AS sr
+        ON sr.scenario_id = sc.id
       WHERE s.id = $1
         AND s.user_id = $2
         AND s.scenario_id = sc.id
+        AND sr.version = s.scenario_revision
         AND s.status IN ('active', 'submitted')
         AND s.expires_at >= NOW()
       RETURNING
         s.id,
         s.user_id,
         s.scenario_id,
+        s.scenario_revision,
         s.status,
         s.started_at,
         s.ws_url,
         s.ws_token,
         s.expires_at,
         s.hint_count,
-        sc.objective AS scenario_objective,
-        sc.hints AS scenario_hints,
+        sr.objective AS scenario_objective,
+        sr.hints AS scenario_hints,
         sc.estimated_time_minutes AS scenario_estimated_time_minutes
       `,
       [sessionId, userId]
@@ -618,18 +721,22 @@ export class Repository {
           s.id,
           s.user_id,
           s.scenario_id,
+          s.scenario_revision,
           s.status,
           s.started_at,
           s.ws_url,
           s.ws_token,
           s.expires_at,
           s.hint_count,
-          sc.objective AS scenario_objective,
-          sc.hints AS scenario_hints,
+          sr.objective AS scenario_objective,
+          sr.hints AS scenario_hints,
           sc.estimated_time_minutes AS scenario_estimated_time_minutes
         FROM sessions AS s
         JOIN scenarios AS sc
           ON sc.id = s.scenario_id
+        JOIN scenario_revisions AS sr
+          ON sr.scenario_id = sc.id
+         AND sr.version = s.scenario_revision
         WHERE s.id = $1
           AND s.user_id = $2
         FOR UPDATE
@@ -727,6 +834,7 @@ export class Repository {
           id,
           user_id,
           scenario_id,
+          scenario_revision,
           status,
           started_at,
           ws_url,
@@ -837,6 +945,7 @@ export class Repository {
         id,
         user_id,
         scenario_id,
+        scenario_revision,
         status,
         started_at,
         ws_url,
@@ -870,6 +979,7 @@ export class Repository {
         id,
         user_id,
         scenario_id,
+        scenario_revision,
         status,
         started_at,
         ws_url,
@@ -896,6 +1006,7 @@ export class Repository {
         s.id,
         s.user_id,
         s.scenario_id,
+        s.scenario_revision,
         s.status,
         s.started_at,
         s.ws_url,
@@ -903,10 +1014,11 @@ export class Repository {
         s.expires_at,
         s.hint_count,
         s.termination_reason,
-        sc.time_limit_seconds
+        sr.time_limit_seconds
       FROM sessions AS s
-      JOIN scenarios AS sc
-        ON sc.id = s.scenario_id
+      JOIN scenario_revisions AS sr
+        ON sr.scenario_id = s.scenario_id
+       AND sr.version = s.scenario_revision
       WHERE s.status IN ('active', 'submitted')
       ORDER BY s.started_at ASC
       `
@@ -916,6 +1028,273 @@ export class Repository {
       session: mapSession(row),
       timeLimitSeconds: row.time_limit_seconds
     }));
+  }
+
+  async getScenarioRuntimeForSession(sessionId: string): Promise<ScenarioRuntime | null> {
+    const result = await this.pool.query<ScenarioRuntimeRow>(
+      `
+      SELECT
+        s.scenario_id,
+        s.scenario_revision AS version,
+        sr.seed_script,
+        sr.evaluator_script
+      FROM sessions AS s
+      JOIN scenario_revisions AS sr
+        ON sr.scenario_id = s.scenario_id
+       AND sr.version = s.scenario_revision
+      WHERE s.id = $1
+      LIMIT 1
+      `,
+      [sessionId]
+    );
+
+    if (!result.rowCount) {
+      return null;
+    }
+
+    return {
+      scenarioId: result.rows[0].scenario_id,
+      version: result.rows[0].version,
+      seedScript: result.rows[0].seed_script,
+      evaluatorScript: result.rows[0].evaluator_script
+    };
+  }
+
+  async publishScenarioRevision(
+    input: PublishScenarioRevisionInput
+  ): Promise<PublishedScenarioRevision> {
+    const client = await this.pool.connect();
+
+    try {
+      await client.query("BEGIN");
+
+      const scenarioResult = await client.query<ScenarioPublishRow>(
+        `
+        SELECT
+          title,
+          description,
+          objective,
+          difficulty,
+          estimated_time_minutes,
+          tags,
+          hints,
+          status,
+          time_limit_seconds
+        FROM scenarios
+        WHERE id = $1
+        FOR UPDATE
+        `,
+        [input.scenarioId]
+      );
+
+      let effectiveMetadata: ScenarioPublishMetadata;
+
+      if (!scenarioResult.rowCount) {
+        if (!input.metadata) {
+          throw new Error(
+            `Scenario '${input.scenarioId}' does not exist. Provide full metadata to create it.`
+          );
+        }
+
+        effectiveMetadata = input.metadata;
+        await client.query(
+          `
+          INSERT INTO scenarios (
+            id,
+            title,
+            description,
+            objective,
+            difficulty,
+            estimated_time_minutes,
+            time_limit_seconds,
+            tags,
+            hints,
+            status,
+            active_revision,
+            updated_at
+          )
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb, $9::jsonb, $10, 1, NOW())
+          `,
+          [
+            input.scenarioId,
+            effectiveMetadata.title,
+            effectiveMetadata.description,
+            effectiveMetadata.objective,
+            effectiveMetadata.difficulty,
+            effectiveMetadata.estimatedTimeMinutes,
+            Math.max(60, effectiveMetadata.timeLimitSeconds),
+            JSON.stringify(effectiveMetadata.tags),
+            JSON.stringify(effectiveMetadata.hints),
+            effectiveMetadata.status
+          ]
+        );
+      } else {
+        const row = scenarioResult.rows[0];
+        effectiveMetadata = {
+          title: input.metadata?.title ?? row.title,
+          description: input.metadata?.description ?? row.description,
+          objective: input.metadata?.objective ?? row.objective,
+          difficulty: input.metadata?.difficulty ?? row.difficulty,
+          estimatedTimeMinutes:
+            input.metadata?.estimatedTimeMinutes ?? row.estimated_time_minutes,
+          tags: input.metadata?.tags ?? parseStringArray(row.tags),
+          hints: input.metadata?.hints ?? parseStringArray(row.hints),
+          status: input.metadata?.status ?? row.status,
+          timeLimitSeconds: Math.max(
+            60,
+            input.metadata?.timeLimitSeconds ?? row.time_limit_seconds
+          )
+        };
+
+        if (input.metadata) {
+          await client.query(
+            `
+            UPDATE scenarios
+            SET title = $2,
+                description = $3,
+                objective = $4,
+                difficulty = $5,
+                estimated_time_minutes = $6,
+                time_limit_seconds = $7,
+                tags = $8::jsonb,
+                hints = $9::jsonb,
+                status = $10,
+                updated_at = NOW()
+            WHERE id = $1
+            `,
+            [
+              input.scenarioId,
+              effectiveMetadata.title,
+              effectiveMetadata.description,
+              effectiveMetadata.objective,
+              effectiveMetadata.difficulty,
+              effectiveMetadata.estimatedTimeMinutes,
+              effectiveMetadata.timeLimitSeconds,
+              JSON.stringify(effectiveMetadata.tags),
+              JSON.stringify(effectiveMetadata.hints),
+              effectiveMetadata.status
+            ]
+          );
+        }
+      }
+
+      const checksum = computeScenarioRevisionChecksum({
+        seedScript: input.seedScript,
+        evaluatorScript: input.evaluatorScript,
+        objective: effectiveMetadata.objective,
+        hints: effectiveMetadata.hints,
+        timeLimitSeconds: effectiveMetadata.timeLimitSeconds
+      });
+
+      const latestRevisionResult = await client.query<ScenarioRevisionRow>(
+        `
+        SELECT
+          version,
+          checksum,
+          seed_script,
+          evaluator_script
+        FROM scenario_revisions
+        WHERE scenario_id = $1
+        ORDER BY version DESC
+        LIMIT 1
+        `,
+        [input.scenarioId]
+      );
+
+      const latestRevision = latestRevisionResult.rows[0];
+      const scriptsUnchanged =
+        latestRevision &&
+        latestRevision.seed_script === input.seedScript &&
+        latestRevision.evaluator_script === input.evaluatorScript &&
+        latestRevision.checksum === checksum;
+
+      if (scriptsUnchanged) {
+        await client.query(
+          `
+          UPDATE scenarios
+          SET objective = $2,
+              hints = $3::jsonb,
+              time_limit_seconds = $4,
+              active_revision = $5,
+              updated_at = NOW()
+          WHERE id = $1
+          `,
+          [
+            input.scenarioId,
+            effectiveMetadata.objective,
+            JSON.stringify(effectiveMetadata.hints),
+            effectiveMetadata.timeLimitSeconds,
+            latestRevision.version
+          ]
+        );
+        await client.query("COMMIT");
+        return {
+          scenarioId: input.scenarioId,
+          version: latestRevision.version,
+          checksum,
+          created: false
+        };
+      }
+
+      const nextVersion = latestRevision ? latestRevision.version + 1 : 1;
+      await client.query(
+        `
+        INSERT INTO scenario_revisions (
+          scenario_id,
+          version,
+          objective,
+          hints,
+          seed_script,
+          evaluator_script,
+          time_limit_seconds,
+          checksum
+        )
+        VALUES ($1, $2, $3, $4::jsonb, $5, $6, $7, $8)
+        `,
+        [
+          input.scenarioId,
+          nextVersion,
+          effectiveMetadata.objective,
+          JSON.stringify(effectiveMetadata.hints),
+          input.seedScript,
+          input.evaluatorScript,
+          effectiveMetadata.timeLimitSeconds,
+          checksum
+        ]
+      );
+
+      await client.query(
+        `
+        UPDATE scenarios
+        SET objective = $2,
+            hints = $3::jsonb,
+            time_limit_seconds = $4,
+            active_revision = $5,
+            updated_at = NOW()
+        WHERE id = $1
+        `,
+        [
+          input.scenarioId,
+          effectiveMetadata.objective,
+          JSON.stringify(effectiveMetadata.hints),
+          effectiveMetadata.timeLimitSeconds,
+          nextVersion
+        ]
+      );
+
+      await client.query("COMMIT");
+      return {
+        scenarioId: input.scenarioId,
+        version: nextVersion,
+        checksum,
+        created: true
+      };
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    } finally {
+      client.release();
+    }
   }
 
   private async getLatestAttemptForSession(
@@ -1049,6 +1428,7 @@ export class Repository {
         tags JSONB NOT NULL DEFAULT '[]'::jsonb,
         hints JSONB NOT NULL DEFAULT '[]'::jsonb,
         status TEXT NOT NULL CHECK (status IN ('draft', 'testing', 'published', 'deprecated')),
+        active_revision INTEGER NOT NULL DEFAULT 1 CHECK (active_revision > 0),
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
         updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       )
@@ -1060,18 +1440,43 @@ export class Repository {
       "ALTER TABLE scenarios ADD COLUMN IF NOT EXISTS time_limit_seconds INTEGER NOT NULL DEFAULT 1800"
     );
     await client.query(
+      "ALTER TABLE scenarios ADD COLUMN IF NOT EXISTS active_revision INTEGER NOT NULL DEFAULT 1"
+    );
+    await client.query(
+      `
+      UPDATE scenarios
+      SET active_revision = 1
+      WHERE active_revision <= 0
+      `
+    );
+    await client.query(
       `
       UPDATE scenarios
       SET time_limit_seconds = GREATEST(estimated_time_minutes * 60, 60)
       WHERE time_limit_seconds <= 0
       `
     );
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS scenario_revisions (
+        scenario_id TEXT NOT NULL REFERENCES scenarios(id) ON DELETE CASCADE,
+        version INTEGER NOT NULL CHECK (version > 0),
+        objective TEXT NOT NULL,
+        hints JSONB NOT NULL DEFAULT '[]'::jsonb,
+        seed_script TEXT NOT NULL,
+        evaluator_script TEXT NOT NULL,
+        time_limit_seconds INTEGER NOT NULL CHECK (time_limit_seconds > 0),
+        checksum TEXT NOT NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        PRIMARY KEY (scenario_id, version)
+      )
+    `);
 
     await client.query(`
       CREATE TABLE IF NOT EXISTS sessions (
         id TEXT PRIMARY KEY,
         user_id TEXT NOT NULL,
         scenario_id TEXT NOT NULL REFERENCES scenarios(id),
+        scenario_revision INTEGER NOT NULL DEFAULT 1,
         status TEXT NOT NULL CHECK (status IN ('pending', 'active', 'submitted', 'evaluated', 'terminated')),
         started_at TIMESTAMPTZ NOT NULL,
         ws_url TEXT NOT NULL,
@@ -1086,6 +1491,23 @@ export class Repository {
 
     await client.query(
       "ALTER TABLE sessions ADD COLUMN IF NOT EXISTS hint_count INTEGER NOT NULL DEFAULT 0"
+    );
+    await client.query(
+      "ALTER TABLE sessions ADD COLUMN IF NOT EXISTS scenario_revision INTEGER NOT NULL DEFAULT 1"
+    );
+    await client.query(
+      `
+      UPDATE sessions AS s
+      SET scenario_revision = sc.active_revision
+      FROM scenarios AS sc
+      WHERE s.scenario_id = sc.id
+        AND NOT EXISTS (
+          SELECT 1
+          FROM scenario_revisions AS sr
+          WHERE sr.scenario_id = s.scenario_id
+            AND sr.version = s.scenario_revision
+        )
+      `
     );
     await client.query(
       "ALTER TABLE sessions ADD COLUMN IF NOT EXISTS submitted_at TIMESTAMPTZ"
@@ -1127,6 +1549,12 @@ export class Repository {
     );
     await client.query(
       "CREATE INDEX IF NOT EXISTS sessions_scenario_id_idx ON sessions (scenario_id)"
+    );
+    await client.query(
+      "CREATE INDEX IF NOT EXISTS sessions_scenario_revision_idx ON sessions (scenario_id, scenario_revision)"
+    );
+    await client.query(
+      "CREATE INDEX IF NOT EXISTS scenario_revisions_scenario_id_idx ON scenario_revisions (scenario_id)"
     );
     await client.query(
       "CREATE INDEX IF NOT EXISTS attempts_user_id_idx ON attempts (user_id)"
@@ -1194,21 +1622,12 @@ export class Repository {
           tags,
           hints,
           status,
+          active_revision,
           updated_at
         )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb, $9::jsonb, $10, NOW())
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb, $9::jsonb, $10, 1, NOW())
         ON CONFLICT (id)
-        DO UPDATE SET
-          title = EXCLUDED.title,
-          description = EXCLUDED.description,
-          objective = EXCLUDED.objective,
-          difficulty = EXCLUDED.difficulty,
-          estimated_time_minutes = EXCLUDED.estimated_time_minutes,
-          time_limit_seconds = EXCLUDED.time_limit_seconds,
-          tags = EXCLUDED.tags,
-          hints = EXCLUDED.hints,
-          status = EXCLUDED.status,
-          updated_at = NOW()
+        DO NOTHING
         `,
         [
           scenario.id,
@@ -1222,6 +1641,97 @@ export class Repository {
           JSON.stringify(scenario.hints),
           scenario.status
         ]
+      );
+
+      const metadataResult = await client.query<ScenarioPublishRow>(
+        `
+        SELECT
+          title,
+          description,
+          objective,
+          difficulty,
+          estimated_time_minutes,
+          tags,
+          hints,
+          status,
+          time_limit_seconds
+        FROM scenarios
+        WHERE id = $1
+        LIMIT 1
+        `,
+        [scenario.id]
+      );
+
+      if (!metadataResult.rowCount) {
+        throw new Error(`Missing scenario metadata row for '${scenario.id}'`);
+      }
+
+      const existingRevisionResult = await client.query<{ version: number }>(
+        `
+        SELECT version
+        FROM scenario_revisions
+        WHERE scenario_id = $1
+        ORDER BY version DESC
+        LIMIT 1
+        `,
+        [scenario.id]
+      );
+
+      if (existingRevisionResult.rowCount) {
+        continue;
+      }
+
+      const metadataRow = metadataResult.rows[0];
+      const objective = metadataRow.objective;
+      const hints = parseStringArray(metadataRow.hints);
+      const timeLimitSeconds = Math.max(60, metadataRow.time_limit_seconds);
+      const runtime = getScenarioRuntimeFromFiles(scenario.id);
+      const checksum = computeScenarioRevisionChecksum({
+        seedScript: runtime.seedScript,
+        evaluatorScript: runtime.evaluatorScript,
+        objective,
+        hints,
+        timeLimitSeconds
+      });
+
+      await client.query(
+        `
+        INSERT INTO scenario_revisions (
+          scenario_id,
+          version,
+          objective,
+          hints,
+          seed_script,
+          evaluator_script,
+          time_limit_seconds,
+          checksum
+        )
+        VALUES ($1, 1, $2, $3::jsonb, $4, $5, $6, $7)
+        ON CONFLICT (scenario_id, version)
+        DO NOTHING
+        `,
+        [
+          scenario.id,
+          objective,
+          JSON.stringify(hints),
+          runtime.seedScript,
+          runtime.evaluatorScript,
+          timeLimitSeconds,
+          checksum
+        ]
+      );
+
+      await client.query(
+        `
+        UPDATE scenarios
+        SET active_revision = 1,
+            objective = $2,
+            hints = $3::jsonb,
+            time_limit_seconds = $4,
+            updated_at = NOW()
+        WHERE id = $1
+        `,
+        [scenario.id, objective, JSON.stringify(hints), timeLimitSeconds]
       );
     }
   }

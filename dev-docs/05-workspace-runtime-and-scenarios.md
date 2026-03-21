@@ -24,19 +24,25 @@ Each active session gets its own isolated runtime.
 
 Creation path in code:
 
-- `WorkspaceManager.ensureWorkspace(session)`
+- API loads pinned runtime scripts for the session via `Repository.getScenarioRuntimeForSession(sessionId)`
+- `WorkspaceManager.ensureWorkspace(session, runtime)`
 - checks existing running runtime
 - recreates if missing
 - runs scenario seed script
 
-## Scenario Runtime Registry
+## Scenario Runtime Storage
 
-`apps/api/src/scenario-runtime.ts` maps scenario id to script files:
+Scenario runtime is stored in DB table `scenario_revisions`:
 
-- `seedPath` -> setup script
-- `evaluatorPath` -> grading script
+- immutable revisions per `scenario_id + version`
+- each revision stores:
+  - `seed_script`
+  - `evaluator_script`
+  - `objective`, `hints`, and `time_limit_seconds`
+- `scenarios.active_revision` points to the currently published revision
+- each session stores `sessions.scenario_revision` so seed/eval stays pinned even if a new revision is published later
 
-Scripts are cached in memory after first load for runtime efficiency.
+Local scenario files are still used as authoring inputs, then published into DB.
 
 ## Scenario File Structure
 
@@ -84,7 +90,8 @@ Parser in `workspace-manager.ts`:
 - `interactive-rebase-cleanup`
 - `remote-divergence-resolution`
 
-Scenario metadata is declared in `src/scenario-seed.ts` and seeded/upserted into DB by `Repository.init()`.
+Bootstrap metadata defaults are declared in `src/scenario-seed.ts`.
+On first initialization, defaults are inserted if missing.
 
 ## Add a New Scenario
 
@@ -92,16 +99,28 @@ Scenario metadata is declared in `src/scenario-seed.ts` and seeded/upserted into
 - `apps/api/scenarios/<new-id>/seed.sh`
 - `apps/api/scenarios/<new-id>/eval.sh`
 
-2. Register runtime mapping in `src/scenario-runtime.ts`.
+2. Publish the scripts as a DB revision:
 
-3. Add scenario metadata in `src/scenario-seed.ts`:
-- id, title, description, objective
-- difficulty, estimated time
-- tags, hints, status
+```bash
+npm run scenario:publish -- --id <new-id> --dir apps/api/scenarios/<new-id> \
+  --title "<title>" \
+  --description "<description>" \
+  --objective "<objective>" \
+  --difficulty beginner \
+  --estimated-time-minutes 20 \
+  --time-limit-seconds 1200 \
+  --status testing \
+  --tag git --tag branching \
+  --hint "start with git status"
+```
 
-4. Restart API so initialization seeds/upserts new scenario.
+3. Re-publish after script edits:
 
-5. Validate by creating session and submitting in UI or API.
+```bash
+npm run scenario:publish -- --id <new-id>
+```
+
+This creates a new immutable revision and switches `active_revision`.
 
 ## Terminal Interactivity Notes
 

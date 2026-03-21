@@ -7,44 +7,23 @@ export interface ScenarioRuntime {
   evaluatorScript: string;
 }
 
-interface ScenarioRuntimeFileMap {
-  seedPath: string;
-  evaluatorPath: string;
-}
-
 const moduleDir = dirname(fileURLToPath(import.meta.url));
 const scenarioScriptsDir = resolve(moduleDir, "../scenarios");
 const runtimeCache = new Map<string, ScenarioRuntime>();
 
-const scenarioRuntimeFiles: Record<string, ScenarioRuntimeFileMap> = {
-  "detached-head-recovery": {
-    seedPath: "detached-head-recovery/seed.sh",
-    evaluatorPath: "detached-head-recovery/eval.sh"
-  },
-  "interactive-rebase-cleanup": {
-    seedPath: "interactive-rebase-cleanup/seed.sh",
-    evaluatorPath: "interactive-rebase-cleanup/eval.sh"
-  },
-  "remote-divergence-resolution": {
-    seedPath: "remote-divergence-resolution/seed.sh",
-    evaluatorPath: "remote-divergence-resolution/eval.sh"
-  }
-};
-
 export function getScenarioRuntime(scenarioId: string): ScenarioRuntime {
+  if (!isValidScenarioId(scenarioId)) {
+    throw new Error(`Invalid scenario id '${scenarioId}'`);
+  }
+
   const cachedRuntime = runtimeCache.get(scenarioId);
   if (cachedRuntime) {
     return cachedRuntime;
   }
 
-  const runtimeFiles = scenarioRuntimeFiles[scenarioId];
-  if (!runtimeFiles) {
-    throw new Error(`No runtime definition found for scenario '${scenarioId}'`);
-  }
-
   const runtime: ScenarioRuntime = {
-    seedScript: readScript(runtimeFiles.seedPath),
-    evaluatorScript: readScript(runtimeFiles.evaluatorPath)
+    seedScript: readScript(`${scenarioId}/seed.sh`),
+    evaluatorScript: readScript(`${scenarioId}/eval.sh`)
   };
 
   runtimeCache.set(scenarioId, runtime);
@@ -69,4 +48,8 @@ function formatError(error: unknown): string {
   }
 
   return String(error);
+}
+
+function isValidScenarioId(value: string): boolean {
+  return /^[a-zA-Z0-9._-]+$/.test(value);
 }

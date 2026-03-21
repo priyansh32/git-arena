@@ -357,8 +357,12 @@ export class SessionMonitor {
 
   private async runAutoEvaluation(session: Session): Promise<AssertionResult[] | undefined> {
     try {
-      await this.options.workspaceManager.ensureWorkspace(session);
-      return await this.options.workspaceManager.evaluateWorkspace(session);
+      const runtime = await this.options.repository.getScenarioRuntimeForSession(session.id);
+      if (!runtime) {
+        throw new Error(`Scenario runtime not found for session '${session.id}'`);
+      }
+      await this.options.workspaceManager.ensureWorkspace(session, runtime);
+      return await this.options.workspaceManager.evaluateWorkspace(session, runtime);
     } catch (error) {
       this.options.logger.error(
         { error, sessionId: session.id, scenarioId: session.scenarioId },

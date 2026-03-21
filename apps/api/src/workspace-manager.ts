@@ -4,7 +4,6 @@ import { cpus } from "node:os";
 import type { AssertionResult, Session } from "@gitarena/shared";
 
 import type { WorkspaceConfig } from "./config.js";
-import { getScenarioRuntime } from "./scenario-runtime.js";
 import {
   runDockerCommand,
   runKubectlCommand,
@@ -35,6 +34,11 @@ export interface WorkspaceRuntimeMetrics {
 export interface WorkspaceHealthStatus {
   status: "healthy" | "unhealthy" | "unknown" | "unsupported";
   reason: string;
+}
+
+export interface WorkspaceScenarioRuntime {
+  seedScript: string;
+  evaluatorScript: string;
 }
 
 const BYTES_PER_MB = 1024 * 1024;
@@ -150,13 +154,13 @@ export class WorkspaceManager {
     return this.getContainerName(sessionId);
   }
 
-  async ensureWorkspace(session: Session): Promise<void> {
+  async ensureWorkspace(session: Session, runtime: WorkspaceScenarioRuntime): Promise<void> {
     if (this.config.provider === "kubernetes") {
-      await this.ensureKubernetesWorkspace(session);
+      await this.ensureKubernetesWorkspace(session, runtime);
       return;
     }
 
-    await this.ensureDockerWorkspace(session);
+    await this.ensureDockerWorkspace(session, runtime);
   }
 
   async stopWorkspace(sessionId: string): Promise<void> {
@@ -168,11 +172,17 @@ export class WorkspaceManager {
     await this.removeWorkspaceByName(this.getContainerName(sessionId));
   }
 
-  async evaluateWorkspace(session: Session): Promise<AssertionResult[]> {
+  async evaluateWorkspace(
+    session: Session,
+    runtime: WorkspaceScenarioRuntime
+  ): Promise<AssertionResult[]> {
     const output =
       this.config.provider === "kubernetes"
-        ? await this.runScriptInPod(this.getPodName(session.id), getScenarioRuntime(session.scenarioId).evaluatorScript)
-        : await this.runScriptInContainer(this.getContainerName(session.id), getScenarioRuntime(session.scenarioId).evaluatorScript);
+        ? await this.runScriptInPod(this.getPodName(session.id), runtime.evaluatorScript)
+        : await this.runScriptInContainer(
+            this.getContainerName(session.id),
+            runtime.evaluatorScript
+          );
 
     const assertions = parseAssertions(output.stdout);
 
@@ -227,7 +237,10 @@ export class WorkspaceManager {
     return await this.collectDockerHealthStatus(this.getContainerName(sessionId));
   }
 
-  private async ensureDockerWorkspace(session: Session): Promise<void> {
+  private async ensureDockerWorkspace(
+    session: Session,
+    runtime: WorkspaceScenarioRuntime
+  ): Promise<void> {
     const containerName = this.getContainerName(session.id);
     const running = await this.isContainerRunning(containerName);
 
@@ -239,7 +252,7 @@ export class WorkspaceManager {
     await this.createWorkspaceContainer(containerName, session);
 
     try {
-      await this.seedScenarioWorkspace(containerName, session.scenarioId);
+      await this.seedScenarioWorkspace(containerName, runtime.seedScript);
     } catch (error) {
       await this.removeWorkspaceByName(containerName);
       throw new WorkspaceProvisionError(
@@ -298,7 +311,10 @@ export class WorkspaceManager {
     });
   }
 
-  private async ensureKubernetesWorkspace(session: Session): Promise<void> {
+  private async ensureKubernetesWorkspace(
+    session: Session,
+    runtime: WorkspaceScenarioRuntime
+  ): Promise<void> {
     const podName = this.getPodName(session.id);
     const podState = await this.getPodState(podName);
 
@@ -312,7 +328,7 @@ export class WorkspaceManager {
       if (refreshedState.seeded) {
         return;
       }
-      await this.seedScenarioPod(podName, session.scenarioId);
+      await this.seedScenarioPod(podName, runtime.seedScript);
       await this.markPodSeeded(podName);
       return;
     }
@@ -322,7 +338,7 @@ export class WorkspaceManager {
 
     try {
       await this.waitForPodReady(podName);
-      await this.seedScenarioPod(podName, session.scenarioId);
+      await this.seedScenarioPod(podName, runtime.seedScript);
       await this.markPodSeeded(podName);
     } catch (error) {
       await this.removePodByName(podName);
@@ -438,15 +454,13 @@ export class WorkspaceManager {
 
   private async seedScenarioWorkspace(
     containerName: string,
-    scenarioId: string
+    seedScript: string
   ): Promise<void> {
-    const runtime = getScenarioRuntime(scenarioId);
-    await this.runScriptInContainer(containerName, runtime.seedScript);
+    await this.runScriptInContainer(containerName, seedScript);
   }
 
-  private async seedScenarioPod(podName: string, scenarioId: string): Promise<void> {
-    const runtime = getScenarioRuntime(scenarioId);
-    await this.runScriptInPod(podName, runtime.seedScript);
+  private async seedScenarioPod(podName: string, seedScript: string): Promise<void> {
+    await this.runScriptInPod(podName, seedScript);
   }
 
   private async runScriptInContainer(
