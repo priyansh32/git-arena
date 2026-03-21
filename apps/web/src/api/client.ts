@@ -11,7 +11,7 @@ import type {
 } from "@gitarena/shared";
 import { CSRF_HEADER_NAME } from "@gitarena/shared";
 
-const API_BASE = "/api/v1";
+const API_BASE = (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? "/api/v1";
 let csrfToken: string | null = null;
 
 function setCsrfToken(nextToken: string | null | undefined): void {

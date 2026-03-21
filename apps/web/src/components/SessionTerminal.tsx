@@ -11,12 +11,23 @@ interface SessionTerminalProps {
 }
 
 function buildSocketUrl(path: string, token: string): string {
-  const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-  const host = window.location.host;
   const normalizedPath = path.startsWith("/") ? path : `/${path}`;
-  const search = new URLSearchParams({ token });
+  const wsBaseUrl = import.meta.env.VITE_WS_BASE_URL as string | undefined;
 
-  return `${protocol}//${host}${normalizedPath}?${search.toString()}`;
+  if (/^wss?:\/\//i.test(path)) {
+    const url = new URL(path);
+    url.searchParams.set("token", token);
+    return url.toString();
+  }
+
+  const base =
+    wsBaseUrl && /^wss?:\/\//i.test(wsBaseUrl)
+      ? wsBaseUrl
+      : `${window.location.protocol === "https:" ? "wss:" : "ws:"}//${window.location.host}`;
+
+  const url = new URL(normalizedPath, base.endsWith("/") ? base : `${base}/`);
+  url.searchParams.set("token", token);
+  return url.toString();
 }
 
 function readCssVar(name: string, fallback: string): string {
