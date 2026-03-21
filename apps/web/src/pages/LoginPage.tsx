@@ -122,10 +122,10 @@ export function LoginPage() {
       <article className="panel login-card">
         <p className="login-brand">
           <GitBranch aria-hidden="true" className="inline-icon" size={14} />
-          GitArena
+          git-arena
         </p>
         <h1 className="login-title">Practice Real Git Workflows</h1>
-        <p className="login-copy">Sign in with Google to start an isolated GitArena session.</p>
+        <p className="login-copy">Sign in with Google to start an isolated git-arena session.</p>
 
         <div className="google-button-slot" ref={mountRef} />
         {loading && (

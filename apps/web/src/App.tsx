@@ -71,7 +71,7 @@ export default function App() {
       <header className="mobile-topbar">
         <Link className="mobile-brand" to="/dashboard">
           <GitBranch aria-hidden="true" className="inline-icon" size={16} />
-          GitArena
+          git-arena
         </Link>
         <button
           aria-expanded={mobileNavOpen}
@@ -134,7 +134,7 @@ export default function App() {
         <div className="sidebar-brand">
           <Link className="sidebar-brand-link" to="/dashboard">
             <GitBranch aria-hidden="true" className="inline-icon" size={16} />
-            GitArena
+            git-arena
           </Link>
           <span className="sidebar-brand-note">Git Practice Platform</span>
         </div>

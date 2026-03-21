@@ -1,10 +1,12 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import type { Scenario, Session } from "@gitarena/shared";
 import {
   Activity,
   ArrowDownWideNarrow,
   ArrowRight,
+  Check,
+  ChevronDown,
   Clock3,
   Gauge,
   RotateCcw,
@@ -14,6 +16,9 @@ import {
 } from "lucide-react";
 
 import { fetchActiveSession, fetchScenarios } from "../api/client";
+
+type ScenarioSort = "default" | "timeAsc" | "timeDesc" | "difficulty";
+type DashboardMenu = "difficulty" | "commonality" | "tags" | "sort";
 
 function getRemainingLabel(expiresAt: string): string {
   const remainingMs = new Date(expiresAt).getTime() - Date.now();
@@ -38,6 +43,32 @@ function getCommonalityLabel(commonality: Scenario["commonality"]): string {
   return "Rare";
 }
 
+function getDifficultyLabel(difficulty: Scenario["difficulty"] | "all"): string {
+  if (difficulty === "beginner") {
+    return "Beginner";
+  }
+  if (difficulty === "intermediate") {
+    return "Intermediate";
+  }
+  if (difficulty === "advanced") {
+    return "Advanced";
+  }
+  return "All";
+}
+
+function getSortLabel(sortBy: ScenarioSort): string {
+  if (sortBy === "timeAsc") {
+    return "Time (Short to Long)";
+  }
+  if (sortBy === "timeDesc") {
+    return "Time (Long to Short)";
+  }
+  if (sortBy === "difficulty") {
+    return "Difficulty";
+  }
+  return "Default";
+}
+
 export function DashboardPage() {
   const [scenarios, setScenarios] = useState<Scenario[]>([]);
   const [activeSession, setActiveSession] = useState<Session | null>(null);
@@ -49,7 +80,9 @@ export function DashboardPage() {
     "all"
   );
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
-  const [sortBy, setSortBy] = useState<"default" | "timeAsc" | "timeDesc" | "difficulty">("default");
+  const [sortBy, setSortBy] = useState<ScenarioSort>("default");
+  const [openMenu, setOpenMenu] = useState<DashboardMenu | null>(null);
+  const controlsRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
     const run = async () => {
@@ -69,6 +102,33 @@ export function DashboardPage() {
     };
 
     void run();
+  }, []);
+
+  useEffect(() => {
+    const handlePointerDown = (event: MouseEvent) => {
+      const target = event.target;
+      if (!(target instanceof Node)) {
+        return;
+      }
+
+      if (!controlsRef.current?.contains(target)) {
+        setOpenMenu(null);
+      }
+    };
+
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setOpenMenu(null);
+      }
+    };
+
+    document.addEventListener("mousedown", handlePointerDown);
+    document.addEventListener("keydown", handleEscape);
+
+    return () => {
+      document.removeEventListener("mousedown", handlePointerDown);
+      document.removeEventListener("keydown", handleEscape);
+    };
   }, []);
 
   const activeScenarioTitle =
@@ -143,13 +203,27 @@ export function DashboardPage() {
     );
   };
 
+  const toggleMenu = (menu: DashboardMenu) => {
+    setOpenMenu((current) => (current === menu ? null : menu));
+  };
+
+  const closeMenus = () => {
+    setOpenMenu(null);
+  };
+
   const resetControls = () => {
     setSearchQuery("");
     setDifficultyFilter("all");
     setCommonalityFilter("all");
     setSelectedTags([]);
     setSortBy("default");
+    setOpenMenu(null);
   };
+
+  const difficultyLabel = getDifficultyLabel(difficultyFilter);
+  const commonalityLabel =
+    commonalityFilter === "all" ? "All" : getCommonalityLabel(commonalityFilter);
+  const sortLabel = getSortLabel(sortBy);
 
   if (loading) {
     return (
@@ -216,7 +290,11 @@ export function DashboardPage() {
         </article>
       )}
 
-      <section className="scenario-controls" aria-label="Scenario search, filter, and sort controls">
+      <section
+        className="scenario-controls"
+        aria-label="Scenario search, filter, and sort controls"
+        ref={controlsRef}
+      >
         <label className="control-search">
           <span className="control-search-icon" aria-hidden="true">
             <Search aria-hidden="true" size={16} />
@@ -233,103 +311,213 @@ export function DashboardPage() {
           />
         </label>
 
-        <div className="control-field">
-          <span className="control-field-icon" aria-hidden="true">
-            <Gauge size={16} />
-          </span>
-          <select
-            aria-label="Filter by difficulty"
-            className="control-select"
-            onChange={(event) => {
-              setDifficultyFilter(event.target.value as Scenario["difficulty"] | "all");
-            }}
-            value={difficultyFilter}
-          >
-            <option value="all">Difficulty: All</option>
-            <option value="beginner">Difficulty: Beginner</option>
-            <option value="intermediate">Difficulty: Intermediate</option>
-            <option value="advanced">Difficulty: Advanced</option>
-          </select>
-        </div>
-
-        <div className="control-field">
-          <span className="control-field-icon" aria-hidden="true">
-            <Activity size={16} />
-          </span>
-          <select
-            aria-label="Filter by commonality"
-            className="control-select"
-            onChange={(event) => {
-              setCommonalityFilter(event.target.value as Scenario["commonality"] | "all");
-            }}
-            value={commonalityFilter}
-          >
-            <option value="all">Commonality: All</option>
-            <option value="very_common">Commonality: Very Common</option>
-            <option value="common">Commonality: Common</option>
-            <option value="occasional">Commonality: Occasional</option>
-            <option value="rare">Commonality: Rare</option>
-          </select>
-        </div>
-
-        <details className="control-multiselect control-field">
-          <span className="control-field-icon" aria-hidden="true">
-            <Tags size={16} />
-          </span>
-          <summary className="control-select control-select-summary">
-            {selectedTags.length === 0 ? "Tags: All" : `Tags: ${selectedTags.length} selected`}
-          </summary>
-          <div className="control-menu">
-            {availableTags.length === 0 ? (
-              <p className="control-menu-empty">No tags available</p>
-            ) : (
-              <>
-                <div className="control-menu-options">
-                  {availableTags.map((tag) => (
-                    <label className="control-option" key={tag}>
-                      <input
-                        checked={selectedTags.includes(tag)}
-                        onChange={() => {
-                          toggleTag(tag);
-                        }}
-                        type="checkbox"
-                      />
-                      <span>{tag}</span>
-                    </label>
-                  ))}
-                </div>
-                <button
-                  className="control-clear"
-                  onClick={() => {
-                    setSelectedTags([]);
-                  }}
-                  type="button"
-                >
-                  <RotateCcw aria-hidden="true" className="inline-icon" size={14} />
-                  Clear tags
-                </button>
-              </>
+        <div className="control-group">
+          <div className="control-dropdown">
+            <button
+              aria-expanded={openMenu === "difficulty"}
+              aria-haspopup="listbox"
+              className="control-trigger"
+              onClick={() => {
+                toggleMenu("difficulty");
+              }}
+              type="button"
+            >
+              <span className="control-trigger-label">
+                <Gauge aria-hidden="true" className="inline-icon" size={15} />
+                Difficulty: {difficultyLabel}
+              </span>
+              <ChevronDown
+                aria-hidden="true"
+                className={`inline-icon control-chevron${openMenu === "difficulty" ? " open" : ""}`}
+                size={14}
+              />
+            </button>
+            {openMenu === "difficulty" && (
+              <div aria-label="Difficulty options" className="control-menu" role="listbox">
+                {[
+                  { label: "All", value: "all" as const },
+                  { label: "Beginner", value: "beginner" as const },
+                  { label: "Intermediate", value: "intermediate" as const },
+                  { label: "Advanced", value: "advanced" as const }
+                ].map((option) => (
+                  <button
+                    className={`control-item${difficultyFilter === option.value ? " active" : ""}`}
+                    key={option.value}
+                    onClick={() => {
+                      setDifficultyFilter(option.value);
+                      closeMenus();
+                    }}
+                    role="option"
+                    type="button"
+                  >
+                    <span className="control-item-check" aria-hidden="true">
+                      {difficultyFilter === option.value && <Check className="inline-icon" size={13} />}
+                    </span>
+                    <span>{option.label}</span>
+                  </button>
+                ))}
+              </div>
             )}
           </div>
-        </details>
 
-        <div className="control-field">
-          <span className="control-field-icon" aria-hidden="true">
-            <ArrowDownWideNarrow size={16} />
-          </span>
-          <select
-            aria-label="Sort scenarios"
-            className="control-select"
-            onChange={(event) => {
-              setSortBy(event.target.value as "default" | "timeAsc" | "timeDesc" | "difficulty");
-            }}
-            value={sortBy}
-          >
-            <option value="default">Sort: Default</option>
-            <option value="timeAsc">Sort: Time (Shortest to Longest)</option>
-            <option value="timeDesc">Sort: Time (Longest to Shortest)</option>
-            <option value="difficulty">Sort: Difficulty</option>
-          </select>
+          <div className="control-dropdown">
+            <button
+              aria-expanded={openMenu === "commonality"}
+              aria-haspopup="listbox"
+              className="control-trigger"
+              onClick={() => {
+                toggleMenu("commonality");
+              }}
+              type="button"
+            >
+              <span className="control-trigger-label">
+                <Activity aria-hidden="true" className="inline-icon" size={15} />
+                Commonality: {commonalityLabel}
+              </span>
+              <ChevronDown
+                aria-hidden="true"
+                className={`inline-icon control-chevron${openMenu === "commonality" ? " open" : ""}`}
+                size={14}
+              />
+            </button>
+            {openMenu === "commonality" && (
+              <div aria-label="Commonality options" className="control-menu" role="listbox">
+                {[
+                  { label: "All", value: "all" as const },
+                  { label: "Very Common", value: "very_common" as const },
+                  { label: "Common", value: "common" as const },
+                  { label: "Occasional", value: "occasional" as const },
+                  { label: "Rare", value: "rare" as const }
+                ].map((option) => (
+                  <button
+                    className={`control-item${commonalityFilter === option.value ? " active" : ""}`}
+                    key={option.value}
+                    onClick={() => {
+                      setCommonalityFilter(option.value);
+                      closeMenus();
+                    }}
+                    role="option"
+                    type="button"
+                  >
+                    <span className="control-item-check" aria-hidden="true">
+                      {commonalityFilter === option.value && <Check className="inline-icon" size={13} />}
+                    </span>
+                    <span>{option.label}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="control-dropdown">
+            <button
+              aria-expanded={openMenu === "tags"}
+              aria-haspopup="listbox"
+              className="control-trigger"
+              onClick={() => {
+                toggleMenu("tags");
+              }}
+              type="button"
+            >
+              <span className="control-trigger-label">
+                <Tags aria-hidden="true" className="inline-icon" size={15} />
+                {selectedTags.length === 0 ? "Tags: All" : `Tags: ${selectedTags.length}`}
+              </span>
+              <ChevronDown
+                aria-hidden="true"
+                className={`inline-icon control-chevron${openMenu === "tags" ? " open" : ""}`}
+                size={14}
+              />
+            </button>
+            {openMenu === "tags" && (
+              <div aria-label="Tag options" className="control-menu control-menu-tags" role="listbox">
+                {availableTags.length === 0 ? (
+                  <p className="control-menu-empty">No tags available</p>
+                ) : (
+                  <>
+                    <div className="control-menu-options">
+                      {availableTags.map((tag) => (
+                        <button
+                          className={`control-item${selectedTags.includes(tag) ? " active" : ""}`}
+                          key={tag}
+                          onClick={() => {
+                            toggleTag(tag);
+                          }}
+                          role="option"
+                          type="button"
+                        >
+                          <span className="control-item-check" aria-hidden="true">
+                            {selectedTags.includes(tag) && <Check className="inline-icon" size={13} />}
+                          </span>
+                          <span>{tag}</span>
+                        </button>
+                      ))}
+                    </div>
+                    <div className="control-menu-actions">
+                      <button
+                        className="control-clear"
+                        onClick={() => {
+                          setSelectedTags([]);
+                        }}
+                        type="button"
+                      >
+                        <RotateCcw aria-hidden="true" className="inline-icon" size={14} />
+                        Clear tags
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+
+          <div className="control-dropdown">
+            <button
+              aria-expanded={openMenu === "sort"}
+              aria-haspopup="listbox"
+              className="control-trigger"
+              onClick={() => {
+                toggleMenu("sort");
+              }}
+              type="button"
+            >
+              <span className="control-trigger-label">
+                <ArrowDownWideNarrow aria-hidden="true" className="inline-icon" size={15} />
+                Sort: {sortLabel}
+              </span>
+              <ChevronDown
+                aria-hidden="true"
+                className={`inline-icon control-chevron${openMenu === "sort" ? " open" : ""}`}
+                size={14}
+              />
+            </button>
+            {openMenu === "sort" && (
+              <div aria-label="Sort options" className="control-menu" role="listbox">
+                {[
+                  { label: "Default", value: "default" as const },
+                  { label: "Time (Short to Long)", value: "timeAsc" as const },
+                  { label: "Time (Long to Short)", value: "timeDesc" as const },
+                  { label: "Difficulty", value: "difficulty" as const }
+                ].map((option) => (
+                  <button
+                    className={`control-item${sortBy === option.value ? " active" : ""}`}
+                    key={option.value}
+                    onClick={() => {
+                      setSortBy(option.value);
+                      closeMenus();
+                    }}
+                    role="option"
+                    type="button"
+                  >
+                    <span className="control-item-check" aria-hidden="true">
+                      {sortBy === option.value && <Check className="inline-icon" size={13} />}
+                    </span>
+                    <span>{option.label}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </section>
 
