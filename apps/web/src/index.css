@@ -53,6 +53,14 @@ a {
   transition: all 0.2s ease;
 }
 
+.inline-icon {
+  flex: 0 0 auto;
+}
+
+.title-icon {
+  color: var(--accent-primary);
+}
+
 button,
 input,
 select,
@@ -103,6 +111,7 @@ textarea {
 .sidebar-brand-link {
   display: inline-flex;
   align-items: center;
+  gap: 8px;
   width: fit-content;
   padding: 2px 0;
   font-size: 18px;
@@ -132,7 +141,13 @@ textarea {
   color: var(--text-secondary);
   display: inline-flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
+}
+
+.sidebar-link-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .sidebar-link:hover {
@@ -257,6 +272,12 @@ textarea {
   font-size: clamp(26px, 3vw, 34px);
   line-height: 1.2;
   letter-spacing: -0.02em;
+}
+
+.page-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
 }
 
 .page-header p {
@@ -388,6 +409,9 @@ textarea {
 }
 
 .text-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   width: fit-content;
   color: var(--accent-primary);
   font-weight: 600;
@@ -479,6 +503,9 @@ textarea {
 
 .metric-card dd {
   margin: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
   font-size: clamp(28px, 3vw, 34px);
   line-height: 1;
   font-weight: 800;
@@ -498,6 +525,9 @@ textarea {
 
 .login-brand {
   margin: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
   font-family: var(--font-mono);
   font-size: 12px;
   color: var(--accent-primary);
@@ -580,6 +610,7 @@ textarea {
 
 .control-input,
 .control-select {
+  appearance: none;
   min-height: 42px;
   border-radius: 8px;
   border: 1px solid #404a58;
@@ -604,6 +635,30 @@ textarea {
   max-width: 100%;
 }
 
+.control-field {
+  position: relative;
+  flex: 0 1 248px;
+  min-width: 200px;
+  max-width: 100%;
+}
+
+.control-field-icon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  width: 16px;
+  height: 16px;
+  color: #8f98a8;
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+
+.control-field .control-select {
+  width: 100%;
+  padding-left: 36px;
+  padding-right: 28px;
+}
+
 .control-input:focus-visible,
 .control-select:focus-visible {
   border-color: var(--accent-primary);
@@ -613,9 +668,10 @@ textarea {
 
 .control-multiselect {
   position: relative;
-  flex: 0 1 248px;
-  min-width: 200px;
-  max-width: 100%;
+}
+
+.control-multiselect.control-field .control-select-summary {
+  padding-left: 36px;
 }
 
 .control-multiselect > summary {
@@ -688,6 +744,9 @@ textarea {
 
 .control-clear,
 .control-reset-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   border: 0;
   background: transparent;
   color: var(--accent-primary);
@@ -714,6 +773,9 @@ textarea {
 
 .active-session-banner-title {
   margin: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   font-size: 14px;
   color: var(--accent-primary);
   font-family: var(--font-mono);
@@ -763,6 +825,12 @@ textarea {
   align-items: center;
   gap: 8px;
   min-width: 0;
+}
+
+.scenario-time-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .commonality-pill {
@@ -895,6 +963,12 @@ textarea {
   margin: 0;
 }
 
+.section-title-with-icon {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .scenario-main p {
   margin: 0;
   color: var(--text-readable);
@@ -917,6 +991,9 @@ textarea {
 }
 
 .scenario-meta-time {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   color: var(--text-readable);
   font-size: 13px;
 }
@@ -987,6 +1064,12 @@ textarea {
 .workspace-sidebar p {
   margin: 0;
   color: var(--text-secondary);
+}
+
+.workspace-label-with-icon {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .workspace-countdown {
@@ -1285,12 +1368,21 @@ textarea {
   background: color-mix(in srgb, var(--bg-surface) 88%, #000 12%);
 }
 
+.table-head-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
 .history-table td.score-col,
 .history-table td.date-col {
   font-family: var(--font-mono);
 }
 
 .history-table a {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   color: var(--accent-primary);
 }
 
@@ -1335,6 +1427,9 @@ textarea {
   }
 
   .mobile-brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
     font-weight: 700;
     letter-spacing: 0.02em;
   }

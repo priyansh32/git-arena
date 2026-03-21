@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import type { Attempt, Scenario, Session } from "@gitarena/shared";
+import { CheckCircle2, RotateCcw, ShieldCheck, Trophy, XCircle } from "lucide-react";
 
 import { fetchScenario, fetchSessionResult } from "../api/client";
 
@@ -60,6 +61,7 @@ export function SessionResultPage() {
         <article className="panel state-surface">
           <p className="state-text error">{error ?? "Result not found"}</p>
           <Link className="text-link" to="/dashboard">
+            <RotateCcw aria-hidden="true" className="inline-icon" size={13} />
             Back to catalog
           </Link>
         </article>
@@ -70,7 +72,10 @@ export function SessionResultPage() {
   return (
     <section className="page">
       <article className="panel result-hero">
-        <h1>{scenario?.title ?? "Session Result"}</h1>
+        <h1 className="page-title">
+          <Trophy aria-hidden="true" className="inline-icon title-icon" size={20} />
+          {scenario?.title ?? "Session Result"}
+        </h1>
         <p className="state-text">{attempt.passed ? "Passed" : "Not passed"}</p>
         <div className={`score-pill-hero ${attempt.passed ? "pass" : "fail"}`}>{scoreLabel}</div>
       </article>
@@ -97,7 +102,11 @@ export function SessionResultPage() {
               <tr key={assertion.checkId}>
                 <td>
                   <span className={`assertion-icon ${assertion.passed ? "pass" : "fail"}`}>
-                    {assertion.passed ? "OK" : "X"}
+                    {assertion.passed ? (
+                      <CheckCircle2 aria-hidden="true" className="inline-icon" size={14} />
+                    ) : (
+                      <XCircle aria-hidden="true" className="inline-icon" size={14} />
+                    )}
                   </span>
                 </td>
                 <td>
@@ -114,9 +123,11 @@ export function SessionResultPage() {
 
       <div className="scenario-card-top">
         <Link className="button button-primary" to={`/scenarios/${session.scenarioId}`}>
+          <RotateCcw aria-hidden="true" className="inline-icon" size={15} />
           Retry Scenario
         </Link>
         <Link className="button button-secondary" to="/history">
+          <ShieldCheck aria-hidden="true" className="inline-icon" size={15} />
           View History
         </Link>
       </div>

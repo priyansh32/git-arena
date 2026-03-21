@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { GitBranch, LogIn } from "lucide-react";
 
 import { useAuth } from "../auth/AuthContext";
 
@@ -119,12 +120,20 @@ export function LoginPage() {
   return (
     <section className="auth-layout page">
       <article className="panel login-card">
-        <p className="login-brand">GitArena</p>
+        <p className="login-brand">
+          <GitBranch aria-hidden="true" className="inline-icon" size={14} />
+          GitArena
+        </p>
         <h1 className="login-title">Practice Real Git Workflows</h1>
         <p className="login-copy">Sign in with Google to start an isolated GitArena session.</p>
 
         <div className="google-button-slot" ref={mountRef} />
-        {loading && <p className="state-text">Loading Google sign-in...</p>}
+        {loading && (
+          <p className="state-text">
+            <LogIn aria-hidden="true" className="inline-icon" size={14} />
+            Loading Google sign-in...
+          </p>
+        )}
         {error && <p className="state-text error">{error}</p>}
       </article>
     </section>

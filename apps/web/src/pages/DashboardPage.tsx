@@ -1,6 +1,17 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import type { Scenario, Session } from "@gitarena/shared";
+import {
+  Activity,
+  ArrowDownWideNarrow,
+  ArrowRight,
+  Clock3,
+  Gauge,
+  RotateCcw,
+  Search,
+  Tags,
+  TerminalSquare
+} from "lucide-react";
 
 import { fetchActiveSession, fetchScenarios } from "../api/client";
 
@@ -144,7 +155,10 @@ export function DashboardPage() {
     return (
       <section className="page dashboard-page" aria-busy="true" aria-live="polite">
         <header className="page-header">
-          <h1>Scenario Catalog</h1>
+          <h1 className="page-title">
+            <Gauge aria-hidden="true" className="inline-icon title-icon" size={20} />
+            Scenario Catalog
+          </h1>
           <p>Choose a scenario to start an isolated Git session.</p>
         </header>
         <div className="skeleton skeleton-card" />
@@ -161,7 +175,10 @@ export function DashboardPage() {
     return (
       <section className="page dashboard-page">
         <header className="page-header">
-          <h1>Scenario Catalog</h1>
+          <h1 className="page-title">
+            <Gauge aria-hidden="true" className="inline-icon title-icon" size={20} />
+            Scenario Catalog
+          </h1>
           <p>Choose a scenario to start an isolated Git session.</p>
         </header>
         <article className="panel state-surface">
@@ -174,18 +191,25 @@ export function DashboardPage() {
   return (
     <section className="page dashboard-page">
       <header className="page-header">
-        <h1>Scenario Catalog</h1>
+        <h1 className="page-title">
+          <Gauge aria-hidden="true" className="inline-icon title-icon" size={20} />
+          Scenario Catalog
+        </h1>
         <p>Choose a scenario to start an isolated Git session.</p>
       </header>
 
       {activeSession && (
         <article className="panel active-session-banner">
-          <p className="active-session-banner-title">Active Session</p>
+          <p className="active-session-banner-title">
+            <Activity aria-hidden="true" className="inline-icon" size={14} />
+            Active Session
+          </p>
           <div className="active-session-row">
             <p>
               <span className="mono">{activeScenarioTitle}</span> - {getRemainingLabel(activeSession.expiresAt)}
             </p>
             <Link className="button button-primary" to={`/sessions/${activeSession.id}`}>
+              <TerminalSquare aria-hidden="true" className="inline-icon" size={15} />
               Resume Workspace
             </Link>
           </div>
@@ -195,12 +219,7 @@ export function DashboardPage() {
       <section className="scenario-controls" aria-label="Scenario search, filter, and sort controls">
         <label className="control-search">
           <span className="control-search-icon" aria-hidden="true">
-            <svg fill="none" viewBox="0 0 20 20">
-              <path
-                d="M8.5 2.5a6 6 0 104.2 10.3l3.5 3.5a1 1 0 001.4-1.4l-3.5-3.5A6 6 0 008.5 2.5zm0 2a4 4 0 110 8 4 4 0 010-8z"
-                fill="currentColor"
-              />
-            </svg>
+            <Search aria-hidden="true" size={16} />
           </span>
           <input
             aria-label="Search scenarios"
@@ -214,36 +233,49 @@ export function DashboardPage() {
           />
         </label>
 
-        <select
-          aria-label="Filter by difficulty"
-          className="control-select"
-          onChange={(event) => {
-            setDifficultyFilter(event.target.value as Scenario["difficulty"] | "all");
-          }}
-          value={difficultyFilter}
-        >
-          <option value="all">Difficulty: All</option>
-          <option value="beginner">Difficulty: Beginner</option>
-          <option value="intermediate">Difficulty: Intermediate</option>
-          <option value="advanced">Difficulty: Advanced</option>
-        </select>
+        <div className="control-field">
+          <span className="control-field-icon" aria-hidden="true">
+            <Gauge size={16} />
+          </span>
+          <select
+            aria-label="Filter by difficulty"
+            className="control-select"
+            onChange={(event) => {
+              setDifficultyFilter(event.target.value as Scenario["difficulty"] | "all");
+            }}
+            value={difficultyFilter}
+          >
+            <option value="all">Difficulty: All</option>
+            <option value="beginner">Difficulty: Beginner</option>
+            <option value="intermediate">Difficulty: Intermediate</option>
+            <option value="advanced">Difficulty: Advanced</option>
+          </select>
+        </div>
 
-        <select
-          aria-label="Filter by commonality"
-          className="control-select"
-          onChange={(event) => {
-            setCommonalityFilter(event.target.value as Scenario["commonality"] | "all");
-          }}
-          value={commonalityFilter}
-        >
-          <option value="all">Commonality: All</option>
-          <option value="very_common">Commonality: Very Common</option>
-          <option value="common">Commonality: Common</option>
-          <option value="occasional">Commonality: Occasional</option>
-          <option value="rare">Commonality: Rare</option>
-        </select>
+        <div className="control-field">
+          <span className="control-field-icon" aria-hidden="true">
+            <Activity size={16} />
+          </span>
+          <select
+            aria-label="Filter by commonality"
+            className="control-select"
+            onChange={(event) => {
+              setCommonalityFilter(event.target.value as Scenario["commonality"] | "all");
+            }}
+            value={commonalityFilter}
+          >
+            <option value="all">Commonality: All</option>
+            <option value="very_common">Commonality: Very Common</option>
+            <option value="common">Commonality: Common</option>
+            <option value="occasional">Commonality: Occasional</option>
+            <option value="rare">Commonality: Rare</option>
+          </select>
+        </div>
 
-        <details className="control-multiselect">
+        <details className="control-multiselect control-field">
+          <span className="control-field-icon" aria-hidden="true">
+            <Tags size={16} />
+          </span>
           <summary className="control-select control-select-summary">
             {selectedTags.length === 0 ? "Tags: All" : `Tags: ${selectedTags.length} selected`}
           </summary>
@@ -273,6 +305,7 @@ export function DashboardPage() {
                   }}
                   type="button"
                 >
+                  <RotateCcw aria-hidden="true" className="inline-icon" size={14} />
                   Clear tags
                 </button>
               </>
@@ -280,19 +313,24 @@ export function DashboardPage() {
           </div>
         </details>
 
-        <select
-          aria-label="Sort scenarios"
-          className="control-select"
-          onChange={(event) => {
-            setSortBy(event.target.value as "default" | "timeAsc" | "timeDesc" | "difficulty");
-          }}
-          value={sortBy}
-        >
-          <option value="default">Sort: Default</option>
-          <option value="timeAsc">Sort: Time (Shortest to Longest)</option>
-          <option value="timeDesc">Sort: Time (Longest to Shortest)</option>
-          <option value="difficulty">Sort: Difficulty</option>
-        </select>
+        <div className="control-field">
+          <span className="control-field-icon" aria-hidden="true">
+            <ArrowDownWideNarrow size={16} />
+          </span>
+          <select
+            aria-label="Sort scenarios"
+            className="control-select"
+            onChange={(event) => {
+              setSortBy(event.target.value as "default" | "timeAsc" | "timeDesc" | "difficulty");
+            }}
+            value={sortBy}
+          >
+            <option value="default">Sort: Default</option>
+            <option value="timeAsc">Sort: Time (Shortest to Longest)</option>
+            <option value="timeDesc">Sort: Time (Longest to Shortest)</option>
+            <option value="difficulty">Sort: Difficulty</option>
+          </select>
+        </div>
       </section>
 
       <p className="state-text scenario-controls-meta">
@@ -306,6 +344,7 @@ export function DashboardPage() {
             {" "}
             -{" "}
             <button className="control-reset-link" onClick={resetControls} type="button">
+              <RotateCcw aria-hidden="true" className="inline-icon" size={13} />
               Reset controls
             </button>
           </>
@@ -328,7 +367,10 @@ export function DashboardPage() {
                   {getCommonalityLabel(scenario.commonality)}
                 </span>
               </div>
-              <span className="mono state-text">~{scenario.estimatedTimeMinutes}m</span>
+              <span className="mono state-text scenario-time-chip">
+                <Clock3 aria-hidden="true" className="inline-icon" size={13} />
+                ~{scenario.estimatedTimeMinutes}m
+              </span>
             </div>
 
             <h2 className="scenario-title">{scenario.title}</h2>
@@ -346,6 +388,7 @@ export function DashboardPage() {
               className="button button-primary button-block scenario-card-cta"
               to={`/scenarios/${scenario.id}`}
             >
+              <ArrowRight aria-hidden="true" className="inline-icon" size={15} />
               Open Scenario
             </Link>
           </article>

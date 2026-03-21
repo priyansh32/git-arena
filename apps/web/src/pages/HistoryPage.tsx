@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import type { Attempt, Scenario } from "@gitarena/shared";
+import { CalendarDays, Eye, History, Trophy } from "lucide-react";
 
 import { fetchScenarios, fetchUserHistory } from "../api/client";
 
@@ -38,7 +39,10 @@ export function HistoryPage() {
     return (
       <section className="page" aria-busy="true" aria-live="polite">
         <header className="page-header">
-          <h1>Attempt History</h1>
+          <h1 className="page-title">
+            <History aria-hidden="true" className="inline-icon title-icon" size={20} />
+            Attempt History
+          </h1>
           <p>Your past attempts and scores across all scenarios.</p>
         </header>
         <div className="skeleton skeleton-card" />
@@ -50,7 +54,10 @@ export function HistoryPage() {
     return (
       <section className="page">
         <header className="page-header">
-          <h1>Attempt History</h1>
+          <h1 className="page-title">
+            <History aria-hidden="true" className="inline-icon title-icon" size={20} />
+            Attempt History
+          </h1>
           <p>Your past attempts and scores across all scenarios.</p>
         </header>
         <article className="panel state-surface">
@@ -63,7 +70,10 @@ export function HistoryPage() {
   return (
     <section className="page">
       <header className="page-header">
-        <h1>Attempt History</h1>
+        <h1 className="page-title">
+          <History aria-hidden="true" className="inline-icon title-icon" size={20} />
+          Attempt History
+        </h1>
         <p>Your past attempts and scores across all scenarios.</p>
       </header>
 
@@ -71,6 +81,7 @@ export function HistoryPage() {
         <article className="panel state-surface">
           <p className="state-text">No attempts yet. Start a scenario from the dashboard.</p>
           <Link className="button button-primary" to="/dashboard">
+            <Trophy aria-hidden="true" className="inline-icon" size={15} />
             Browse Scenarios
           </Link>
         </article>
@@ -79,10 +90,20 @@ export function HistoryPage() {
           <table className="history-table">
             <thead>
               <tr>
-                <th>Date</th>
+                <th>
+                  <span className="table-head-label">
+                    <CalendarDays aria-hidden="true" className="inline-icon" size={13} />
+                    Date
+                  </span>
+                </th>
                 <th>Scenario</th>
                 <th>Status</th>
-                <th>Score</th>
+                <th>
+                  <span className="table-head-label">
+                    <Trophy aria-hidden="true" className="inline-icon" size={13} />
+                    Score
+                  </span>
+                </th>
                 <th>Result</th>
               </tr>
             </thead>
@@ -98,7 +119,10 @@ export function HistoryPage() {
                   </td>
                   <td className="score-col">{attempt.score}</td>
                   <td>
-                    <Link to={`/sessions/${attempt.sessionId}/result`}>View</Link>
+                    <Link to={`/sessions/${attempt.sessionId}/result`}>
+                      <Eye aria-hidden="true" className="inline-icon" size={13} />
+                      View
+                    </Link>
                   </td>
                 </tr>
               ))}

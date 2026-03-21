@@ -1,6 +1,16 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import type { Attempt, CreateSessionConflictResponse, Scenario } from "@gitarena/shared";
+import {
+  ArrowLeft,
+  ArrowRight,
+  Clock3,
+  Gauge,
+  Lightbulb,
+  PlayCircle,
+  Target,
+  Trophy
+} from "lucide-react";
 
 import { createSession, fetchScenario, fetchScenarioAttempts, isApiError } from "../api/client";
 
@@ -103,6 +113,7 @@ export function ScenarioDetailPage() {
     return (
       <section className="page">
         <Link className="text-link" to="/dashboard">
+          <ArrowLeft aria-hidden="true" className="inline-icon" size={14} />
           Back to catalog
         </Link>
         <article className="panel state-surface">
@@ -125,13 +136,17 @@ export function ScenarioDetailPage() {
   return (
     <section className="page">
       <Link className="text-link" to="/dashboard">
+        <ArrowLeft aria-hidden="true" className="inline-icon" size={14} />
         Back to catalog
       </Link>
 
       <div className="scenario-detail-layout">
         <article className="panel scenario-main scenario-main-column">
           <header className="page-header">
-            <h1>{scenario.title}</h1>
+            <h1 className="page-title">
+              <Target aria-hidden="true" className="inline-icon title-icon" size={20} />
+              {scenario.title}
+            </h1>
             <p>{scenario.description}</p>
           </header>
 
@@ -143,24 +158,39 @@ export function ScenarioDetailPage() {
             <span aria-hidden="true" className="scenario-meta-separator">
               •
             </span>
-            <span className="mono scenario-meta-time">~{scenario.estimatedTimeMinutes}m</span>
+            <span className="mono scenario-meta-time">
+              <Clock3 aria-hidden="true" className="inline-icon" size={13} />
+              ~{scenario.estimatedTimeMinutes}m
+            </span>
           </div>
 
-          <h2>Objective</h2>
+          <h2 className="section-title-with-icon">
+            <Target aria-hidden="true" className="inline-icon" size={16} />
+            Objective
+          </h2>
           <p>{scenario.objective}</p>
 
           <dl className="metric-grid">
             <div className="metric-card">
               <dt>Hints Available</dt>
-              <dd>{scenario.hints.length}</dd>
+              <dd>
+                <Lightbulb aria-hidden="true" className="inline-icon" size={20} />
+                {scenario.hints.length}
+              </dd>
             </div>
             <div className="metric-card">
               <dt>Total Attempts</dt>
-              <dd>{attempts.length}</dd>
+              <dd>
+                <Gauge aria-hidden="true" className="inline-icon" size={20} />
+                {attempts.length}
+              </dd>
             </div>
             <div className="metric-card">
               <dt>Best Score</dt>
-              <dd>{bestScore ?? "-"}</dd>
+              <dd>
+                <Trophy aria-hidden="true" className="inline-icon" size={20} />
+                {bestScore ?? "-"}
+              </dd>
             </div>
           </dl>
 
@@ -174,7 +204,10 @@ export function ScenarioDetailPage() {
         </article>
 
         <aside className="panel scenario-actions scenario-actions-column">
-          <h2>Session</h2>
+          <h2 className="section-title-with-icon">
+            <PlayCircle aria-hidden="true" className="inline-icon" size={16} />
+            Session
+          </h2>
           <p className="state-text">Start a new terminal session for this scenario.</p>
           <button
             className="button button-primary button-block"
@@ -182,10 +215,14 @@ export function ScenarioDetailPage() {
             onClick={handleStart}
             type="button"
           >
+            {!starting && <PlayCircle aria-hidden="true" className="inline-icon" size={16} />}
             {starting ? "Provisioning..." : "Start Session"}
           </button>
 
-          <h3>Recent Attempts</h3>
+          <h3 className="section-title-with-icon">
+            <Gauge aria-hidden="true" className="inline-icon" size={15} />
+            Recent Attempts
+          </h3>
           {attempts.length === 0 ? (
             <p className="state-text">No attempts yet.</p>
           ) : (
@@ -200,6 +237,7 @@ export function ScenarioDetailPage() {
                   </div>
                   <p className="mono">{new Date(attempt.evaluatedAt).toLocaleString()}</p>
                   <Link className="text-link" to={`/sessions/${attempt.sessionId}/result`}>
+                    <ArrowRight aria-hidden="true" className="inline-icon" size={13} />
                     View Result
                   </Link>
                 </article>

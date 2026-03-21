@@ -1,6 +1,16 @@
 import { Suspense, lazy, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import type { Scenario, Session } from "@gitarena/shared";
+import {
+  ArrowLeft,
+  Clock3,
+  Flag,
+  Lightbulb,
+  LogOut,
+  SendHorizontal,
+  Terminal,
+  Zap
+} from "lucide-react";
 
 import {
   fetchScenario,
@@ -208,6 +218,7 @@ export function SessionWorkspacePage() {
         <article className="panel state-surface">
           <p className="state-text error">{error}</p>
           <Link className="text-link" to="/dashboard">
+            <ArrowLeft aria-hidden="true" className="inline-icon" size={13} />
             Back to catalog
           </Link>
         </article>
@@ -225,7 +236,10 @@ export function SessionWorkspacePage() {
           </header>
 
           <div>
-            <p className="state-text">Time Remaining</p>
+            <p className="state-text workspace-label-with-icon">
+              <Clock3 aria-hidden="true" className="inline-icon" size={13} />
+              Time Remaining
+            </p>
             <div className="workspace-countdown">{remaining}</div>
           </div>
 
@@ -237,12 +251,18 @@ export function SessionWorkspacePage() {
           </div>
 
           <section className="workspace-hints">
-            <h2>Objective</h2>
+            <h2 className="section-title-with-icon">
+              <Flag aria-hidden="true" className="inline-icon" size={16} />
+              Objective
+            </h2>
             <p>{scenario?.objective ?? "No objective available."}</p>
           </section>
 
           <section className="workspace-hints">
-            <h3>Hints</h3>
+            <h3 className="section-title-with-icon">
+              <Lightbulb aria-hidden="true" className="inline-icon" size={16} />
+              Hints
+            </h3>
             <p className="state-text">
               Requested {revealedHints.length}/{scenario?.hints.length ?? 0}
             </p>
@@ -271,6 +291,7 @@ export function SessionWorkspacePage() {
             onClick={onSubmit}
             type="button"
           >
+            {!submitLoading && <SendHorizontal aria-hidden="true" className="inline-icon" size={15} />}
             {submitLoading ? "Submitting..." : "Submit"}
           </button>
           <button
@@ -279,6 +300,7 @@ export function SessionWorkspacePage() {
             onClick={onQuit}
             type="button"
           >
+            {!quitLoading && <LogOut aria-hidden="true" className="inline-icon" size={15} />}
             {quitLoading ? "Closing..." : "Quit"}
           </button>
         </footer>
@@ -296,6 +318,7 @@ export function SessionWorkspacePage() {
             onClick={onHint}
             type="button"
           >
+            {!hintLoading && !hintsExhausted && <Zap aria-hidden="true" className="inline-icon" size={13} />}
             {hintLoading ? "Loading..." : hintsExhausted ? "No Hints" : "Request Hint"}
           </button>
         </header>
@@ -317,6 +340,10 @@ export function SessionWorkspacePage() {
             </Suspense>
           ) : (
             <div className="terminal-placeholder">
+              <p className="workspace-label-with-icon">
+                <Terminal aria-hidden="true" className="inline-icon" size={14} />
+                Workspace terminal
+              </p>
               <p>Workspace is not active for this session.</p>
               <p>Start a new challenge from the catalog to launch a terminal.</p>
             </div>
