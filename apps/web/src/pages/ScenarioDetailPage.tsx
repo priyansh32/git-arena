@@ -4,6 +4,19 @@ import type { Attempt, CreateSessionConflictResponse, Scenario } from "@gitarena
 
 import { createSession, fetchScenario, fetchScenarioAttempts, isApiError } from "../api/client";
 
+function getCommonalityLabel(commonality: Scenario["commonality"]): string {
+  if (commonality === "very_common") {
+    return "Very Common";
+  }
+  if (commonality === "common") {
+    return "Common";
+  }
+  if (commonality === "occasional") {
+    return "Occasional";
+  }
+  return "Rare";
+}
+
 export function ScenarioDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -124,6 +137,9 @@ export function ScenarioDetailPage() {
 
           <div className="scenario-meta-row">
             <span className={`badge ${scenario.difficulty}`}>{scenario.difficulty}</span>
+            <span className={`commonality-pill ${scenario.commonality}`}>
+              {getCommonalityLabel(scenario.commonality)}
+            </span>
             <span aria-hidden="true" className="scenario-meta-separator">
               •
             </span>

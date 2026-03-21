@@ -4,6 +4,7 @@
   "description": "A long-running `feat/v2` branch has ten commits, but only three of them (a specific bug fix and two tests) are ready for production and must be applied to `main` without bringing in the rest of the unfinished v2 work.",
   "objective": "The branch `main` must contain exactly the three specified commits from `feat/v2` (applied as new commits via cherry-pick). The rest of the v2 commits must not be on `main`. The working tree must be clean.",
   "difficulty": "intermediate",
+  "commonality": "common",
   "estimatedTimeMinutes": 25,
   "timeLimitSeconds": 1500,
   "tags": [

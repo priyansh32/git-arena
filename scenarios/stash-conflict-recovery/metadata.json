@@ -4,6 +4,7 @@
   "description": "You stashed some in-progress work, pulled in a colleague's changes, and now `git stash pop` has exploded with conflicts. The stash needs to be applied and the conflicts resolved without losing either set of changes.",
   "objective": "The stash must be fully applied and all conflicts resolved. The file `config.js` must contain both the stashed change (a `timeout` setting) and the colleague's change (a `retries` setting). The working tree must be clean and the stash list must be empty.",
   "difficulty": "intermediate",
+  "commonality": "occasional",
   "estimatedTimeMinutes": 25,
   "timeLimitSeconds": 1500,
   "tags": [

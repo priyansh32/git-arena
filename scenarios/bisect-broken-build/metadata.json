@@ -4,6 +4,7 @@
   "description": "Something broke the test suite between ten commits ago and now. You know the oldest commit was good. Use `git bisect` to identify the exact commit that introduced the regression, then record its SHA in a file called `bad-commit.txt`.",
   "objective": "The file `bad-commit.txt` must exist in `/workspace` and contain the full SHA of the commit that first caused `test.sh` to exit non-zero. The SHA must be correct.",
   "difficulty": "advanced",
+  "commonality": "occasional",
   "estimatedTimeMinutes": 35,
   "timeLimitSeconds": 2100,
   "tags": [

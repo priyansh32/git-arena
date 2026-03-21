@@ -4,6 +4,7 @@
   "description": "Your local `main` and `origin/main` have diverged — you have two commits that origin doesn't have, and origin has three commits you don't have. You need to integrate them correctly so your local branch is up to date and your commits sit on top cleanly.",
   "objective": "Local `main` must be exactly three commits ahead of what `origin/main` was before you started (your two original commits plus the reconciliation). `origin/main` commits must be present in local history. The history must be linear (no merge commit). The working tree must be clean.",
   "difficulty": "intermediate",
+  "commonality": "common",
   "estimatedTimeMinutes": 30,
   "timeLimitSeconds": 1800,
   "tags": [

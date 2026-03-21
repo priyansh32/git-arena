@@ -14,6 +14,19 @@ function getRemainingLabel(expiresAt: string): string {
   return `${totalMinutes} min left`;
 }
 
+function getCommonalityLabel(commonality: Scenario["commonality"]): string {
+  if (commonality === "very_common") {
+    return "Very Common";
+  }
+  if (commonality === "common") {
+    return "Common";
+  }
+  if (commonality === "occasional") {
+    return "Occasional";
+  }
+  return "Rare";
+}
+
 export function DashboardPage() {
   const [scenarios, setScenarios] = useState<Scenario[]>([]);
   const [activeSession, setActiveSession] = useState<Session | null>(null);
@@ -21,6 +34,9 @@ export function DashboardPage() {
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [difficultyFilter, setDifficultyFilter] = useState<Scenario["difficulty"] | "all">("all");
+  const [commonalityFilter, setCommonalityFilter] = useState<Scenario["commonality"] | "all">(
+    "all"
+  );
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [sortBy, setSortBy] = useState<"default" | "timeAsc" | "timeDesc" | "difficulty">("default");
 
@@ -69,10 +85,13 @@ export function DashboardPage() {
       const matchesDifficulty =
         difficultyFilter === "all" || scenario.difficulty === difficultyFilter;
 
+      const matchesCommonality =
+        commonalityFilter === "all" || scenario.commonality === commonalityFilter;
+
       const matchesTag =
         selectedTags.length === 0 || selectedTags.some((tag) => scenario.tags.includes(tag));
 
-      return matchesSearch && matchesDifficulty && matchesTag;
+      return matchesSearch && matchesDifficulty && matchesCommonality && matchesTag;
     });
 
     if (sortBy === "timeAsc") {
@@ -105,7 +124,7 @@ export function DashboardPage() {
     }
 
     return filtered;
-  }, [difficultyFilter, scenarios, searchQuery, selectedTags, sortBy]);
+  }, [commonalityFilter, difficultyFilter, scenarios, searchQuery, selectedTags, sortBy]);
 
   const toggleTag = (tag: string) => {
     setSelectedTags((current) =>
@@ -116,6 +135,7 @@ export function DashboardPage() {
   const resetControls = () => {
     setSearchQuery("");
     setDifficultyFilter("all");
+    setCommonalityFilter("all");
     setSelectedTags([]);
     setSortBy("default");
   };
@@ -208,6 +228,21 @@ export function DashboardPage() {
           <option value="advanced">Difficulty: Advanced</option>
         </select>
 
+        <select
+          aria-label="Filter by commonality"
+          className="control-select"
+          onChange={(event) => {
+            setCommonalityFilter(event.target.value as Scenario["commonality"] | "all");
+          }}
+          value={commonalityFilter}
+        >
+          <option value="all">Commonality: All</option>
+          <option value="very_common">Commonality: Very Common</option>
+          <option value="common">Commonality: Common</option>
+          <option value="occasional">Commonality: Occasional</option>
+          <option value="rare">Commonality: Rare</option>
+        </select>
+
         <details className="control-multiselect">
           <summary className="control-select control-select-summary">
             {selectedTags.length === 0 ? "Tags: All" : `Tags: ${selectedTags.length} selected`}
@@ -262,7 +297,11 @@ export function DashboardPage() {
 
       <p className="state-text scenario-controls-meta">
         Showing {visibleScenarios.length} of {scenarios.length} scenarios
-        {(searchQuery || difficultyFilter !== "all" || selectedTags.length > 0 || sortBy !== "default") && (
+        {(searchQuery ||
+          difficultyFilter !== "all" ||
+          commonalityFilter !== "all" ||
+          selectedTags.length > 0 ||
+          sortBy !== "default") && (
           <>
             {" "}
             -{" "}
@@ -283,7 +322,12 @@ export function DashboardPage() {
         {visibleScenarios.map((scenario) => (
           <article className="scenario-card" key={scenario.id}>
             <div className="scenario-card-top">
-              <span className={`badge ${scenario.difficulty}`}>{scenario.difficulty}</span>
+              <div className="scenario-card-meta">
+                <span className={`badge ${scenario.difficulty}`}>{scenario.difficulty}</span>
+                <span className={`commonality-pill ${scenario.commonality}`}>
+                  {getCommonalityLabel(scenario.commonality)}
+                </span>
+              </div>
               <span className="mono state-text">~{scenario.estimatedTimeMinutes}m</span>
             </div>
 

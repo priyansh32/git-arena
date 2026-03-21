@@ -4,6 +4,7 @@
   "description": "You've made multiple unrelated edits to the same file `server.js` — a bug fix in the `handleRequest` function and a WIP experimental feature at the bottom. You need to commit only the bug fix as one clean commit, leaving the experimental code uncommitted.",
   "objective": "Exactly one new commit must exist that modifies `server.js` and contains only the bug fix (the `handleRequest` function change). The experimental code must be present in the working tree but NOT staged and NOT committed. The working tree must show `server.js` as modified (unstaged).",
   "difficulty": "intermediate",
+  "commonality": "common",
   "estimatedTimeMinutes": 25,
   "timeLimitSeconds": 1500,
   "tags": [

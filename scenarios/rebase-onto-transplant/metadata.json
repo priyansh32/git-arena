@@ -4,6 +4,7 @@
   "description": "You branched `feat/dark-mode` off `feat/theming` instead of `main`. The `feat/theming` branch is not going to be merged. You need to transplant `feat/dark-mode` so it branches directly from `main`, leaving behind the `feat/theming` commits.",
   "objective": "The branch `feat/dark-mode` must be rebased directly onto `main`. It must contain only the dark mode commits (not the theming commits). The number of commits on `feat/dark-mode` ahead of `main` must equal exactly the number of commits that were originally unique to `feat/dark-mode`.",
   "difficulty": "advanced",
+  "commonality": "occasional",
   "estimatedTimeMinutes": 35,
   "timeLimitSeconds": 2100,
   "tags": [

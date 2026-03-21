@@ -4,6 +4,7 @@
   "description": "You need to create a `gh-pages` branch for publishing documentation. This branch must have no commit history shared with `main` — it's a completely fresh start within the same repository.",
   "objective": "A branch named `gh-pages` must exist with its own independent root commit (no common ancestor with `main`). The branch must contain an `index.html` file. The `gh-pages` branch must have exactly one commit. `main` must be unchanged.",
   "difficulty": "intermediate",
+  "commonality": "occasional",
   "estimatedTimeMinutes": 25,
   "timeLimitSeconds": 1500,
   "tags": [

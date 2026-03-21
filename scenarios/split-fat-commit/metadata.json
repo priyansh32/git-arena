@@ -4,6 +4,7 @@
   "description": "A colleague pushed one huge commit that mixes a bug fix, a new feature, and a config change — three unrelated concerns. You need to split it into three separate, well-named commits without losing any of the changes.",
   "objective": "The history must contain exactly three commits in place of the original fat commit: one for the bug fix (`bugfix.js`), one for the feature (`feature.js`), and one for the config change (`config.json`). Each commit must touch only its own file. All content must be preserved.",
   "difficulty": "advanced",
+  "commonality": "occasional",
   "estimatedTimeMinutes": 40,
   "timeLimitSeconds": 2400,
   "tags": [

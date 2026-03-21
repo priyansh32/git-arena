@@ -4,6 +4,7 @@
   "description": "A colleague deleted the branch `feat/search` thinking it had been merged. It wasn't. The commits exist in the reflog. You need to bring them back.",
   "objective": "A branch named `feat/search` must exist and must contain the three commits that were on it before deletion. The search feature code must be present and the branch must be in a clean state.",
   "difficulty": "intermediate",
+  "commonality": "occasional",
   "estimatedTimeMinutes": 20,
   "timeLimitSeconds": 1200,
   "tags": [

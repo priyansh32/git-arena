@@ -758,6 +758,52 @@ textarea {
   gap: 10px;
 }
 
+.scenario-card-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.commonality-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  padding: 4px 10px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  line-height: 1;
+}
+
+.commonality-pill.very_common {
+  color: #86efac;
+  background: rgba(34, 197, 94, 0.16);
+  border-color: rgba(34, 197, 94, 0.4);
+}
+
+.commonality-pill.common {
+  color: #67e8f9;
+  background: rgba(6, 182, 212, 0.14);
+  border-color: rgba(6, 182, 212, 0.42);
+}
+
+.commonality-pill.occasional {
+  color: #fdba74;
+  background: rgba(249, 115, 22, 0.16);
+  border-color: rgba(249, 115, 22, 0.42);
+}
+
+.commonality-pill.rare {
+  color: #c4b5fd;
+  background: rgba(139, 92, 246, 0.17);
+  border-color: rgba(139, 92, 246, 0.45);
+}
+
 .scenario-title {
   margin: 0;
   font-size: clamp(18px, 2vw, 22px);
@@ -859,6 +905,10 @@ textarea {
   display: flex;
   align-items: center;
   gap: 10px;
+}
+
+.scenario-meta-row .commonality-pill {
+  font-size: 11px;
 }
 
 .scenario-meta-separator {

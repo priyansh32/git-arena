@@ -4,6 +4,7 @@
   "description": "You need to rebase `feat/redesign` onto the latest `main`, but `main` has moved forward significantly and your rebase will conflict on three separate commits. You must resolve each conflict in sequence and complete the rebase without aborting.",
   "objective": "The branch `feat/redesign` must be rebased onto the current `main`. All three feature commits must be present on `feat/redesign` with conflicts resolved. The final state of `ui.js` must contain both the redesign changes and the main branch updates. The working tree must be clean.",
   "difficulty": "advanced",
+  "commonality": "occasional",
   "estimatedTimeMinutes": 40,
   "timeLimitSeconds": 2400,
   "tags": [

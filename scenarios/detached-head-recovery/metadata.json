@@ -4,6 +4,7 @@
   "description": "You checked out a specific commit to inspect something and then kept working. You've made two commits in detached HEAD state and now realize they're not on any branch. If you switch away, you'll lose them.",
   "objective": "All commits made in detached HEAD state must be reachable from a new branch called `rescue`. The branch `rescue` must exist and `HEAD` must be attached (pointing to a named branch). No commits may be lost.",
   "difficulty": "intermediate",
+  "commonality": "common",
   "estimatedTimeMinutes": 20,
   "timeLimitSeconds": 1200,
   "tags": [

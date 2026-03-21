@@ -4,6 +4,7 @@
   "description": "The last commit has a typo in the commit message and is missing one small file. You need to fix both by amending the commit — but the original author information (name and email) must be preserved exactly as it was. The committer can change, but not the author.",
   "objective": "The most recent commit must have a corrected message (no typo), must include the missing file `CHANGELOG.md`, and must retain the original author name `Jane Doe` and email `jane@example.com`. The commit count must remain the same.",
   "difficulty": "intermediate",
+  "commonality": "rare",
   "estimatedTimeMinutes": 20,
   "timeLimitSeconds": 1200,
   "tags": [

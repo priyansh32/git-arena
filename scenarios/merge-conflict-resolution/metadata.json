@@ -4,6 +4,7 @@
   "description": "Two developers edited the same function in `app.js` on different branches. A merge conflict is waiting for you. Resolve it correctly: keep both developers' changes by combining them, then complete the merge.",
   "objective": "Branch `main` must contain a merge commit that incorporates changes from both `feat/logging` and the original `main`. The file `app.js` must contain both the logging line and the error handling line. The working tree must be clean.",
   "difficulty": "intermediate",
+  "commonality": "very_common",
   "estimatedTimeMinutes": 30,
   "timeLimitSeconds": 1800,
   "tags": [

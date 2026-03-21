@@ -4,6 +4,7 @@
   "description": "A merge commit landed on `main` that introduced a breaking change. The branch has already been pushed to `origin` and others have pulled from it — you cannot rewrite history. You need to revert the merge commit cleanly.",
   "objective": "A revert commit must exist on `main` that undoes the merge commit. The breaking file `billing.js` must not be present in the working tree on `main`. The history must remain linear-appendable (no force push). The working tree must be clean.",
   "difficulty": "advanced",
+  "commonality": "rare",
   "estimatedTimeMinutes": 30,
   "timeLimitSeconds": 1800,
   "tags": [

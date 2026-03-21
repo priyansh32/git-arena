@@ -4,6 +4,7 @@
   "description": "A developer accidentally committed a file containing an API key (`secrets.env`) three commits ago. It's been on the feature branch only and not yet merged. You need to completely remove every trace of this file from the entire commit history of the branch.",
   "objective": "The file `secrets.env` must not exist in any commit in the branch's history — not the current HEAD, not any past commit tree. The rest of the branch history must be intact. The working tree must be clean.",
   "difficulty": "advanced",
+  "commonality": "rare",
   "estimatedTimeMinutes": 45,
   "timeLimitSeconds": 2700,
   "tags": [

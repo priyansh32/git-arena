@@ -4,6 +4,7 @@
   "description": "You've been working on a feature branch and made five small commits with mediocre messages. Before merging, the team requires a clean history: all five commits squashed into one with a properly formatted message.",
   "objective": "The feature branch `feat/user-auth` must contain exactly one commit on top of `main`. That commit's message must begin with `feat:` (conventional commit format). The working tree content must be identical to what it was with all five commits applied.",
   "difficulty": "intermediate",
+  "commonality": "common",
   "estimatedTimeMinutes": 25,
   "timeLimitSeconds": 1500,
   "tags": [

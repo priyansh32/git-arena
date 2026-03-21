@@ -4,6 +4,7 @@
   "description": "You committed three changes directly to `main` instead of your feature branch `feat/payments`. The commits don't belong on `main`. Move them to the right branch and leave `main` clean.",
   "objective": "The three misplaced commits must be reachable from `feat/payments` and must not be present in `main`'s history. `main` must be in the same state it was before the accidental commits. The working tree on `main` must be clean.",
   "difficulty": "intermediate",
+  "commonality": "very_common",
   "estimatedTimeMinutes": 20,
   "timeLimitSeconds": 1200,
   "tags": [
