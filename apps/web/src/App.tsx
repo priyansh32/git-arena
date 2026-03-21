@@ -1,21 +1,27 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import type { ReactElement } from "react";
 import {
+  BrowserRouter,
   Link,
   NavLink,
   Navigate,
+  Outlet,
   Route,
   Routes,
   useLocation,
-  useMatch
+  useMatch,
+  useSearchParams
 } from "react-router-dom";
 import { GitBranch, History, LayoutDashboard, LogOut, Menu, X } from "lucide-react";
 
 import { useAuth } from "./auth/AuthContext";
 import { DashboardPage } from "./pages/DashboardPage";
 import { HistoryPage } from "./pages/HistoryPage";
+import { LandingPage } from "./pages/LandingPage";
 import { LoginPage } from "./pages/LoginPage";
 import { ScenarioDetailPage } from "./pages/ScenarioDetailPage";
 import { SessionResultPage } from "./pages/SessionResultPage";
+import { StartRoute } from "./pages/StartRoute";
 import { SessionWorkspacePage } from "./pages/SessionWorkspacePage";
 
 function userInitial(displayName: string): string {
@@ -34,8 +40,76 @@ function navClassName({ isActive }: { isActive: boolean }): string {
   }`;
 }
 
-export default function App() {
-  const { user, loading, logout } = useAuth();
+function resolveNextPath(value: string | null): string {
+  if (!value) {
+    return "/dashboard";
+  }
+
+  if (!value.startsWith("/") || value.startsWith("//")) {
+    return "/dashboard";
+  }
+
+  return value;
+}
+
+function AuthLoadingScreen({ message }: { message: string }) {
+  return (
+    <div className="flex flex-col min-h-screen">
+      <main className="flex-1 flex items-center justify-center p-6 min-h-[calc(100vh-56px)] lg:min-h-screen">
+        <section
+          className="w-full max-w-[440px] mx-auto flex flex-col gap-6"
+          aria-busy="true"
+          aria-live="polite"
+        >
+          <div className="bg-bg-surface border border-border-subtle rounded-xl flex items-center justify-center min-h-[120px] p-8 text-center">
+            <p className="m-0 text-text-secondary">{message}</p>
+          </div>
+        </section>
+      </main>
+    </div>
+  );
+}
+
+function ProtectedRoute({ children }: { children: ReactElement }) {
+  const { user, loading } = useAuth();
+  const location = useLocation();
+
+  if (loading) {
+    return <AuthLoadingScreen message="Loading user session..." />;
+  }
+
+  if (!user) {
+    const nextTarget = `${location.pathname}${location.search}`;
+    return <Navigate replace to={`/login?next=${encodeURIComponent(nextTarget)}`} />;
+  }
+
+  return children;
+}
+
+function LoginRoute() {
+  const { user, loading } = useAuth();
+  const [searchParams] = useSearchParams();
+  const nextPath = useMemo(() => resolveNextPath(searchParams.get("next")), [searchParams]);
+
+  if (loading) {
+    return <AuthLoadingScreen message="Checking session..." />;
+  }
+
+  if (user) {
+    return <Navigate replace to={nextPath} />;
+  }
+
+  return (
+    <div className="flex flex-col min-h-screen">
+      <main className="flex-1 flex items-center justify-center p-6 min-h-[calc(100vh-56px)] lg:min-h-screen">
+        <LoginPage />
+      </main>
+    </div>
+  );
+}
+
+function AuthenticatedLayout() {
+  const { user, logout } = useAuth();
   const location = useLocation();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const isWorkspaceRoute = Boolean(useMatch({ path: "/sessions/:id", end: true }));
@@ -44,40 +118,8 @@ export default function App() {
     setMobileNavOpen(false);
   }, [location.pathname]);
 
-  const appRoutes = (
-    <Routes>
-      <Route element={<Navigate replace to="/dashboard" />} path="/" />
-      <Route element={<DashboardPage />} path="/dashboard" />
-      <Route element={<HistoryPage />} path="/history" />
-      <Route element={<ScenarioDetailPage />} path="/scenarios/:id" />
-      <Route element={<SessionWorkspacePage />} path="/sessions/:id" />
-      <Route element={<SessionResultPage />} path="/sessions/:id/result" />
-      <Route element={<Navigate replace to="/dashboard" />} path="*" />
-    </Routes>
-  );
-
-  if (loading) {
-    return (
-      <div className="flex flex-col min-h-screen">
-        <main className="flex-1 flex items-center justify-center p-6 min-h-[calc(100vh-56px)] lg:min-h-screen">
-          <section className="w-full max-w-[440px] mx-auto flex flex-col gap-6" aria-busy="true" aria-live="polite">
-            <div className="bg-bg-surface border border-border-subtle rounded-xl flex items-center justify-center min-h-[120px] p-8 text-center">
-              <p className="m-0 text-text-secondary">Loading user session...</p>
-            </div>
-          </section>
-        </main>
-      </div>
-    );
-  }
-
   if (!user) {
-    return (
-      <div className="flex flex-col min-h-screen">
-        <main className="flex-1 flex items-center justify-center p-6 min-h-[calc(100vh-56px)] lg:min-h-screen">
-          <LoginPage />
-        </main>
-      </div>
-    );
+    return null;
   }
 
   return (
@@ -188,13 +230,47 @@ export default function App() {
       {/* Main Content Area */}
       <main className={`flex-1 flex flex-col min-w-0 ${isWorkspaceRoute ? "h-[calc(100vh-56px)] lg:h-screen p-0 overflow-hidden" : ""}`}>
         {isWorkspaceRoute ? (
-          appRoutes
+          <Outlet />
         ) : (
           <div className="w-full max-w-7xl mx-auto p-4 lg:p-8 flex-1">
-            {appRoutes}
+            <Outlet />
           </div>
         )}
       </main>
     </div>
+  );
+}
+
+export function AppRoutes() {
+  return (
+    <Routes>
+      <Route element={<LandingPage />} path="/" />
+      <Route element={<StartRoute />} path="/start" />
+      <Route element={<LoginRoute />} path="/login" />
+
+      <Route
+        element={
+          <ProtectedRoute>
+            <AuthenticatedLayout />
+          </ProtectedRoute>
+        }
+      >
+        <Route element={<DashboardPage />} path="/dashboard" />
+        <Route element={<HistoryPage />} path="/history" />
+        <Route element={<ScenarioDetailPage />} path="/scenarios/:id" />
+        <Route element={<SessionWorkspacePage />} path="/sessions/:id" />
+        <Route element={<SessionResultPage />} path="/sessions/:id/result" />
+      </Route>
+
+      <Route element={<Navigate replace to="/" />} path="*" />
+    </Routes>
+  );
+}
+
+export default function App() {
+  return (
+    <BrowserRouter>
+      <AppRoutes />
+    </BrowserRouter>
   );
 }

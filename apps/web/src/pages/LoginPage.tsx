@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { GitBranch, LogIn } from "lucide-react";
 
 import { useAuth } from "../auth/AuthContext";
@@ -53,11 +54,35 @@ function loadGoogleScript(): Promise<void> {
   });
 }
 
+function resolveNextPath(value: string | null): string {
+  if (!value) {
+    return "/dashboard";
+  }
+
+  if (!value.startsWith("/") || value.startsWith("//")) {
+    return "/dashboard";
+  }
+
+  return value;
+}
+
 export function LoginPage() {
-  const { loginWithGoogleToken } = useAuth();
+  const { loginWithGoogleToken, user, loading: authLoading } = useAuth();
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const mountRef = useRef<HTMLDivElement | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const nextPath = useMemo(
+    () => resolveNextPath(searchParams.get("next")),
+    [searchParams]
+  );
+
+  useEffect(() => {
+    if (!authLoading && user) {
+      navigate(nextPath, { replace: true });
+    }
+  }, [authLoading, navigate, nextPath, user]);
 
   useEffect(() => {
     let closed = false;
