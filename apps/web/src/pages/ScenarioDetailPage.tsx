@@ -79,8 +79,8 @@ export function ScenarioDetailPage() {
       <section className="page" aria-busy="true" aria-live="polite">
         <div className="skeleton skeleton-title" />
         <div className="scenario-detail-layout">
-          <div className="skeleton skeleton-card" />
-          <div className="skeleton skeleton-card" />
+          <div className="skeleton skeleton-card scenario-main-column" />
+          <div className="skeleton skeleton-card scenario-actions-column" />
         </div>
       </section>
     );
@@ -116,15 +116,18 @@ export function ScenarioDetailPage() {
       </Link>
 
       <div className="scenario-detail-layout">
-        <article className="panel scenario-main">
+        <article className="panel scenario-main scenario-main-column">
           <header className="page-header">
             <h1>{scenario.title}</h1>
             <p>{scenario.description}</p>
           </header>
 
-          <div className="scenario-card-top">
+          <div className="scenario-meta-row">
             <span className={`badge ${scenario.difficulty}`}>{scenario.difficulty}</span>
-            <span className="mono state-text">~{scenario.estimatedTimeMinutes}m</span>
+            <span aria-hidden="true" className="scenario-meta-separator">
+              •
+            </span>
+            <span className="mono scenario-meta-time">~{scenario.estimatedTimeMinutes}m</span>
           </div>
 
           <h2>Objective</h2>
@@ -154,7 +157,7 @@ export function ScenarioDetailPage() {
           </div>
         </article>
 
-        <aside className="panel scenario-actions">
+        <aside className="panel scenario-actions scenario-actions-column">
           <h2>Session</h2>
           <p className="state-text">Start a new terminal session for this scenario.</p>
           <button
