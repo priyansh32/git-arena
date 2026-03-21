@@ -19,10 +19,12 @@ import { DashboardPage } from "./pages/DashboardPage";
 import { HistoryPage } from "./pages/HistoryPage";
 import { LandingPage } from "./pages/LandingPage";
 import { LoginPage } from "./pages/LoginPage";
+import { PrivacyPage } from "./pages/PrivacyPage";
 import { ScenarioDetailPage } from "./pages/ScenarioDetailPage";
 import { SessionResultPage } from "./pages/SessionResultPage";
 import { StartRoute } from "./pages/StartRoute";
 import { SessionWorkspacePage } from "./pages/SessionWorkspacePage";
+import { TermsPage } from "./pages/TermsPage";
 
 function userInitial(displayName: string): string {
   const trimmed = displayName.trim();
@@ -245,7 +247,9 @@ export function AppRoutes() {
   return (
     <Routes>
       <Route element={<LandingPage />} path="/" />
+      <Route element={<PrivacyPage />} path="/privacy" />
       <Route element={<StartRoute />} path="/start" />
+      <Route element={<TermsPage />} path="/terms" />
       <Route element={<LoginRoute />} path="/login" />
 
       <Route

@@ -3,9 +3,13 @@ import { renderToString } from "react-dom/server";
 import { StaticRouter } from "react-router-dom/server";
 
 import { LandingPage } from "../pages/LandingPage";
+import { PrivacyPage } from "../pages/PrivacyPage";
+import { TermsPage } from "../pages/TermsPage";
 
 const routeComponents: Record<string, ComponentType> = {
-  "/": LandingPage
+  "/": LandingPage,
+  "/privacy": PrivacyPage,
+  "/terms": TermsPage
 };
 
 export function renderRoute(routePath: string): string {

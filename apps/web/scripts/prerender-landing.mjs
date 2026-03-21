@@ -7,7 +7,7 @@ async function main() {
   const rootDir = process.cwd();
   const distDir = resolve(rootDir, "dist");
   const ssrEntryPath = resolve(distDir, "server", "entry-static-pages-server.js");
-  const staticRoutes = ["/"];
+  const staticRoutes = ["/", "/privacy", "/terms"];
 
   // 1) Build client bundle with Vite
   await build({

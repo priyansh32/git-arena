@@ -151,7 +151,7 @@ export function LoginPage() {
             git-arena
           </p>
           <h1 className="m-0 text-[clamp(1.75rem,4vw,2.125rem)] leading-[1.2] font-bold tracking-tight">Practice Real Git Workflows</h1>
-          <p className="m-0 text-text-secondary text-base">Sign in with Google to start an isolated git-arena session.</p>
+          <p className="m-0 text-text-secondary text-base">Sign in with Google to launch your hands-on Git recovery workspace.</p>
         </div>
 
         <div className="min-h-[44px] flex justify-center items-center relative" ref={mountRef} />
