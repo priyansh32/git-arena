@@ -49,6 +49,7 @@ RUN chown gituser:gituser /home/gituser/.bashrc && \
     chmod 644 /home/gituser/.bashrc && \
     chmod 644 /usr/local/lib/python3.11/gitarena_eval.py && \
     git config --system core.hooksPath /dev/null && \
+    git config --system core.pager cat && \
     git config --system safe.directory /workspace
 
 ENV HOME=/home/gituser \

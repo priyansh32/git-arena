@@ -138,6 +138,16 @@ function parseKilobytes(value: string): number {
 export class WorkspaceManager {
   constructor(private readonly config: WorkspaceConfig) {}
 
+  private buildTerminalBootstrapCommand(): string {
+    return [
+      "export TERM=xterm-256color",
+      "export GIT_PAGER=cat",
+      "export PAGER=cat",
+      "export LESS=FRX",
+      `exec ${shellEscape(this.config.shell)} -i`
+    ].join("; ");
+  }
+
   getContainerName(sessionId: string): string {
     return `${this.config.containerPrefix}-${sessionId}`.replace(/[^a-zA-Z0-9_.-]/g, "-");
   }
@@ -264,15 +274,15 @@ export class WorkspaceManager {
 
   private openDockerTerminal(sessionId: string): ChildProcessWithoutNullStreams {
     const containerName = this.getContainerName(sessionId);
+    const bootstrap = this.buildTerminalBootstrapCommand();
     const command = [
       "docker",
       "exec",
       "-it",
-      "--env",
-      "TERM=xterm-256color",
       containerName,
       this.config.shell,
-      "-i"
+      "-lc",
+      bootstrap
     ]
       .map(shellEscape)
       .join(" ");
@@ -288,6 +298,7 @@ export class WorkspaceManager {
 
   private openKubernetesTerminal(sessionId: string): ChildProcessWithoutNullStreams {
     const podName = this.getPodName(sessionId);
+    const bootstrap = this.buildTerminalBootstrapCommand();
     const command = [
       "kubectl",
       "exec",
@@ -297,7 +308,8 @@ export class WorkspaceManager {
       podName,
       "--",
       this.config.shell,
-      "-i"
+      "-lc",
+      bootstrap
     ]
       .map(shellEscape)
       .join(" ");
