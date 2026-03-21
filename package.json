@@ -20,6 +20,7 @@
     "smoke:stack": "node scripts/smoke-stack.mjs",
     "smoke:stack:docker": "node scripts/smoke-stack.mjs --provider docker",
     "smoke:stack:k8s": "node scripts/smoke-stack.mjs --provider k8s",
+    "scenarios:seed": "tsx scripts/seed-scenarios.ts",
     "docker:up": "docker compose up --build",
     "docker:down": "docker compose down"
   }

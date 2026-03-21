@@ -84,3 +84,17 @@ Use these as the primary host-dev entrypoints.
     - `--provider docker`
     - `--provider k8s` (or `kubernetes`)
   - Optional `--k8s-namespace <ns>` (default: `gitarena-sessions`).
+
+## Scenario Catalog Seed
+
+- `scripts/seed-scenarios.ts`
+  - Seeds DB scenario catalog from root `scenarios/<id>/`.
+  - Reads `metadata.json`, `seed.sh`, and `eval.sh` per scenario.
+  - Smart revisioning:
+    - creates revision when scenario is new
+    - creates new revision only when checksum changes
+    - leaves revision unchanged when content is identical
+  - Optional `--reset` hard-resets scenario data first (`attempts`, `sessions`, `scenario_revisions`, `scenarios`).
+  - Run:
+    - `npm run scenarios:seed`
+    - `npm run scenarios:seed -- --reset`
