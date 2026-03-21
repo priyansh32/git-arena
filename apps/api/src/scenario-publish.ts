@@ -22,6 +22,7 @@ function printUsage(): void {
   npm run scenario:publish -w @gitarena/api -- --id <scenario-id> [--dir <path>]
     [--title <text> --description <text> --objective <text>
      --difficulty <beginner|intermediate|advanced>
+     --commonality <very_common|common|occasional|rare>
      --estimated-time-minutes <int> --time-limit-seconds <int>
      --status <draft|testing|published|deprecated>
      --tag <value> (repeatable) --hint <value> (repeatable)]
@@ -30,7 +31,7 @@ Examples:
   npm run scenario:publish -w @gitarena/api -- --id detached-head-recovery
   npm run scenario:publish -w @gitarena/api -- --id my-scenario --dir ./apps/api/scenarios/my-scenario \\
     --title "My Scenario" --description "..." --objective "..." \\
-    --difficulty beginner --estimated-time-minutes 20 --time-limit-seconds 1200 \\
+    --difficulty beginner --commonality common --estimated-time-minutes 20 --time-limit-seconds 1200 \\
     --status testing --tag git --hint "start with git status"
 `);
 }
@@ -48,6 +49,18 @@ function parseDifficulty(value: string): Scenario["difficulty"] {
     return value;
   }
   throw new Error(`--difficulty must be one of: beginner, intermediate, advanced`);
+}
+
+function parseCommonality(value: string): Scenario["commonality"] {
+  if (
+    value === "very_common" ||
+    value === "common" ||
+    value === "occasional" ||
+    value === "rare"
+  ) {
+    return value;
+  }
+  throw new Error(`--commonality must be one of: very_common, common, occasional, rare`);
 }
 
 function parseStatus(value: string): Scenario["status"] {
@@ -89,6 +102,7 @@ async function parseArgs(argv: string[]): Promise<CliOptions> {
   let description: string | undefined;
   let objective: string | undefined;
   let difficulty: Scenario["difficulty"] | undefined;
+  let commonality: Scenario["commonality"] | undefined;
   let estimatedTimeMinutes: number | undefined;
   let timeLimitSeconds: number | undefined;
   let status: Scenario["status"] | undefined;
@@ -138,6 +152,11 @@ async function parseArgs(argv: string[]): Promise<CliOptions> {
       index += 1;
       continue;
     }
+    if (arg === "--commonality") {
+      commonality = parseCommonality(next);
+      index += 1;
+      continue;
+    }
     if (arg === "--estimated-time-minutes") {
       estimatedTimeMinutes = parsePositiveInt(next, "--estimated-time-minutes");
       index += 1;
@@ -180,9 +199,10 @@ async function parseArgs(argv: string[]): Promise<CliOptions> {
   const metadataFlagsUsed =
     title !== undefined ||
     description !== undefined ||
-    objective !== undefined ||
-    difficulty !== undefined ||
-    estimatedTimeMinutes !== undefined ||
+      objective !== undefined ||
+      difficulty !== undefined ||
+      commonality !== undefined ||
+      estimatedTimeMinutes !== undefined ||
     timeLimitSeconds !== undefined ||
     status !== undefined ||
     tags.length > 0 ||
@@ -195,12 +215,13 @@ async function parseArgs(argv: string[]): Promise<CliOptions> {
       !description ||
       !objective ||
       !difficulty ||
+      !commonality ||
       estimatedTimeMinutes === undefined ||
       timeLimitSeconds === undefined ||
       !status
     ) {
       throw new Error(
-        "Partial metadata provided. For metadata override, provide title/description/objective/difficulty/estimated-time-minutes/time-limit-seconds/status."
+        "Partial metadata provided. For metadata override, provide title/description/objective/difficulty/commonality/estimated-time-minutes/time-limit-seconds/status."
       );
     }
 
@@ -209,6 +230,7 @@ async function parseArgs(argv: string[]): Promise<CliOptions> {
       description: description.trim(),
       objective: objective.trim(),
       difficulty,
+      commonality,
       estimatedTimeMinutes,
       timeLimitSeconds,
       status,
@@ -251,6 +273,7 @@ function defaultMetadataForScenario(scenarioId: string): ScenarioPublishMetadata
     description: match.description,
     objective: match.objective,
     difficulty: match.difficulty,
+    commonality: match.commonality,
     estimatedTimeMinutes: match.estimatedTimeMinutes,
     timeLimitSeconds: Math.max(60, match.estimatedTimeMinutes * 60),
     tags: match.tags,

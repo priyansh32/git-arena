@@ -19,6 +19,7 @@ interface ScenarioRow {
   description: string;
   objective: string;
   difficulty: Scenario["difficulty"];
+  commonality: Scenario["commonality"];
   estimated_time_minutes: number;
   time_limit_seconds?: number;
   tags: unknown;
@@ -104,6 +105,7 @@ export interface ScenarioPublishMetadata {
   description: string;
   objective: string;
   difficulty: Scenario["difficulty"];
+  commonality: Scenario["commonality"];
   estimatedTimeMinutes: number;
   tags: string[];
   hints: string[];
@@ -144,6 +146,7 @@ interface ScenarioPublishRow {
   description: string;
   objective: string;
   difficulty: Scenario["difficulty"];
+  commonality: Scenario["commonality"];
   estimated_time_minutes: number;
   tags: unknown;
   hints: unknown;
@@ -160,6 +163,19 @@ function parseStringArray(value: unknown): string[] {
     .filter((item): item is string => typeof item === "string")
     .map((item) => item.trim())
     .filter((item) => item.length > 0);
+}
+
+function parseCommonality(value: unknown): Scenario["commonality"] {
+  if (
+    value === "very_common" ||
+    value === "common" ||
+    value === "occasional" ||
+    value === "rare"
+  ) {
+    return value;
+  }
+
+  return "common";
 }
 
 function parseAssertions(value: unknown): AssertionResult[] {
@@ -219,6 +235,7 @@ function mapScenario(row: ScenarioRow): Scenario {
     description: row.description,
     objective: row.objective,
     difficulty: row.difficulty,
+    commonality: parseCommonality(row.commonality),
     estimatedTimeMinutes: row.estimated_time_minutes,
     tags: parseStringArray(row.tags),
     hints: parseStringArray(row.hints),
@@ -468,6 +485,7 @@ export class Repository {
         sc.description,
         sr.objective,
         sc.difficulty,
+        sc.commonality,
         sc.estimated_time_minutes,
         sc.tags,
         sr.hints,
@@ -493,6 +511,7 @@ export class Repository {
         sc.description,
         sr.objective,
         sc.difficulty,
+        sc.commonality,
         sc.estimated_time_minutes,
         sc.tags,
         sr.hints,
@@ -1075,6 +1094,7 @@ export class Repository {
           description,
           objective,
           difficulty,
+          commonality,
           estimated_time_minutes,
           tags,
           hints,
@@ -1105,6 +1125,7 @@ export class Repository {
             description,
             objective,
             difficulty,
+            commonality,
             estimated_time_minutes,
             time_limit_seconds,
             tags,
@@ -1113,7 +1134,7 @@ export class Repository {
             active_revision,
             updated_at
           )
-          VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb, $9::jsonb, $10, 1, NOW())
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb, $10::jsonb, $11, 1, NOW())
           `,
           [
             input.scenarioId,
@@ -1121,6 +1142,7 @@ export class Repository {
             effectiveMetadata.description,
             effectiveMetadata.objective,
             effectiveMetadata.difficulty,
+            effectiveMetadata.commonality,
             effectiveMetadata.estimatedTimeMinutes,
             Math.max(60, effectiveMetadata.timeLimitSeconds),
             JSON.stringify(effectiveMetadata.tags),
@@ -1135,6 +1157,7 @@ export class Repository {
           description: input.metadata?.description ?? row.description,
           objective: input.metadata?.objective ?? row.objective,
           difficulty: input.metadata?.difficulty ?? row.difficulty,
+          commonality: input.metadata?.commonality ?? parseCommonality(row.commonality),
           estimatedTimeMinutes:
             input.metadata?.estimatedTimeMinutes ?? row.estimated_time_minutes,
           tags: input.metadata?.tags ?? parseStringArray(row.tags),
@@ -1154,11 +1177,12 @@ export class Repository {
                 description = $3,
                 objective = $4,
                 difficulty = $5,
-                estimated_time_minutes = $6,
-                time_limit_seconds = $7,
-                tags = $8::jsonb,
-                hints = $9::jsonb,
-                status = $10,
+                commonality = $6,
+                estimated_time_minutes = $7,
+                time_limit_seconds = $8,
+                tags = $9::jsonb,
+                hints = $10::jsonb,
+                status = $11,
                 updated_at = NOW()
             WHERE id = $1
             `,
@@ -1168,6 +1192,7 @@ export class Repository {
               effectiveMetadata.description,
               effectiveMetadata.objective,
               effectiveMetadata.difficulty,
+              effectiveMetadata.commonality,
               effectiveMetadata.estimatedTimeMinutes,
               effectiveMetadata.timeLimitSeconds,
               JSON.stringify(effectiveMetadata.tags),
@@ -1423,6 +1448,7 @@ export class Repository {
         description TEXT NOT NULL,
         objective TEXT NOT NULL,
         difficulty TEXT NOT NULL CHECK (difficulty IN ('beginner', 'intermediate', 'advanced')),
+        commonality TEXT NOT NULL CHECK (commonality IN ('very_common', 'common', 'occasional', 'rare')),
         estimated_time_minutes INTEGER NOT NULL CHECK (estimated_time_minutes > 0),
         time_limit_seconds INTEGER NOT NULL CHECK (time_limit_seconds > 0),
         tags JSONB NOT NULL DEFAULT '[]'::jsonb,
@@ -1435,6 +1461,9 @@ export class Repository {
     `);
     await client.query(
       "ALTER TABLE scenarios ADD COLUMN IF NOT EXISTS hints JSONB NOT NULL DEFAULT '[]'::jsonb"
+    );
+    await client.query(
+      "ALTER TABLE scenarios ADD COLUMN IF NOT EXISTS commonality TEXT NOT NULL DEFAULT 'common'"
     );
     await client.query(
       "ALTER TABLE scenarios ADD COLUMN IF NOT EXISTS time_limit_seconds INTEGER NOT NULL DEFAULT 1800"
@@ -1454,6 +1483,31 @@ export class Repository {
       UPDATE scenarios
       SET time_limit_seconds = GREATEST(estimated_time_minutes * 60, 60)
       WHERE time_limit_seconds <= 0
+      `
+    );
+    await client.query(
+      `
+      UPDATE scenarios
+      SET commonality = 'common'
+      WHERE commonality IS NULL
+         OR commonality NOT IN ('very_common', 'common', 'occasional', 'rare')
+      `
+    );
+    await client.query(
+      `
+      DO $$
+      BEGIN
+        IF NOT EXISTS (
+          SELECT 1
+          FROM pg_constraint
+          WHERE conname = 'scenarios_commonality_check'
+        ) THEN
+          ALTER TABLE scenarios
+          ADD CONSTRAINT scenarios_commonality_check
+          CHECK (commonality IN ('very_common', 'common', 'occasional', 'rare'));
+        END IF;
+      END
+      $$;
       `
     );
     await client.query(`
@@ -1617,6 +1671,7 @@ export class Repository {
           description,
           objective,
           difficulty,
+          commonality,
           estimated_time_minutes,
           time_limit_seconds,
           tags,
@@ -1625,7 +1680,7 @@ export class Repository {
           active_revision,
           updated_at
         )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb, $9::jsonb, $10, 1, NOW())
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb, $10::jsonb, $11, 1, NOW())
         ON CONFLICT (id)
         DO NOTHING
         `,
@@ -1635,6 +1690,7 @@ export class Repository {
           scenario.description,
           scenario.objective,
           scenario.difficulty,
+          scenario.commonality,
           scenario.estimatedTimeMinutes,
           Math.max(scenario.estimatedTimeMinutes * 60, 60),
           JSON.stringify(scenario.tags),
@@ -1650,6 +1706,7 @@ export class Repository {
           description,
           objective,
           difficulty,
+          commonality,
           estimated_time_minutes,
           tags,
           hints,

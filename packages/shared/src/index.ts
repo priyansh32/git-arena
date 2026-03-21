@@ -1,5 +1,6 @@
 export type Difficulty = "beginner" | "intermediate" | "advanced";
 export type ScenarioStatus = "draft" | "testing" | "published" | "deprecated";
+export type ScenarioCommonality = "very_common" | "common" | "occasional" | "rare";
 export const CSRF_HEADER_NAME = "x-gitarena-csrf";
 
 export interface Scenario {
@@ -8,6 +9,7 @@ export interface Scenario {
   description: string;
   objective: string;
   difficulty: Difficulty;
+  commonality: ScenarioCommonality;
   estimatedTimeMinutes: number;
   tags: string[];
   hints: string[];

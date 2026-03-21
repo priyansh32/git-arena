@@ -7,6 +7,7 @@ import { Client } from "pg";
 
 type Difficulty = "beginner" | "intermediate" | "advanced";
 type ScenarioStatus = "draft" | "testing" | "published" | "deprecated";
+type ScenarioCommonality = "very_common" | "common" | "occasional" | "rare";
 
 interface ScenarioMetadata {
   id: string;
@@ -14,6 +15,7 @@ interface ScenarioMetadata {
   description: string;
   objective: string;
   difficulty: Difficulty;
+  commonality: ScenarioCommonality;
   estimatedTimeMinutes: number;
   timeLimitSeconds: number;
   tags: string[];
@@ -84,6 +86,21 @@ function parseStatus(value: unknown, scenarioId: string): ScenarioStatus {
     return value;
   }
   throw new Error(`Invalid status in ${scenarioId}: ${String(value)}`);
+}
+
+function parseCommonality(value: unknown, scenarioId: string): ScenarioCommonality {
+  if (
+    value === "very_common" ||
+    value === "common" ||
+    value === "occasional" ||
+    value === "rare"
+  ) {
+    return value;
+  }
+
+  throw new Error(
+    `Invalid commonality in ${scenarioId}: ${String(value)} (expected very_common/common/occasional/rare)`
+  );
 }
 
 function parseStringArray(value: unknown): string[] {
@@ -167,6 +184,7 @@ async function loadScenarioInputs(rootDir: string): Promise<ScenarioInput[]> {
       description,
       objective,
       difficulty: parseDifficulty(parsed.difficulty, id),
+      commonality: parseCommonality(parsed.commonality, id),
       estimatedTimeMinutes,
       timeLimitSeconds,
       tags: parseStringArray(parsed.tags),
@@ -247,6 +265,7 @@ async function main(): Promise<void> {
             description,
             objective,
             difficulty,
+            commonality,
             estimated_time_minutes,
             time_limit_seconds,
             tags,
@@ -256,7 +275,7 @@ async function main(): Promise<void> {
             created_at,
             updated_at
           )
-          VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb, $9::jsonb, $10, 1, NOW(), NOW())
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb, $10::jsonb, $11, 1, NOW(), NOW())
           `,
           [
             scenario.id,
@@ -264,6 +283,7 @@ async function main(): Promise<void> {
             scenario.metadata.description,
             scenario.metadata.objective,
             scenario.metadata.difficulty,
+            scenario.metadata.commonality,
             scenario.metadata.estimatedTimeMinutes,
             scenario.metadata.timeLimitSeconds,
             JSON.stringify(scenario.metadata.tags),
@@ -355,12 +375,13 @@ async function main(): Promise<void> {
               description = $3,
               objective = $4,
               difficulty = $5,
-              estimated_time_minutes = $6,
-              time_limit_seconds = $7,
-              tags = $8::jsonb,
-              hints = $9::jsonb,
-              status = $10,
-              active_revision = $11,
+              commonality = $6,
+              estimated_time_minutes = $7,
+              time_limit_seconds = $8,
+              tags = $9::jsonb,
+              hints = $10::jsonb,
+              status = $11,
+              active_revision = $12,
               updated_at = NOW()
           WHERE id = $1
           `,
@@ -370,6 +391,7 @@ async function main(): Promise<void> {
             scenario.metadata.description,
             scenario.metadata.objective,
             scenario.metadata.difficulty,
+            scenario.metadata.commonality,
             scenario.metadata.estimatedTimeMinutes,
             scenario.metadata.timeLimitSeconds,
             JSON.stringify(scenario.metadata.tags),
@@ -390,12 +412,13 @@ async function main(): Promise<void> {
             description = $3,
             objective = $4,
             difficulty = $5,
-            estimated_time_minutes = $6,
-            time_limit_seconds = $7,
-            tags = $8::jsonb,
-            hints = $9::jsonb,
-            status = $10,
-            active_revision = $11,
+            commonality = $6,
+            estimated_time_minutes = $7,
+            time_limit_seconds = $8,
+            tags = $9::jsonb,
+            hints = $10::jsonb,
+            status = $11,
+            active_revision = $12,
             updated_at = NOW()
         WHERE id = $1
         `,
@@ -405,6 +428,7 @@ async function main(): Promise<void> {
           scenario.metadata.description,
           scenario.metadata.objective,
           scenario.metadata.difficulty,
+          scenario.metadata.commonality,
           scenario.metadata.estimatedTimeMinutes,
           scenario.metadata.timeLimitSeconds,
           JSON.stringify(scenario.metadata.tags),

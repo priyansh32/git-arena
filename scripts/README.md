@@ -90,6 +90,8 @@ Use these as the primary host-dev entrypoints.
 - `scripts/seed-scenarios.ts`
   - Seeds DB scenario catalog from root `scenarios/<id>/`.
   - Reads `metadata.json`, `seed.sh`, and `eval.sh` per scenario.
+  - `metadata.json` requires: `id`, `title`, `description`, `objective`, `difficulty`,
+    `commonality`, `estimatedTimeMinutes`, `timeLimitSeconds`, `tags`, `hints`, `status`.
   - Smart revisioning:
     - creates revision when scenario is new
     - creates new revision only when checksum changes

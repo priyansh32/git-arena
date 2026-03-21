@@ -8,6 +8,7 @@ export const defaultScenarios: Scenario[] = [
     objective:
       "Recover the detached commit onto branch `feature/recovery`, reattach HEAD, and keep existing tags.",
     difficulty: "beginner",
+    commonality: "common",
     estimatedTimeMinutes: 15,
     tags: ["detached-head", "branches"],
     hints: [
@@ -24,6 +25,7 @@ export const defaultScenarios: Scenario[] = [
     objective:
       "Turn the feature stack into one clean commit on top of main while preserving repository content.",
     difficulty: "intermediate",
+    commonality: "common",
     estimatedTimeMinutes: 25,
     tags: ["rebase", "history"],
     hints: [
@@ -40,6 +42,7 @@ export const defaultScenarios: Scenario[] = [
     objective:
       "Reconcile local and origin/main divergence, preserve both change sets, and end with no ahead/behind diff.",
     difficulty: "advanced",
+    commonality: "occasional",
     estimatedTimeMinutes: 35,
     tags: ["remote", "merge", "rebase"],
     hints: [
