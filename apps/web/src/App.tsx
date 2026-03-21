@@ -29,7 +29,9 @@ function userInitial(displayName: string): string {
 }
 
 function navClassName({ isActive }: { isActive: boolean }): string {
-  return `sidebar-link${isActive ? " active" : ""}`;
+  return `flex items-center gap-2 px-4 py-2 rounded-lg text-text-secondary transition-colors relative hover:bg-bg-surface-hover hover:text-text-primary ${
+    isActive ? "bg-accent-primary/10 text-[#7fe5f7]" : ""
+  }`;
 }
 
 export default function App() {
@@ -42,13 +44,25 @@ export default function App() {
     setMobileNavOpen(false);
   }, [location.pathname]);
 
+  const appRoutes = (
+    <Routes>
+      <Route element={<Navigate replace to="/dashboard" />} path="/" />
+      <Route element={<DashboardPage />} path="/dashboard" />
+      <Route element={<HistoryPage />} path="/history" />
+      <Route element={<ScenarioDetailPage />} path="/scenarios/:id" />
+      <Route element={<SessionWorkspacePage />} path="/sessions/:id" />
+      <Route element={<SessionResultPage />} path="/sessions/:id/result" />
+      <Route element={<Navigate replace to="/dashboard" />} path="*" />
+    </Routes>
+  );
+
   if (loading) {
     return (
-      <div className="app-shell">
-        <main className="app-main app-main-centered">
-          <section className="auth-layout page" aria-busy="true" aria-live="polite">
-            <div className="panel state-surface">
-              <p className="state-text">Loading user session...</p>
+      <div className="flex flex-col min-h-screen">
+        <main className="flex-1 flex items-center justify-center p-6 min-h-[calc(100vh-56px)] lg:min-h-screen">
+          <section className="w-full max-w-[440px] mx-auto flex flex-col gap-6" aria-busy="true" aria-live="polite">
+            <div className="bg-bg-surface border border-border-subtle rounded-xl flex items-center justify-center min-h-[120px] p-8 text-center">
+              <p className="m-0 text-text-secondary">Loading user session...</p>
             </div>
           </section>
         </main>
@@ -58,8 +72,8 @@ export default function App() {
 
   if (!user) {
     return (
-      <div className="app-shell">
-        <main className="app-main app-main-centered">
+      <div className="flex flex-col min-h-screen">
+        <main className="flex-1 flex items-center justify-center p-6 min-h-[calc(100vh-56px)] lg:min-h-screen">
           <LoginPage />
         </main>
       </div>
@@ -67,16 +81,17 @@ export default function App() {
   }
 
   return (
-    <div className="app-shell app-shell-auth">
-      <header className="mobile-topbar">
-        <Link className="mobile-brand" to="/dashboard">
-          <GitBranch aria-hidden="true" className="inline-icon" size={16} />
+    <div className="flex flex-col lg:flex-row min-h-screen">
+      {/* Mobile Topbar */}
+      <header className="flex lg:hidden items-center justify-between h-14 px-4 bg-[#18181be6] border-b border-border-subtle sticky top-0 z-40 backdrop-blur-md">
+        <Link className="flex items-center gap-2 font-mono font-bold lowercase text-text-primary hover:text-text-primary" to="/dashboard">
+          <GitBranch aria-hidden="true" className="shrink-0 text-accent-primary" size={16} />
           git-arena
         </Link>
         <button
           aria-expanded={mobileNavOpen}
           aria-label="Toggle navigation menu"
-          className="button button-secondary button-mini"
+          className="inline-flex items-center justify-center gap-2 px-3 py-1 bg-transparent border border-border-strong text-text-primary hover:border-accent-primary hover:bg-bg-surface-hover rounded-md font-mono text-xs uppercase tracking-wider transition-colors min-h-[32px]"
           onClick={() => {
             setMobileNavOpen((open) => !open);
           }}
@@ -84,107 +99,101 @@ export default function App() {
         >
           {mobileNavOpen ? (
             <>
-              <X aria-hidden="true" className="inline-icon" size={14} />
+              <X aria-hidden="true" className="shrink-0" size={14} />
               Close
             </>
           ) : (
             <>
-              <Menu aria-hidden="true" className="inline-icon" size={14} />
+              <Menu aria-hidden="true" className="shrink-0" size={14} />
               Menu
             </>
           )}
         </button>
       </header>
 
+      {/* Mobile Nav Menu */}
       {mobileNavOpen && (
-        <nav aria-label="Mobile" className="mobile-nav">
+        <nav aria-label="Mobile" className="flex lg:hidden flex-col gap-2 p-4 bg-bg-surface border-b border-border-subtle">
           <NavLink className={navClassName} to="/dashboard">
-            <span className="sidebar-link-label">
-              <LayoutDashboard aria-hidden="true" className="inline-icon" size={16} />
-              Dashboard
-            </span>
+            <LayoutDashboard aria-hidden="true" className="shrink-0" size={16} />
+            Dashboard
+            {/* Active Indicator is handled by pseudo element in Tailwind via class below */}
           </NavLink>
           <NavLink className={navClassName} to="/history">
-            <span className="sidebar-link-label">
-              <History aria-hidden="true" className="inline-icon" size={16} />
-              History
-            </span>
+            <History aria-hidden="true" className="shrink-0" size={16} />
+            History
           </NavLink>
-          <div className="mobile-user-row sidebar-user">
+          <div className="mt-4 pt-4 border-t border-border-subtle flex items-center gap-4 px-2">
             {user.avatarUrl ? (
-              <img alt="" className="sidebar-avatar" src={user.avatarUrl} />
+              <img alt="" className="w-8 h-8 rounded-full border border-border-strong shrink-0" src={user.avatarUrl} />
             ) : (
-              <span className="sidebar-avatar-fallback" aria-hidden="true">
+              <span className="w-8 h-8 rounded-full border border-border-strong shrink-0 flex items-center justify-center bg-accent-primary/10 text-accent-primary font-mono text-xs font-bold" aria-hidden="true">
                 {userInitial(user.displayName)}
               </span>
             )}
-            <div className="sidebar-user-meta">
-              <p className="sidebar-user-name">{user.displayName}</p>
-              <p className="sidebar-user-email">{user.email}</p>
+            <div className="min-w-0">
+              <p className="m-0 text-sm font-semibold whitespace-nowrap overflow-hidden text-ellipsis">{user.displayName}</p>
+              <p className="m-0 text-xs text-text-secondary font-mono whitespace-nowrap overflow-hidden text-ellipsis">{user.email}</p>
             </div>
           </div>
-          <button className="button button-secondary" onClick={() => void logout()} type="button">
-            <LogOut aria-hidden="true" className="inline-icon" size={15} />
+          <button className="mt-4 inline-flex w-full items-center justify-center gap-2 px-4 py-2 bg-transparent border border-border-strong text-text-primary hover:border-accent-primary hover:bg-bg-surface-hover rounded-lg text-sm font-semibold transition-colors min-h-[40px]" onClick={() => void logout()} type="button">
+            <LogOut aria-hidden="true" className="shrink-0" size={15} />
             Logout
           </button>
         </nav>
       )}
 
-      <aside className="app-sidebar">
-        <div className="sidebar-brand">
-          <Link className="sidebar-brand-link" to="/dashboard">
-            <GitBranch aria-hidden="true" className="inline-icon" size={16} />
+      {/* Desktop Sidebar */}
+      <aside className="hidden lg:flex flex-col w-[240px] h-screen sticky top-0 bg-bg-surface border-r border-border-subtle p-6 gap-6 z-20 shrink-0">
+        <div className="flex flex-col gap-1 px-2">
+          <Link className="flex items-center gap-2 font-mono text-lg font-bold tracking-wide lowercase text-text-primary hover:text-text-primary" to="/dashboard">
+            <GitBranch aria-hidden="true" className="shrink-0 text-accent-primary" size={16} />
             git-arena
           </Link>
-          <span className="sidebar-brand-note">Git Practice Platform</span>
+          <span className="text-text-secondary font-mono text-xs uppercase tracking-wider">Git Practice Platform</span>
         </div>
 
-        <nav aria-label="Primary" className="sidebar-nav">
-          <NavLink className={navClassName} to="/dashboard">
-            <span className="sidebar-link-label">
-              <LayoutDashboard aria-hidden="true" className="inline-icon" size={16} />
-              Dashboard
-            </span>
+        <nav aria-label="Primary" className="flex flex-col gap-1">
+          <NavLink className={({ isActive }) => `flex items-center gap-2 px-4 py-2 rounded-lg text-text-secondary transition-colors relative hover:bg-bg-surface-hover hover:text-text-primary ${isActive ? "bg-accent-primary/10 text-[#7fe5f7] before:content-[''] before:absolute before:left-0 before:top-1/2 before:-translate-y-1/2 before:h-[calc(100%-16px)] before:w-[3px] before:rounded-r-md before:bg-accent-primary" : ""}`} to="/dashboard">
+            <LayoutDashboard aria-hidden="true" className="shrink-0" size={16} />
+            Dashboard
           </NavLink>
-          <NavLink className={navClassName} to="/history">
-            <span className="sidebar-link-label">
-              <History aria-hidden="true" className="inline-icon" size={16} />
-              History
-            </span>
+          <NavLink className={({ isActive }) => `flex items-center gap-2 px-4 py-2 rounded-lg text-text-secondary transition-colors relative hover:bg-bg-surface-hover hover:text-text-primary ${isActive ? "bg-accent-primary/10 text-[#7fe5f7] before:content-[''] before:absolute before:left-0 before:top-1/2 before:-translate-y-1/2 before:h-[calc(100%-16px)] before:w-[3px] before:rounded-r-md before:bg-accent-primary" : ""}`} to="/history">
+            <History aria-hidden="true" className="shrink-0" size={16} />
+            History
           </NavLink>
         </nav>
 
-        <div className="sidebar-footer">
-          <div className="sidebar-user">
+        <div className="mt-auto border-t border-border-subtle pt-6 flex flex-col gap-4">
+          <div className="flex items-center gap-4 px-2">
             {user.avatarUrl ? (
-              <img alt="" className="sidebar-avatar" src={user.avatarUrl} />
+              <img alt="" className="w-8 h-8 rounded-full border border-border-strong shrink-0" src={user.avatarUrl} />
             ) : (
-              <span className="sidebar-avatar-fallback" aria-hidden="true">
+              <span className="w-8 h-8 rounded-full border border-border-strong shrink-0 flex items-center justify-center bg-accent-primary/10 text-accent-primary font-mono text-xs font-bold" aria-hidden="true">
                 {userInitial(user.displayName)}
               </span>
             )}
-            <div className="sidebar-user-meta">
-              <p className="sidebar-user-name">{user.displayName}</p>
-              <p className="sidebar-user-email">{user.email}</p>
+            <div className="min-w-0">
+              <p className="m-0 text-sm font-semibold whitespace-nowrap overflow-hidden text-ellipsis">{user.displayName}</p>
+              <p className="m-0 text-xs text-text-secondary font-mono whitespace-nowrap overflow-hidden text-ellipsis">{user.email}</p>
             </div>
           </div>
-          <button className="button button-secondary" onClick={() => void logout()} type="button">
-            <LogOut aria-hidden="true" className="inline-icon" size={15} />
+          <button className="inline-flex w-full items-center justify-center gap-2 px-4 py-2 bg-transparent border border-border-strong text-text-primary hover:border-accent-primary hover:bg-bg-surface-hover rounded-lg text-sm font-semibold transition-colors min-h-[40px]" onClick={() => void logout()} type="button">
+            <LogOut aria-hidden="true" className="shrink-0" size={15} />
             Logout
           </button>
         </div>
       </aside>
 
-      <main className={`app-main${isWorkspaceRoute ? " app-main-workspace" : ""}`}>
-        <Routes>
-          <Route element={<Navigate replace to="/dashboard" />} path="/" />
-          <Route element={<DashboardPage />} path="/dashboard" />
-          <Route element={<HistoryPage />} path="/history" />
-          <Route element={<ScenarioDetailPage />} path="/scenarios/:id" />
-          <Route element={<SessionWorkspacePage />} path="/sessions/:id" />
-          <Route element={<SessionResultPage />} path="/sessions/:id/result" />
-          <Route element={<Navigate replace to="/dashboard" />} path="*" />
-        </Routes>
+      {/* Main Content Area */}
+      <main className={`flex-1 flex flex-col min-w-0 ${isWorkspaceRoute ? "h-[calc(100vh-56px)] lg:h-screen p-0 overflow-hidden" : ""}`}>
+        {isWorkspaceRoute ? (
+          appRoutes
+        ) : (
+          <div className="w-full max-w-7xl mx-auto p-4 lg:p-8 flex-1">
+            {appRoutes}
+          </div>
+        )}
       </main>
     </div>
   );

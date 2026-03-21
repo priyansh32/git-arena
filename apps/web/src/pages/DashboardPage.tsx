@@ -31,41 +31,24 @@ function getRemainingLabel(expiresAt: string): string {
 }
 
 function getCommonalityLabel(commonality: Scenario["commonality"]): string {
-  if (commonality === "very_common") {
-    return "Very Common";
-  }
-  if (commonality === "common") {
-    return "Common";
-  }
-  if (commonality === "occasional") {
-    return "Occasional";
-  }
-  return "Rare";
+  if (commonality === "very_common") return "Very Common";
+  if (commonality === "common") return "Common";
+  if (commonality === "occasional") return "Occasional";
+  if (commonality === "rare") return "Rare";
+  return commonality;
 }
 
 function getDifficultyLabel(difficulty: Scenario["difficulty"] | "all"): string {
-  if (difficulty === "beginner") {
-    return "Beginner";
-  }
-  if (difficulty === "intermediate") {
-    return "Intermediate";
-  }
-  if (difficulty === "advanced") {
-    return "Advanced";
-  }
+  if (difficulty === "beginner") return "Beginner";
+  if (difficulty === "intermediate") return "Intermediate";
+  if (difficulty === "advanced") return "Advanced";
   return "All";
 }
 
 function getSortLabel(sortBy: ScenarioSort): string {
-  if (sortBy === "timeAsc") {
-    return "Time (Short to Long)";
-  }
-  if (sortBy === "timeDesc") {
-    return "Time (Long to Short)";
-  }
-  if (sortBy === "difficulty") {
-    return "Difficulty";
-  }
+  if (sortBy === "timeAsc") return "Time (Short to Long)";
+  if (sortBy === "timeDesc") return "Time (Long to Short)";
+  if (sortBy === "difficulty") return "Difficulty";
   return "Default";
 }
 
@@ -76,9 +59,7 @@ export function DashboardPage() {
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [difficultyFilter, setDifficultyFilter] = useState<Scenario["difficulty"] | "all">("all");
-  const [commonalityFilter, setCommonalityFilter] = useState<Scenario["commonality"] | "all">(
-    "all"
-  );
+  const [commonalityFilter, setCommonalityFilter] = useState<Scenario["commonality"] | "all">("all");
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [sortBy, setSortBy] = useState<ScenarioSort>("default");
   const [openMenu, setOpenMenu] = useState<DashboardMenu | null>(null);
@@ -227,18 +208,18 @@ export function DashboardPage() {
 
   if (loading) {
     return (
-      <section className="page dashboard-page" aria-busy="true" aria-live="polite">
-        <header className="page-header">
-          <h1 className="page-title">
-            <Gauge aria-hidden="true" className="inline-icon title-icon" size={20} />
+      <section className="flex flex-col gap-6 w-full" aria-busy="true" aria-live="polite">
+        <header className="flex flex-col gap-2">
+          <h1 className="m-0 flex items-center gap-2 text-[clamp(1.5rem,4vw,2rem)] font-bold tracking-tight leading-[1.2]">
+            <Gauge aria-hidden="true" className="shrink-0 text-accent-primary" size={20} />
             Scenario Catalog
           </h1>
-          <p>Choose a scenario to start an isolated Git session.</p>
+          <p className="m-0 text-text-readable text-lg max-w-[64ch]">Choose a scenario to start an isolated Git session.</p>
         </header>
-        <div className="skeleton skeleton-card" />
-        <div className="dashboard-grid">
+        <div className="skeleton min-h-[120px]" />
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-6">
           {Array.from({ length: 6 }).map((_, index) => (
-            <div className="skeleton skeleton-card" key={index} />
+            <div className="skeleton min-h-[280px]" key={index} />
           ))}
         </div>
       </section>
@@ -247,43 +228,44 @@ export function DashboardPage() {
 
   if (error) {
     return (
-      <section className="page dashboard-page">
-        <header className="page-header">
-          <h1 className="page-title">
-            <Gauge aria-hidden="true" className="inline-icon title-icon" size={20} />
+      <section className="flex flex-col gap-6 w-full">
+        <header className="flex flex-col gap-2">
+          <h1 className="m-0 flex items-center gap-2 text-[clamp(1.5rem,4vw,2rem)] font-bold tracking-tight leading-[1.2]">
+            <Gauge aria-hidden="true" className="shrink-0 text-accent-primary" size={20} />
             Scenario Catalog
           </h1>
-          <p>Choose a scenario to start an isolated Git session.</p>
+          <p className="m-0 text-text-readable text-lg max-w-[64ch]">Choose a scenario to start an isolated Git session.</p>
         </header>
-        <article className="panel state-surface">
-          <p className="state-text error">{error}</p>
+        <article className="flex flex-col items-center justify-center gap-4 min-h-[120px] p-8 text-center bg-bg-surface border border-border-subtle rounded-xl">
+          <p className="m-0 text-status-fail">{error}</p>
         </article>
       </section>
     );
   }
 
   return (
-    <section className="page dashboard-page">
-      <header className="page-header">
-        <h1 className="page-title">
-          <Gauge aria-hidden="true" className="inline-icon title-icon" size={20} />
+    <section className="flex flex-col gap-6 w-full pb-12">
+      <header className="flex flex-col gap-2">
+        <h1 className="m-0 flex items-center gap-2 text-[clamp(1.5rem,4vw,2rem)] font-bold tracking-tight leading-[1.2]">
+          <Gauge aria-hidden="true" className="shrink-0 text-accent-primary" size={20} />
           Scenario Catalog
         </h1>
-        <p>Choose a scenario to start an isolated Git session.</p>
+        <p className="m-0 text-text-readable text-lg max-w-[64ch]">Choose a scenario to start an isolated Git session.</p>
       </header>
 
       {activeSession && (
-        <article className="panel active-session-banner">
-          <p className="active-session-banner-title">
-            <Activity aria-hidden="true" className="inline-icon" size={14} />
+        <article className="flex flex-col gap-3 p-4 border border-accent-primary bg-accent-primary/5 rounded-xl">
+          <p className="m-0 flex items-center gap-2 text-accent-primary font-mono text-xs font-bold uppercase tracking-wider">
+            <Activity aria-hidden="true" className="shrink-0" size={14} />
             Active Session
           </p>
-          <div className="active-session-row">
-            <p>
-              <span className="mono">{activeScenarioTitle}</span> - {getRemainingLabel(activeSession.expiresAt)}
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <p className="m-0 text-text-primary text-sm flex items-center flex-wrap gap-2">
+              <span className="font-mono bg-bg-surface-soft px-2 py-1 rounded border border-border-strong text-accent-primary">{activeScenarioTitle}</span> 
+              <span className="text-text-secondary font-mono">{getRemainingLabel(activeSession.expiresAt)}</span>
             </p>
-            <Link className="button button-primary" to={`/sessions/${activeSession.id}`}>
-              <TerminalSquare aria-hidden="true" className="inline-icon" size={15} />
+            <Link className="inline-flex w-full sm:w-auto items-center justify-center gap-2 px-4 py-2 bg-accent-primary text-bg-base hover:bg-accent-hover rounded-md text-sm font-bold transition-colors min-h-[40px] shrink-0 whitespace-nowrap" to={`/sessions/${activeSession.id}`}>
+              <TerminalSquare aria-hidden="true" className="shrink-0" size={15} />
               Resume Workspace
             </Link>
           </div>
@@ -291,17 +273,17 @@ export function DashboardPage() {
       )}
 
       <section
-        className="scenario-controls"
+        className="flex flex-col md:flex-row gap-4 p-4 bg-bg-surface/60 border border-border-subtle rounded-xl backdrop-blur-md shadow-sm"
         aria-label="Scenario search, filter, and sort controls"
         ref={controlsRef}
       >
-        <label className="control-search">
-          <span className="control-search-icon" aria-hidden="true">
+        <label className="relative flex-1 min-w-0">
+          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none" aria-hidden="true">
             <Search aria-hidden="true" size={16} />
           </span>
           <input
             aria-label="Search scenarios"
-            className="control-input"
+            className="w-full min-h-[40px] pl-10 pr-4 bg-bg-base border border-border-strong rounded-lg text-text-primary text-sm transition-colors focus:outline-none focus:border-accent-primary focus:ring-2 focus:ring-accent-primary/20 placeholder:text-text-secondary"
             onChange={(event) => {
               setSearchQuery(event.target.value);
             }}
@@ -311,29 +293,29 @@ export function DashboardPage() {
           />
         </label>
 
-        <div className="control-group">
-          <div className="control-dropdown">
+        <div className="flex flex-nowrap md:flex-wrap overflow-x-auto md:overflow-x-visible gap-2 pb-1 md:pb-0 scrollbar-hide shrink-0 snap-x snap-mandatory">
+          <div className="relative min-w-fit shrink-0 snap-start">
             <button
               aria-expanded={openMenu === "difficulty"}
               aria-haspopup="listbox"
-              className="control-trigger"
+              className="w-full flex items-center justify-between gap-2 px-3 min-h-[40px] bg-bg-base border border-border-strong rounded-lg font-mono text-[13px] text-text-primary whitespace-nowrap transition-colors hover:bg-bg-surface-hover hover:border-accent-primary/50 focus:outline-none focus:ring-2 focus:ring-accent-primary/20"
               onClick={() => {
                 toggleMenu("difficulty");
               }}
               type="button"
             >
-              <span className="control-trigger-label">
-                <Gauge aria-hidden="true" className="inline-icon" size={15} />
+              <span className="flex items-center gap-2">
+                <Gauge aria-hidden="true" className="shrink-0 text-text-secondary" size={15} />
                 Difficulty: {difficultyLabel}
               </span>
               <ChevronDown
                 aria-hidden="true"
-                className={`inline-icon control-chevron${openMenu === "difficulty" ? " open" : ""}`}
+                className={`shrink-0 text-text-secondary transition-transform ${openMenu === "difficulty" ? "rotate-180" : ""}`}
                 size={14}
               />
             </button>
             {openMenu === "difficulty" && (
-              <div aria-label="Difficulty options" className="control-menu" role="listbox">
+              <div aria-label="Difficulty options" className="absolute top-[calc(100%+4px)] left-0 md:right-0 z-50 min-w-[200px] max-h-[300px] overflow-y-auto bg-bg-surface-soft border border-border-strong rounded-lg p-1.5 flex flex-col gap-1 shadow-lg" role="listbox">
                 {[
                   { label: "All", value: "all" as const },
                   { label: "Beginner", value: "beginner" as const },
@@ -341,7 +323,7 @@ export function DashboardPage() {
                   { label: "Advanced", value: "advanced" as const }
                 ].map((option) => (
                   <button
-                    className={`control-item${difficultyFilter === option.value ? " active" : ""}`}
+                    className={`flex items-center gap-2 w-full p-2 rounded-md font-mono text-[13px] text-left transition-colors hover:bg-bg-surface-hover ${difficultyFilter === option.value ? "bg-accent-primary/15 text-accent-primary" : "text-text-primary"}`}
                     key={option.value}
                     onClick={() => {
                       setDifficultyFilter(option.value);
@@ -350,8 +332,8 @@ export function DashboardPage() {
                     role="option"
                     type="button"
                   >
-                    <span className="control-item-check" aria-hidden="true">
-                      {difficultyFilter === option.value && <Check className="inline-icon" size={13} />}
+                    <span className="w-4 flex items-center justify-center shrink-0" aria-hidden="true">
+                      {difficultyFilter === option.value && <Check className="shrink-0" size={13} />}
                     </span>
                     <span>{option.label}</span>
                   </button>
@@ -360,28 +342,28 @@ export function DashboardPage() {
             )}
           </div>
 
-          <div className="control-dropdown">
+          <div className="relative min-w-fit shrink-0 snap-start">
             <button
               aria-expanded={openMenu === "commonality"}
               aria-haspopup="listbox"
-              className="control-trigger"
+              className="w-full flex items-center justify-between gap-2 px-3 min-h-[40px] bg-bg-base border border-border-strong rounded-lg font-mono text-[13px] text-text-primary whitespace-nowrap transition-colors hover:bg-bg-surface-hover hover:border-accent-primary/50 focus:outline-none focus:ring-2 focus:ring-accent-primary/20"
               onClick={() => {
                 toggleMenu("commonality");
               }}
               type="button"
             >
-              <span className="control-trigger-label">
-                <Activity aria-hidden="true" className="inline-icon" size={15} />
+              <span className="flex items-center gap-2">
+                <Activity aria-hidden="true" className="shrink-0 text-text-secondary" size={15} />
                 Commonality: {commonalityLabel}
               </span>
               <ChevronDown
                 aria-hidden="true"
-                className={`inline-icon control-chevron${openMenu === "commonality" ? " open" : ""}`}
+                className={`shrink-0 text-text-secondary transition-transform ${openMenu === "commonality" ? "rotate-180" : ""}`}
                 size={14}
               />
             </button>
             {openMenu === "commonality" && (
-              <div aria-label="Commonality options" className="control-menu" role="listbox">
+              <div aria-label="Commonality options" className="absolute top-[calc(100%+4px)] left-0 md:right-0 z-50 min-w-[200px] max-h-[300px] overflow-y-auto bg-bg-surface-soft border border-border-strong rounded-lg p-1.5 flex flex-col gap-1 shadow-lg" role="listbox">
                 {[
                   { label: "All", value: "all" as const },
                   { label: "Very Common", value: "very_common" as const },
@@ -390,7 +372,7 @@ export function DashboardPage() {
                   { label: "Rare", value: "rare" as const }
                 ].map((option) => (
                   <button
-                    className={`control-item${commonalityFilter === option.value ? " active" : ""}`}
+                    className={`flex items-center gap-2 w-full p-2 rounded-md font-mono text-[13px] text-left transition-colors hover:bg-bg-surface-hover ${commonalityFilter === option.value ? "bg-accent-primary/15 text-accent-primary" : "text-text-primary"}`}
                     key={option.value}
                     onClick={() => {
                       setCommonalityFilter(option.value);
@@ -399,8 +381,8 @@ export function DashboardPage() {
                     role="option"
                     type="button"
                   >
-                    <span className="control-item-check" aria-hidden="true">
-                      {commonalityFilter === option.value && <Check className="inline-icon" size={13} />}
+                    <span className="w-4 flex items-center justify-center shrink-0" aria-hidden="true">
+                      {commonalityFilter === option.value && <Check className="shrink-0" size={13} />}
                     </span>
                     <span>{option.label}</span>
                   </button>
@@ -409,36 +391,36 @@ export function DashboardPage() {
             )}
           </div>
 
-          <div className="control-dropdown">
+          <div className="relative min-w-fit shrink-0 snap-start">
             <button
               aria-expanded={openMenu === "tags"}
               aria-haspopup="listbox"
-              className="control-trigger"
+              className="w-full flex items-center justify-between gap-2 px-3 min-h-[40px] bg-bg-base border border-border-strong rounded-lg font-mono text-[13px] text-text-primary whitespace-nowrap transition-colors hover:bg-bg-surface-hover hover:border-accent-primary/50 focus:outline-none focus:ring-2 focus:ring-accent-primary/20"
               onClick={() => {
                 toggleMenu("tags");
               }}
               type="button"
             >
-              <span className="control-trigger-label">
-                <Tags aria-hidden="true" className="inline-icon" size={15} />
+              <span className="flex items-center gap-2">
+                <Tags aria-hidden="true" className="shrink-0 text-text-secondary" size={15} />
                 {selectedTags.length === 0 ? "Tags: All" : `Tags: ${selectedTags.length}`}
               </span>
               <ChevronDown
                 aria-hidden="true"
-                className={`inline-icon control-chevron${openMenu === "tags" ? " open" : ""}`}
+                className={`shrink-0 text-text-secondary transition-transform ${openMenu === "tags" ? "rotate-180" : ""}`}
                 size={14}
               />
             </button>
             {openMenu === "tags" && (
-              <div aria-label="Tag options" className="control-menu control-menu-tags" role="listbox">
+              <div aria-label="Tag options" className="absolute top-[calc(100%+4px)] left-0 md:right-0 z-50 min-w-[240px] max-h-[300px] overflow-y-auto bg-bg-surface-soft border border-border-strong rounded-lg p-1.5 flex flex-col gap-1 shadow-lg" role="listbox">
                 {availableTags.length === 0 ? (
-                  <p className="control-menu-empty">No tags available</p>
+                  <p className="m-0 text-text-secondary text-[13px] font-mono p-2">No tags available</p>
                 ) : (
                   <>
-                    <div className="control-menu-options">
+                    <div className="flex flex-col gap-1">
                       {availableTags.map((tag) => (
                         <button
-                          className={`control-item${selectedTags.includes(tag) ? " active" : ""}`}
+                          className={`flex items-center gap-2 w-full p-2 rounded-md font-mono text-[13px] text-left transition-colors hover:bg-bg-surface-hover ${selectedTags.includes(tag) ? "bg-accent-primary/15 text-accent-primary" : "text-text-primary"}`}
                           key={tag}
                           onClick={() => {
                             toggleTag(tag);
@@ -446,22 +428,22 @@ export function DashboardPage() {
                           role="option"
                           type="button"
                         >
-                          <span className="control-item-check" aria-hidden="true">
-                            {selectedTags.includes(tag) && <Check className="inline-icon" size={13} />}
+                          <span className="w-4 flex items-center justify-center shrink-0" aria-hidden="true">
+                            {selectedTags.includes(tag) && <Check className="shrink-0" size={13} />}
                           </span>
                           <span>{tag}</span>
                         </button>
                       ))}
                     </div>
-                    <div className="control-menu-actions">
+                    <div className="mt-1 pt-1 border-t border-border-strong">
                       <button
-                        className="control-clear"
+                        className="flex items-center justify-center w-full gap-2 p-1.5 text-status-fail hover:bg-status-fail-bg/50 rounded text-xs font-mono transition-colors"
                         onClick={() => {
                           setSelectedTags([]);
                         }}
                         type="button"
                       >
-                        <RotateCcw aria-hidden="true" className="inline-icon" size={14} />
+                        <RotateCcw aria-hidden="true" className="shrink-0" size={12} />
                         Clear tags
                       </button>
                     </div>
@@ -471,28 +453,28 @@ export function DashboardPage() {
             )}
           </div>
 
-          <div className="control-dropdown">
+          <div className="relative min-w-fit shrink-0 snap-start">
             <button
               aria-expanded={openMenu === "sort"}
               aria-haspopup="listbox"
-              className="control-trigger"
+              className="w-full flex items-center justify-between gap-2 px-3 min-h-[40px] bg-bg-base border border-border-strong rounded-lg font-mono text-[13px] text-text-primary whitespace-nowrap transition-colors hover:bg-bg-surface-hover hover:border-accent-primary/50 focus:outline-none focus:ring-2 focus:ring-accent-primary/20"
               onClick={() => {
                 toggleMenu("sort");
               }}
               type="button"
             >
-              <span className="control-trigger-label">
-                <ArrowDownWideNarrow aria-hidden="true" className="inline-icon" size={15} />
+              <span className="flex items-center gap-2">
+                <ArrowDownWideNarrow aria-hidden="true" className="shrink-0 text-text-secondary" size={15} />
                 Sort: {sortLabel}
               </span>
               <ChevronDown
                 aria-hidden="true"
-                className={`inline-icon control-chevron${openMenu === "sort" ? " open" : ""}`}
+                className={`shrink-0 text-text-secondary transition-transform ${openMenu === "sort" ? "rotate-180" : ""}`}
                 size={14}
               />
             </button>
             {openMenu === "sort" && (
-              <div aria-label="Sort options" className="control-menu" role="listbox">
+              <div aria-label="Sort options" className="absolute top-[calc(100%+4px)] left-0 md:right-0 z-50 min-w-[220px] max-h-[300px] overflow-y-auto bg-bg-surface-soft border border-border-strong rounded-lg p-1.5 flex flex-col gap-1 shadow-lg" role="listbox">
                 {[
                   { label: "Default", value: "default" as const },
                   { label: "Time (Short to Long)", value: "timeAsc" as const },
@@ -500,7 +482,7 @@ export function DashboardPage() {
                   { label: "Difficulty", value: "difficulty" as const }
                 ].map((option) => (
                   <button
-                    className={`control-item${sortBy === option.value ? " active" : ""}`}
+                    className={`flex items-center gap-2 w-full p-2 rounded-md font-mono text-[13px] text-left transition-colors hover:bg-bg-surface-hover ${sortBy === option.value ? "bg-accent-primary/15 text-accent-primary" : "text-text-primary"}`}
                     key={option.value}
                     onClick={() => {
                       setSortBy(option.value);
@@ -509,8 +491,8 @@ export function DashboardPage() {
                     role="option"
                     type="button"
                   >
-                    <span className="control-item-check" aria-hidden="true">
-                      {sortBy === option.value && <Check className="inline-icon" size={13} />}
+                    <span className="w-4 flex items-center justify-center shrink-0" aria-hidden="true">
+                      {sortBy === option.value && <Check className="shrink-0" size={13} />}
                     </span>
                     <span>{option.label}</span>
                   </button>
@@ -521,63 +503,59 @@ export function DashboardPage() {
         </div>
       </section>
 
-      <p className="state-text scenario-controls-meta">
-        Showing {visibleScenarios.length} of {scenarios.length} scenarios
-        {(searchQuery ||
-          difficultyFilter !== "all" ||
-          commonalityFilter !== "all" ||
-          selectedTags.length > 0 ||
-          sortBy !== "default") && (
-          <>
-            {" "}
-            -{" "}
-            <button className="control-reset-link" onClick={resetControls} type="button">
-              <RotateCcw aria-hidden="true" className="inline-icon" size={13} />
-              Reset controls
-            </button>
-          </>
+      <div className="flex items-center justify-between text-sm text-text-secondary">
+        <p className="m-0">
+          Showing {visibleScenarios.length} of {scenarios.length} scenarios
+        </p>
+        {(searchQuery || difficultyFilter !== "all" || commonalityFilter !== "all" || selectedTags.length > 0 || sortBy !== "default") && (
+          <button className="inline-flex items-center gap-1.5 text-accent-primary font-mono text-xs hover:underline transition-colors" onClick={resetControls} type="button">
+            <RotateCcw aria-hidden="true" className="shrink-0" size={12} />
+            Reset filters
+          </button>
         )}
-      </p>
+      </div>
 
       {visibleScenarios.length === 0 && (
-        <article className="panel state-surface">
-          <p className="state-text">No scenarios match your current filters.</p>
+        <article className="flex flex-col items-center justify-center gap-4 min-h-[120px] p-8 text-center bg-bg-surface border border-border-subtle rounded-xl">
+          <p className="m-0 text-text-secondary">No scenarios match your current filters.</p>
         </article>
       )}
 
-      <div className="dashboard-grid">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-6">
         {visibleScenarios.map((scenario) => (
-          <article className="scenario-card" key={scenario.id}>
-            <div className="scenario-card-top">
-              <div className="scenario-card-meta">
-                <span className={`badge ${scenario.difficulty}`}>{scenario.difficulty}</span>
-                <span className={`commonality-pill ${scenario.commonality}`}>
+          <article className="flex flex-col bg-bg-surface border border-border-subtle rounded-xl p-6 transition-all hover:border-border-strong hover:-translate-y-0.5 hover:shadow-lg hover:shadow-black/50 h-full group" key={scenario.id}>
+            <div className="flex items-start justify-between gap-4 mb-4">
+              <div className="flex flex-wrap gap-2">
+                <span className={`inline-flex items-center justify-center px-2.5 py-1 rounded-full font-mono text-[10px] font-bold uppercase tracking-wider border leading-none ${scenario.difficulty === 'beginner' ? 'text-status-pass bg-status-pass-bg border-status-pass-border' : scenario.difficulty === 'intermediate' ? 'text-status-warn bg-status-warn-bg border-status-warn-border' : 'text-status-fail bg-status-fail-bg border-status-fail-border'}`}>
+                  {getDifficultyLabel(scenario.difficulty)}
+                </span>
+                <span className={`inline-flex items-center justify-center px-2.5 py-1 rounded-full font-mono text-[10px] font-bold uppercase tracking-wider border leading-none ${scenario.commonality === 'very_common' ? 'text-[#86efac] bg-[#22c55e29] border-[#22c55e66]' : scenario.commonality === 'common' ? 'text-[#67e8f9] bg-[#06b6d424] border-[#06b6d46b]' : scenario.commonality === 'occasional' ? 'text-[#fdba74] bg-[#f9731629] border-[#f973166b]' : 'text-[#c4b5fd] bg-[#8b5cf62b] border-[#8b5cf673]'}`}>
                   {getCommonalityLabel(scenario.commonality)}
                 </span>
               </div>
-              <span className="mono state-text scenario-time-chip">
-                <Clock3 aria-hidden="true" className="inline-icon" size={13} />
+              <span className="flex items-center gap-1.5 font-mono text-xs text-text-secondary whitespace-nowrap shrink-0">
+                <Clock3 aria-hidden="true" className="shrink-0" size={12} />
                 ~{scenario.estimatedTimeMinutes}m
               </span>
             </div>
 
-            <h2 className="scenario-title">{scenario.title}</h2>
-            <p className="scenario-description">{scenario.description}</p>
+            <h2 className="m-0 mb-2 text-xl font-bold leading-tight line-clamp-2 text-text-primary group-hover:text-accent-primary transition-colors">{scenario.title}</h2>
+            <p className="m-0 mb-6 text-sm text-text-readable leading-relaxed line-clamp-3 flex-1">{scenario.description}</p>
 
-            <div className="scenario-tags">
+            <div className="flex flex-wrap gap-1.5 mb-6">
               {scenario.tags.map((tag) => (
-                <span className="scenario-tag" key={tag}>
+                <span className="bg-bg-surface-soft border border-border-strong text-text-primary text-[10px] font-mono px-2 py-0.5 rounded-full" key={tag}>
                   {tag}
                 </span>
               ))}
             </div>
 
             <Link
-              className="button button-primary button-block scenario-card-cta"
+              className="mt-auto inline-flex w-full items-center justify-center gap-2 px-4 py-2 bg-accent-primary/10 border border-accent-primary/30 text-accent-primary group-hover:bg-accent-primary group-hover:text-bg-base group-hover:border-accent-primary rounded-md text-sm font-bold min-h-[40px] transition-colors shadow-sm"
               to={`/scenarios/${scenario.id}`}
             >
-              <ArrowRight aria-hidden="true" className="inline-icon" size={15} />
               Open Scenario
+              <ArrowRight aria-hidden="true" className="shrink-0" size={15} />
             </Link>
           </article>
         ))}

@@ -44,12 +44,8 @@ function getRemainingLabel(expiresAt: string): string {
   return `${minutes}:${seconds}`;
 }
 
-function toHintLabel(index: number): string {
-  return `Hint ${index}`;
-}
-
 export function SessionWorkspacePage() {
-  const { id } = useParams();
+  const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
 
   const [session, setSession] = useState<Session | null>(null);
@@ -187,24 +183,24 @@ export function SessionWorkspacePage() {
 
   if (loading) {
     return (
-      <section className="workspace-page" aria-busy="true" aria-live="polite">
-        <aside className="workspace-sidebar">
-          <div className="workspace-sidebar-scroll">
-            <div className="skeleton skeleton-card" />
-            <div className="skeleton skeleton-card" />
-            <div className="skeleton skeleton-card" />
+      <section className="flex flex-col lg:flex-row h-full w-full" aria-busy="true" aria-live="polite">
+        <aside className="flex flex-col border-b lg:border-b-0 lg:border-r border-border-subtle bg-bg-surface w-full lg:w-[340px] max-h-[40vh] lg:max-h-none shrink-0">
+          <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-6 scrollbar-hide">
+            <div className="skeleton h-32 rounded-xl" />
+            <div className="skeleton h-48 rounded-xl" />
+            <div className="skeleton h-24 rounded-xl" />
           </div>
         </aside>
-        <section className="workspace-terminal-pane">
-          <header className="workspace-terminal-header">
-            <div className="workspace-terminal-status">
-              <span className="connection-dot connecting" />
-              <span>connecting</span>
+        <section className="flex-1 flex flex-col min-h-0 bg-bg-base">
+          <header className="flex items-center justify-between p-2 lg:p-4 bg-bg-surface-soft border-b border-border-subtle shrink-0 min-h-[56px]">
+            <div className="flex items-center gap-2 font-mono text-xs uppercase tracking-wider text-text-secondary">
+              <span className="w-2 h-2 rounded-full bg-status-warn shadow-[0_0_0_2px_rgba(245,158,11,0.2)]" />
+              Connecting...
             </div>
           </header>
-          <div className="workspace-terminal-body">
-            <div className="terminal-placeholder">
-              <p>Initializing workspace...</p>
+          <div className="flex-1 bg-black relative min-h-0">
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 text-text-secondary font-mono">
+              Terminal loading...
             </div>
           </div>
         </section>
@@ -214,12 +210,12 @@ export function SessionWorkspacePage() {
 
   if (error && !session) {
     return (
-      <section className="page">
-        <article className="panel state-surface">
-          <p className="state-text error">{error}</p>
-          <Link className="text-link" to="/dashboard">
-            <ArrowLeft aria-hidden="true" className="inline-icon" size={13} />
-            Back to catalog
+      <section className="flex flex-col gap-6 w-full max-w-7xl mx-auto p-4 lg:p-8">
+        <article className="flex flex-col items-center justify-center gap-4 min-h-[120px] p-8 text-center bg-bg-surface border border-border-subtle rounded-xl">
+          <p className="m-0 text-status-fail">{error}</p>
+          <Link className="inline-flex items-center gap-1.5 text-accent-primary font-semibold hover:text-accent-hover hover:underline" to="/dashboard">
+            <ArrowLeft aria-hidden="true" className="shrink-0" size={13} />
+            Return to Dashboard
           </Link>
         </article>
       </section>
@@ -227,108 +223,117 @@ export function SessionWorkspacePage() {
   }
 
   return (
-    <section className="workspace-page">
-      <aside className="workspace-sidebar">
-        <div className="workspace-sidebar-scroll">
-          <header className="page-header">
-            <h1>{scenario?.title ?? "Session"}</h1>
-            <p>{scenario?.description ?? "No scenario metadata available."}</p>
+    <section className="flex flex-col lg:flex-row h-full w-full">
+      <aside className="flex flex-col border-b lg:border-b-0 lg:border-r border-border-subtle bg-bg-surface w-full lg:w-[340px] max-h-[44vh] lg:max-h-none shrink-0 overflow-hidden">
+        <div className="flex-1 overflow-y-auto p-4 lg:p-6 flex flex-col gap-6 scrollbar-hide">
+          <header className="flex flex-col gap-2">
+            <h1 className="m-0 text-xl font-bold tracking-tight leading-tight">
+              {scenario?.title ?? "Session"}
+            </h1>
+            <p className="m-0 text-text-secondary text-sm">{scenario?.description ?? "No scenario metadata available."}</p>
           </header>
 
-          <div>
-            <p className="state-text workspace-label-with-icon">
-              <Clock3 aria-hidden="true" className="inline-icon" size={13} />
+          <div className="flex flex-col gap-3">
+            <p className="m-0 flex items-center gap-2 text-sm text-text-secondary">
+              <Clock3 aria-hidden="true" className="shrink-0" size={13} />
               Time Remaining
             </p>
-            <div className="workspace-countdown">{remaining}</div>
+            <div className="inline-flex items-center justify-center w-fit px-4 py-2 bg-bg-surface-soft border border-border-strong rounded-lg font-mono text-2xl font-bold tracking-wider shadow-inner">
+              {remaining}
+            </div>
+            <div className="flex items-center gap-2 text-sm text-text-secondary mt-1">
+              <span className={`inline-flex items-center justify-center px-2 py-0.5 rounded-full font-mono text-[10px] font-bold uppercase tracking-wider border leading-none ${session?.status === 'active' ? 'text-status-pass bg-status-pass-bg border-status-pass-border' : 'text-status-warn bg-status-warn-bg border-status-warn-border'}`}>
+                {session?.status ?? "unknown"}
+              </span>
+              <span className="font-mono text-xs">{statusText}</span>
+            </div>
           </div>
 
-          <div className="workspace-status">
-            <span className={`badge ${session?.status === "active" ? "pass" : "warn"}`}>
-              {session?.status ?? "unknown"}
-            </span>
-            <span className="mono">{statusText}</span>
-          </div>
-
-          <section className="workspace-hints">
-            <h2 className="section-title-with-icon">
-              <Flag aria-hidden="true" className="inline-icon" size={16} />
+          <section className="flex flex-col gap-3">
+            <h2 className="m-0 flex items-center gap-2 text-lg font-bold">
+              <Flag aria-hidden="true" className="shrink-0 text-accent-primary" size={16} />
               Objective
             </h2>
-            <p>{scenario?.objective ?? "No objective available."}</p>
+            <div className="bg-bg-surface-soft border border-border-strong rounded-xl p-4 text-sm leading-relaxed text-text-primary">
+              {scenario?.objective ?? "No objective available."}
+            </div>
           </section>
 
-          <section className="workspace-hints">
-            <h3 className="section-title-with-icon">
-              <Lightbulb aria-hidden="true" className="inline-icon" size={16} />
-              Hints
+          <section className="flex flex-col gap-3 pb-2">
+            <h3 className="m-0 flex items-center gap-2 text-lg font-bold">
+              <Lightbulb aria-hidden="true" className="shrink-0 text-status-warn" size={16} />
+              Hints ({revealedHints.length} / {scenario?.hints.length ?? 0})
             </h3>
-            <p className="state-text">
-              Requested {revealedHints.length}/{scenario?.hints.length ?? 0}
+            <p className="m-0 text-text-secondary text-sm">
+              Need help? Requesting a hint reduces your maximum possible score.
             </p>
 
-            {revealedHints.length === 0 ? (
-              <article className="panel">
-                <p className="state-text">No hints requested yet.</p>
-              </article>
-            ) : (
-              revealedHints.map((hint, index) => (
-                <details className="hint-details" key={`${hint.index}-${index}`} open={index === revealedHints.length - 1}>
-                  <summary>{toHintLabel(hint.index)}</summary>
-                  <p>{hint.text}</p>
-                </details>
-              ))
-            )}
+            <div className="flex flex-col gap-2 mt-2">
+              {revealedHints.length === 0 ? (
+                <div className="bg-bg-surface-soft border border-border-strong rounded-xl p-4 text-center">
+                  <p className="m-0 text-text-secondary text-sm">No hints requested yet.</p>
+                </div>
+              ) : (
+                revealedHints.map((hint, index) => (
+                  <details className="bg-bg-surface-soft border border-border-strong rounded-lg overflow-hidden [&_summary::-webkit-details-marker]:hidden open:border-accent-primary" key={`${hint.index}-${index}`} open={index === revealedHints.length - 1}>
+                    <summary className="p-3 font-mono text-xs font-bold uppercase tracking-wider text-accent-primary cursor-pointer select-none hover:bg-bg-surface-hover/50 transition-colors">
+                      Hint #{hint.index + 1}
+                    </summary>
+                    <p className="m-0 px-3 pb-3 text-sm text-text-primary leading-relaxed">{hint.text}</p>
+                  </details>
+                ))
+              )}
+            </div>
           </section>
 
-          {error && <p className="state-text error">{error}</p>}
+          {error && <p className="m-0 text-status-fail bg-status-fail-bg border border-status-fail-border p-3 rounded-lg text-sm mt-auto">{error}</p>}
         </div>
 
-        <footer className="workspace-sidebar-actions">
+        <footer className="p-4 lg:p-6 border-t border-border-subtle bg-bg-surface shrink-0 flex flex-col gap-3 z-10">
           <button
-            className="button button-primary button-block"
+            className="inline-flex w-full items-center justify-center gap-2 px-4 py-2.5 bg-accent-primary text-bg-base hover:bg-accent-hover rounded-md text-sm font-bold min-h-[44px] transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
             disabled={submitLoading || quitLoading || !session}
-            onClick={onSubmit}
+            onClick={() => void onSubmit()}
             type="button"
           >
-            {!submitLoading && <SendHorizontal aria-hidden="true" className="inline-icon" size={15} />}
-            {submitLoading ? "Submitting..." : "Submit"}
+            {submitLoading ? "Submitting..." : "Submit Solution"}
+            {!submitLoading && <SendHorizontal aria-hidden="true" className="shrink-0" size={16} />}
           </button>
           <button
-            className="button button-secondary button-block"
+            className="inline-flex w-full items-center justify-center gap-2 px-4 py-2.5 bg-transparent border border-border-strong text-text-primary hover:border-accent-primary hover:bg-bg-surface-hover rounded-md text-sm font-bold min-h-[44px] transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
             disabled={quitLoading || submitLoading || hintLoading}
-            onClick={onQuit}
+            onClick={() => void onQuit()}
             type="button"
           >
-            {!quitLoading && <LogOut aria-hidden="true" className="inline-icon" size={15} />}
-            {quitLoading ? "Closing..." : "Quit"}
+            {quitLoading ? "Quitting..." : "Quit Session"}
+            {!quitLoading && <LogOut aria-hidden="true" className="shrink-0" size={16} />}
           </button>
         </footer>
       </aside>
 
-      <section className="workspace-terminal-pane">
-        <header className="workspace-terminal-header">
-          <div className="workspace-terminal-status">
-            <span className={`connection-dot ${terminalState}`} />
-            <span>{terminalState}</span>
+      <section className="flex-1 flex flex-col min-h-0 bg-bg-base relative overflow-hidden">
+        <header className="flex items-center justify-between p-2 lg:p-4 bg-bg-surface-soft border-b border-border-subtle shrink-0 min-h-[56px] z-10">
+          <div className="flex items-center gap-2 font-mono text-xs uppercase tracking-wider text-text-secondary">
+            <span className={`w-2 h-2 rounded-full ${terminalState === 'connected' ? 'bg-status-pass shadow-[0_0_0_2px_rgba(16,185,129,0.2)]' : terminalState === 'connecting' ? 'bg-status-warn shadow-[0_0_0_2px_rgba(245,158,11,0.2)]' : 'bg-status-fail shadow-[0_0_0_2px_rgba(239,68,68,0.2)]'}`} />
+            {terminalState}
           </div>
           <button
-            className="button button-secondary button-mini"
+            className="inline-flex items-center justify-center gap-2 px-3 py-1.5 bg-transparent border border-border-strong text-text-primary hover:border-accent-primary hover:bg-bg-surface-hover rounded-md font-mono text-xs uppercase tracking-wider transition-colors min-h-[32px] disabled:opacity-50 disabled:cursor-not-allowed"
             disabled={hintLoading || submitLoading || quitLoading || hintsExhausted || !isWorkspaceLive}
-            onClick={onHint}
+            onClick={() => void onHint()}
             type="button"
           >
-            {!hintLoading && !hintsExhausted && <Zap aria-hidden="true" className="inline-icon" size={13} />}
-            {hintLoading ? "Loading..." : hintsExhausted ? "No Hints" : "Request Hint"}
+            {hintLoading ? "..." : hintsExhausted ? "No hints left" : "Request Hint"}
+            {!hintLoading && !hintsExhausted && <Zap aria-hidden="true" className="shrink-0 text-status-warn" size={14} />}
           </button>
         </header>
 
-        <div className="workspace-terminal-body">
+        <div className="flex-1 bg-black relative min-h-0 overflow-hidden">
           {session && isWorkspaceLive ? (
             <Suspense
               fallback={
-                <div className="terminal-placeholder">
-                  <p>Initializing terminal...</p>
+                <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 text-text-secondary font-mono">
+                  Initializing terminal...
                 </div>
               }
             >
@@ -339,13 +344,10 @@ export function SessionWorkspacePage() {
               />
             </Suspense>
           ) : (
-            <div className="terminal-placeholder">
-              <p className="workspace-label-with-icon">
-                <Terminal aria-hidden="true" className="inline-icon" size={14} />
-                Workspace terminal
-              </p>
-              <p>Workspace is not active for this session.</p>
-              <p>Start a new challenge from the catalog to launch a terminal.</p>
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 text-text-secondary font-mono text-center p-8 bg-black/80 backdrop-blur-sm z-20">
+              <Terminal aria-hidden="true" className="shrink-0 text-border-strong mb-2" size={48} />
+              <p className="m-0 text-lg">Workspace is not active for this session.</p>
+              <p className="m-0 text-sm opacity-70">Start a new challenge from the catalog to launch a terminal.</p>
             </div>
           )}
         </div>
