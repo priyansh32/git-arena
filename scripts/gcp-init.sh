@@ -9,7 +9,7 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 source "${ROOT_DIR}/scripts/lib/common.sh"
 
 GCP_PROJECT_ID="${GCP_PROJECT_ID:-}"
-GKE_CLUSTER_NAME="${GKE_CLUSTER_NAME:-gitarena-verify-1}"
+GKE_CLUSTER_NAME="${GKE_CLUSTER_NAME:-gitarena-preview}"
 GKE_LOCATION="${GKE_LOCATION:-us-central1-a}"
 GKE_LOCATION_TYPE="${GKE_LOCATION_TYPE:-zone}" # zone|region
 GKE_MODE="${GKE_MODE:-standard}" # standard|autopilot

@@ -25,13 +25,7 @@ Stop:
 docker compose down --remove-orphans
 ```
 
-### 2) Host Dev Servers + Local Postgres (recommended for Kubernetes workspace provider)
-
-Start Postgres:
-
-```bash
-./scripts/dev-up.sh postgres
-```
+### 2) Host Dev Servers + Cloud SQL (recommended for Kubernetes workspace provider)
 
 Run API in Docker workspace mode:
 
@@ -50,6 +44,18 @@ Run web:
 ```bash
 ./scripts/dev-up.sh web
 ```
+
+For one-command startup in Kubernetes mode:
+
+```bash
+./scripts/dev-up.sh all k8s
+```
+
+Cloud SQL notes for `k8s` mode:
+
+- Default behavior is to load DB credentials from `.dev-runtime/cloudsql.env`.
+- If `DATABASE_URL` there points to `127.0.0.1:5432`, start Cloud SQL Auth Proxy first.
+- To force local docker compose Postgres even in `k8s` mode, set `K8S_USE_CLOUDSQL=false`.
 
 Web URL: `http://localhost:5173`
 

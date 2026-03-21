@@ -18,6 +18,9 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 source "${ROOT_DIR}/scripts/lib/common.sh"
 ENV_FILE="${ROOT_DIR}/.env"
 RUNTIME_DIR="${ROOT_DIR}/.dev-runtime"
+DEFAULT_DATABASE_URL="postgres://gitarena:gitarena@localhost:5432/gitarena"
+CLOUDSQL_ENV_FILE_DEFAULT="${RUNTIME_DIR}/cloudsql.env"
+K8S_USE_CLOUDSQL="${K8S_USE_CLOUDSQL:-true}"
 
 TARGET="${1:-all}" # postgres|api|web|all
 MODE="${2:-docker}" # docker|k8s for api/all
@@ -31,13 +34,14 @@ Targets:
   postgres             start postgres only (docker compose)
   api [docker|k8s]     start API in foreground
   web                  start web in foreground
-  all [docker|k8s]     start postgres + API + web (API/web in background)
+  all [docker|k8s]     start API + web in background (and postgres when applicable)
 
 Options:
   -h, --help           show this message
 
 Notes:
-  - k8s mode still uses docker compose for local postgres.
+  - k8s mode uses Cloud SQL by default from .dev-runtime/cloudsql.env.
+    Set K8S_USE_CLOUDSQL=false to keep using local docker compose postgres.
   - In k8s mode, WORKSPACE_IMAGE is resolved from:
     1) explicit WORKSPACE_IMAGE (full image ref), else
     2) GCP_PROJECT_ID + WORKSPACE_AR_* + WORKSPACE_IMAGE_TAG, else
@@ -51,6 +55,26 @@ read_env() {
   local value
 
   value="$(grep -E "^${key}=" "${ENV_FILE}" 2>/dev/null | tail -n 1 | cut -d= -f2- || true)"
+  if [[ -z "${value}" ]]; then
+    printf '%s' "${fallback}"
+    return
+  fi
+
+  printf '%s' "${value}"
+}
+
+read_key_from_file() {
+  local file_path="$1"
+  local key="$2"
+  local fallback="${3:-}"
+  local value
+
+  if [[ ! -f "${file_path}" ]]; then
+    printf '%s' "${fallback}"
+    return
+  fi
+
+  value="$(grep -E "^${key}=" "${file_path}" 2>/dev/null | tail -n 1 | cut -d= -f2- || true)"
   if [[ -z "${value}" ]]; then
     printf '%s' "${fallback}"
     return
@@ -98,7 +122,116 @@ start_postgres() {
   fail "postgres health check did not report healthy within 30s"
 }
 
+database_host_from_url() {
+  local url="$1"
+  local without_scheme without_credentials host_port
+
+  without_scheme="${url#*://}"
+  without_credentials="${without_scheme#*@}"
+  host_port="${without_credentials%%/*}"
+  host_port="${host_port%%\?*}"
+
+  if [[ "${host_port}" == \[*\]* ]]; then
+    printf '%s' "${host_port#\[}" | cut -d']' -f1
+    return
+  fi
+
+  if [[ "${host_port}" == *:* ]]; then
+    printf '%s' "${host_port%%:*}"
+    return
+  fi
+
+  printf '%s' "${host_port}"
+}
+
+database_port_from_url() {
+  local url="$1"
+  local without_scheme without_credentials host_port
+
+  without_scheme="${url#*://}"
+  without_credentials="${without_scheme#*@}"
+  host_port="${without_credentials%%/*}"
+  host_port="${host_port%%\?*}"
+
+  if [[ "${host_port}" == \[*\]*:* ]]; then
+    printf '%s' "${host_port##*:}"
+    return
+  fi
+
+  if [[ "${host_port}" == *:* ]]; then
+    printf '%s' "${host_port##*:}"
+    return
+  fi
+
+  printf '5432'
+}
+
+is_port_listening() {
+  local port="$1"
+  ss -ltn "sport = :${port}" 2>/dev/null | tail -n +2 | grep -q .
+}
+
+validate_k8s_database_endpoint() {
+  local db_host db_port instance_connection_name
+
+  db_host="$(database_host_from_url "${DATABASE_URL}")"
+  db_port="$(database_port_from_url "${DATABASE_URL}")"
+
+  if [[ "${db_host}" != "localhost" && "${db_host}" != "127.0.0.1" ]]; then
+    return
+  fi
+
+  if is_port_listening "${db_port}"; then
+    return
+  fi
+
+  instance_connection_name="$(read_key_from_file "${CLOUDSQL_ENV_FILE}" "INSTANCE_CONNECTION_NAME" "")"
+  if [[ -n "${instance_connection_name}" ]]; then
+    fail "k8s mode is using Cloud SQL, but ${db_host}:${db_port} is not reachable. Start Cloud SQL Auth Proxy first: cloud-sql-proxy \"${instance_connection_name}\" --port ${db_port}"
+  fi
+
+  fail "k8s mode is using Cloud SQL, but ${db_host}:${db_port} is not reachable. Start Cloud SQL Auth Proxy before running dev-up."
+}
+
+apply_k8s_database_override() {
+  local external_database_url="$1"
+  local cloudsql_database_url
+
+  if [[ "${MODE}" != "k8s" ]]; then
+    return
+  fi
+
+  if [[ "${K8S_USE_CLOUDSQL}" == "false" ]]; then
+    return
+  fi
+
+  if [[ -n "${external_database_url}" ]]; then
+    return
+  fi
+
+  cloudsql_database_url="$(read_key_from_file "${CLOUDSQL_ENV_FILE}" "DATABASE_URL" "")"
+  if [[ -z "${cloudsql_database_url}" ]]; then
+    fail "k8s mode requires Cloud SQL DATABASE_URL in ${CLOUDSQL_ENV_FILE}. Set K8S_USE_CLOUDSQL=false to use local postgres."
+  fi
+
+  export DATABASE_URL="${cloudsql_database_url}"
+}
+
+should_start_local_postgres() {
+  if [[ "${MODE}" == "docker" ]]; then
+    return 0
+  fi
+
+  if [[ "${MODE}" == "k8s" && "${K8S_USE_CLOUDSQL}" == "false" ]]; then
+    return 0
+  fi
+
+  return 1
+}
+
 set_common_api_env() {
+  local external_database_url
+
   ensure_env_file
 
   export API_PORT="${API_PORT:-$(read_env API_PORT 3001)}"
@@ -108,7 +241,14 @@ set_common_api_env() {
   export GOOGLE_CLIENT_ID="${GOOGLE_CLIENT_ID:-$(read_env GOOGLE_CLIENT_ID)}"
   [[ -n "${GOOGLE_CLIENT_ID}" ]] || fail "GOOGLE_CLIENT_ID is required"
 
-  export DATABASE_URL="${DATABASE_URL:-postgres://gitarena:gitarena@localhost:5432/gitarena}"
+  external_database_url="${DATABASE_URL:-}"
+  export CLOUDSQL_ENV_FILE="${CLOUDSQL_ENV_FILE:-${CLOUDSQL_ENV_FILE_DEFAULT}}"
+  export DATABASE_URL="${DATABASE_URL:-$(read_env DATABASE_URL ${DEFAULT_DATABASE_URL})}"
+  apply_k8s_database_override "${external_database_url}"
+  if [[ "${MODE}" == "k8s" && "${K8S_USE_CLOUDSQL}" == "true" ]]; then
+    validate_k8s_database_endpoint
+  fi
+
   export CORS_ORIGINS="${CORS_ORIGINS:-http://localhost:${WEB_PORT}}"
   export SESSION_COOKIE_NAME="${SESSION_COOKIE_NAME:-$(read_env SESSION_COOKIE_NAME gitarena_session)}"
   export SESSION_TTL_HOURS="${SESSION_TTL_HOURS:-$(read_env SESSION_TTL_HOURS 168)}"
@@ -249,7 +389,13 @@ start_all() {
   api_port_display="${API_PORT:-$(read_env API_PORT 3001)}"
   web_port_display="${WEB_PORT:-$(read_env WEB_PORT 5173)}"
 
-  start_postgres
+  set_common_api_env
+  if should_start_local_postgres; then
+    start_postgres
+  else
+    info "skipping local postgres (k8s mode with Cloud SQL)"
+  fi
+
   start_api_background
   start_web_background
   info "all local dev services started"
@@ -258,6 +404,8 @@ start_all() {
 }
 
 main() {
+  require_bool K8S_USE_CLOUDSQL "${K8S_USE_CLOUDSQL}"
+
   if [[ "${TARGET}" == "-h" || "${TARGET}" == "--help" || "${TARGET}" == "help" ]]; then
     usage
     return

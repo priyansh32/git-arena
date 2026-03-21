@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && node scripts/prerender-landing.mjs",
+    "build": "npm --prefix ../.. run build -w @gitarena/shared && tsc -b && node scripts/prerender-landing.mjs",
     "prerender:landing": "node scripts/prerender-landing.mjs",
     "preview": "vite preview",
     "typecheck": "tsc -b --pretty false"
