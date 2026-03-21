@@ -49,7 +49,7 @@ export function DashboardPage() {
       <section className="page" aria-busy="true" aria-live="polite">
         <header className="page-header">
           <h1>Scenario Catalog</h1>
-          <p>Start with one challenge and ship a clean Git outcome.</p>
+          <p>Choose a scenario to start an isolated Git session.</p>
         </header>
         <div className="skeleton skeleton-card" />
         <div className="dashboard-grid">
@@ -66,7 +66,7 @@ export function DashboardPage() {
       <section className="page">
         <header className="page-header">
           <h1>Scenario Catalog</h1>
-          <p>Start with one challenge and ship a clean Git outcome.</p>
+          <p>Choose a scenario to start an isolated Git session.</p>
         </header>
         <article className="panel state-surface">
           <p className="state-text error">{error}</p>
@@ -79,7 +79,7 @@ export function DashboardPage() {
     <section className="page">
       <header className="page-header">
         <h1>Scenario Catalog</h1>
-        <p>Start with one challenge and ship a clean Git outcome.</p>
+        <p>Choose a scenario to start an isolated Git session.</p>
       </header>
 
       {activeSession && (

@@ -116,7 +116,7 @@ export default function App() {
           <Link className="sidebar-brand-link" to="/dashboard">
             GitArena
           </Link>
-          <span className="sidebar-brand-note">Tactical Workspace</span>
+          <span className="sidebar-brand-note">Git Practice Platform</span>
         </div>
 
         <nav aria-label="Primary" className="sidebar-nav">

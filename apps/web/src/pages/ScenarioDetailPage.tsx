@@ -155,8 +155,8 @@ export function ScenarioDetailPage() {
         </article>
 
         <aside className="panel scenario-actions">
-          <h2>Action Panel</h2>
-          <p className="state-text">Start a fresh terminal session for this challenge.</p>
+          <h2>Session</h2>
+          <p className="state-text">Start a new terminal session for this scenario.</p>
           <button
             className="button button-primary button-block"
             disabled={starting}

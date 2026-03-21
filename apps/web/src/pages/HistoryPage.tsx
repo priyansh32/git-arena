@@ -39,7 +39,7 @@ export function HistoryPage() {
       <section className="page" aria-busy="true" aria-live="polite">
         <header className="page-header">
           <h1>Attempt History</h1>
-          <p>All attempts for your current local profile.</p>
+          <p>Your past attempts and scores across all scenarios.</p>
         </header>
         <div className="skeleton skeleton-card" />
       </section>
@@ -51,7 +51,7 @@ export function HistoryPage() {
       <section className="page">
         <header className="page-header">
           <h1>Attempt History</h1>
-          <p>All attempts for your current local profile.</p>
+          <p>Your past attempts and scores across all scenarios.</p>
         </header>
         <article className="panel state-surface">
           <p className="state-text error">{error}</p>
@@ -64,7 +64,7 @@ export function HistoryPage() {
     <section className="page">
       <header className="page-header">
         <h1>Attempt History</h1>
-        <p>All attempts for your current local profile.</p>
+        <p>Your past attempts and scores across all scenarios.</p>
       </header>
 
       {attempts.length === 0 ? (
