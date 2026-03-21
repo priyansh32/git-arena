@@ -86,6 +86,11 @@ test("createWorkspaceContainer applies docker hardening flags", async () => {
   expectFlagValue(args, "--memory-swap", "256m");
   expectFlagValue(args, "--cpus", "0.5");
   expectFlagValue(args, "--pids-limit", "100");
+  expectFlagValue(args, "--health-cmd", "test -d /workspace && test -w /workspace");
+  expectFlagValue(args, "--health-interval", "10s");
+  expectFlagValue(args, "--health-timeout", "2s");
+  expectFlagValue(args, "--health-retries", "3");
+  expectFlagValue(args, "--health-start-period", "10s");
 
   const envValues: string[] = [];
   for (let i = 0; i < args.length; i += 1) {

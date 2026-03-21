@@ -3,6 +3,8 @@ import type { Session } from "@gitarena/shared";
 import type { WorkspaceConfig } from "../config.js";
 import { POLICY_ENV_ALLOWLIST } from "./constants.js";
 
+const DOCKER_WORKSPACE_HEALTHCHECK_CMD = "test -d /workspace && test -w /workspace";
+
 export function buildWorkspaceContainerRunArgs(
   containerName: string,
   session: Session,
@@ -40,6 +42,16 @@ export function buildWorkspaceContainerRunArgs(
     "0.5",
     "--pids-limit",
     "100",
+    "--health-cmd",
+    DOCKER_WORKSPACE_HEALTHCHECK_CMD,
+    "--health-interval",
+    "10s",
+    "--health-timeout",
+    "2s",
+    "--health-retries",
+    "3",
+    "--health-start-period",
+    "10s",
     ...policyEnvArgs,
     "-w",
     config.rootDir,
