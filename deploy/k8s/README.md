@@ -56,6 +56,31 @@ Apply network isolation policy:
 kubectl apply -f deploy/k8s/session-isolation-networkpolicy.yaml
 ```
 
+## API Deploy Template (GKE + Cloud SQL Proxy)
+
+`api-deploy.yaml` is an envsubst template for API deployment.
+
+Quick start:
+
+```bash
+cp deploy/k8s/api-deploy.env.example deploy/k8s/api-deploy.env
+# edit deploy/k8s/api-deploy.env
+set -a
+source deploy/k8s/api-deploy.env
+set +a
+envsubst < deploy/k8s/api-deploy.yaml | kubectl apply -f -
+```
+
+Notes:
+
+- `DB_PASSWORD_URLENC` must be URL-encoded (not raw password).
+- `CORS_ORIGINS` should match your web origin (for example `https://git-arena.hellopriyansh.xyz`).
+- `API_DOMAIN` is used for GKE Ingress host (for example `api.git-arena.hellopriyansh.xyz`).
+- `API_GLOBAL_STATIC_IP_NAME` should reference a reserved global static IP (for example `gitarena-api-ip`) so ingress IP stays stable across reconciles.
+- `API_PRE_SHARED_CERT_NAME` should reference a global Compute managed SSL certificate name (for example `gitarena-api-cert-global`).
+- The template configures HTTPS-only ingress (`kubernetes.io/ingress.allow-http: "false"`).
+- The template also applies a GKE `BackendConfig` with `timeoutSec: 3600` so long-lived WebSocket terminal sessions are not dropped at the default 30-second backend timeout.
+
 Important:
 
 - API pods must run in namespace `gitarena-api` with label `app: api-backend`.
@@ -89,4 +114,11 @@ Teardown everything after verification:
 ```bash
 export GCP_PROJECT_ID=my-gcp-project
 ./scripts/gcp-teardown.sh
+```
+
+Full stack reset/redeploy with stable API IP + cert:
+
+```bash
+export GCP_PROJECT_ID=my-gcp-project
+./scripts/gcp-stack.sh redeploy
 ```
