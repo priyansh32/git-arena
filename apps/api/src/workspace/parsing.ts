@@ -1,25 +1,27 @@
 import type { AssertionResult } from "@gitarena/shared";
 
-const ASSERTION_LINE_PATTERN = /^ASSERT:([^:]+):(PASS|FAIL):([0-9]+):(.*)$/;
+const LEGACY_ASSERTION_LINE_PATTERN = /^(PASS|FAIL):([^:]+):(.*)$/;
 
 export function parseAssertions(stdout: string): AssertionResult[] {
   return stdout
     .split(/\r?\n/)
     .map((line) => line.trim())
     .filter((line) => line.length > 0)
-    .map((line) => {
-      const match = ASSERTION_LINE_PATTERN.exec(line);
+    .map((line, index) => {
+      const match = LEGACY_ASSERTION_LINE_PATTERN.exec(line);
       if (!match) {
         return null;
       }
 
-      const [, checkId, status, rawWeight, explanation] = match;
-      const parsedWeight = Number.parseInt(rawWeight, 10);
+      const [, status, rawCheckId, rawExplanation] = match;
+      const checkId = rawCheckId.trim() || `check_${index + 1}`;
+      const explanation = rawExplanation.trim();
 
       return {
         checkId,
         passed: status === "PASS",
-        weight: Number.isFinite(parsedWeight) ? parsedWeight : 0,
+        // Scoring is no longer weighted; we keep this field for compatibility.
+        weight: 1,
         explanation
       } satisfies AssertionResult;
     })

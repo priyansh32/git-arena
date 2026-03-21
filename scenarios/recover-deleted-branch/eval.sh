@@ -16,9 +16,9 @@ else
 fi
 
 # Check 2: all three commits present
-C1=$(git log feat/search --oneline 2>/dev/null | grep "add search stub" | wc -l)
-C2=$(git log feat/search --oneline 2>/dev/null | grep "add result indexing" | wc -l)
-C3=$(git log feat/search --oneline 2>/dev/null | grep "add result highlighting" | wc -l)
+C1=$(git log feat/search --oneline 2>/dev/null | grep "add search stub" | wc -l || true)
+C2=$(git log feat/search --oneline 2>/dev/null | grep "add result indexing" | wc -l || true)
+C3=$(git log feat/search --oneline 2>/dev/null | grep "add result highlighting" | wc -l || true)
 
 if [ "$C1" -ge 1 ] && [ "$C2" -ge 1 ] && [ "$C3" -ge 1 ]; then
   echo "PASS:all_commits_recovered:All three feature commits are present on feat/search"

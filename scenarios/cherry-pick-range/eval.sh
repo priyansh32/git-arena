@@ -6,14 +6,9 @@ cd /workspace
 PASS=0
 FAIL=0
 
-# Check 1: bug fix commit on main
-if git log main --oneline | grep -q "cherry-pick-me" | head -1; then
-  : # will check individually below
-fi
-
-FIX=$(git log main --oneline | grep "input sanitization regression" | wc -l)
-T1=$(git log main --oneline | grep "sanitize unit test" | wc -l)
-T2=$(git log main --oneline | grep "sanitize null input test" | wc -l)
+FIX=$(git log main --oneline | grep "input sanitization regression" | wc -l || true)
+T1=$(git log main --oneline | grep "sanitize unit test" | wc -l || true)
+T2=$(git log main --oneline | grep "sanitize null input test" | wc -l || true)
 
 if [ "$FIX" -ge 1 ] && [ "$T1" -ge 1 ] && [ "$T2" -ge 1 ]; then
   echo "PASS:target_commits_on_main:All three target commits are on main"
@@ -24,7 +19,7 @@ else
 fi
 
 # Check 2: v2 wip commits NOT on main
-WIP_COUNT=$(git log main --oneline | grep "wip:" | wc -l)
+WIP_COUNT=$(git log main --oneline | grep "wip:" | wc -l || true)
 if [ "$WIP_COUNT" -eq 0 ]; then
   echo "PASS:no_wip_commits:No wip commits from feat/v2 are on main"
   PASS=$((PASS+1))

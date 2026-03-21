@@ -45,7 +45,7 @@ else
 fi
 
 # Check 5: server.js is modified (unstaged changes present)
-UNSTAGED=$(git diff --name-only | grep "server.js" | wc -l)
+UNSTAGED=$(git diff --name-only | grep "server.js" | wc -l || true)
 if [ "$UNSTAGED" -ge 1 ]; then
   echo "PASS:unstaged_changes:server.js has unstaged changes (experimental code still pending)"
   PASS=$((PASS+1))

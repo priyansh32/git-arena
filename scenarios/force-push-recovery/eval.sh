@@ -9,9 +9,9 @@ FAIL=0
 ORACLE=$(cat /tmp/good_sha_oracle 2>/dev/null || echo "MISSING")
 
 # Check 1: all three commits on local main
-C1=$(git log main --oneline | grep "payment gateway integration" | wc -l)
-C2=$(git log main --oneline | grep "email notification system" | wc -l)
-C3=$(git log main --oneline | grep "audit logging" | wc -l)
+C1=$(git log main --oneline | grep "payment gateway integration" | wc -l || true)
+C2=$(git log main --oneline | grep "email notification system" | wc -l || true)
+C3=$(git log main --oneline | grep "audit logging" | wc -l || true)
 
 if [ "$C1" -ge 1 ] && [ "$C2" -ge 1 ] && [ "$C3" -ge 1 ]; then
   echo "PASS:local_commits_restored:All three lost commits are on local main"
@@ -23,9 +23,9 @@ fi
 
 # Check 2: origin/main also has the commits
 git fetch origin 2>/dev/null
-C1R=$(git log origin/main --oneline | grep "payment gateway integration" | wc -l)
-C2R=$(git log origin/main --oneline | grep "email notification system" | wc -l)
-C3R=$(git log origin/main --oneline | grep "audit logging" | wc -l)
+C1R=$(git log origin/main --oneline | grep "payment gateway integration" | wc -l || true)
+C2R=$(git log origin/main --oneline | grep "email notification system" | wc -l || true)
+C3R=$(git log origin/main --oneline | grep "audit logging" | wc -l || true)
 
 if [ "$C1R" -ge 1 ] && [ "$C2R" -ge 1 ] && [ "$C3R" -ge 1 ]; then
   echo "PASS:remote_restored:All three commits are on origin/main"

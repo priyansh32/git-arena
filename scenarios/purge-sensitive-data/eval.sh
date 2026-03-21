@@ -16,7 +16,7 @@ else
 fi
 
 # Check 2: secrets.env not in any commit tree in the branch
-SECRET_IN_HISTORY=$(git log --all --full-history --oneline -- secrets.env | wc -l)
+SECRET_IN_HISTORY=$(git log --all --full-history --oneline -- secrets.env | wc -l || true)
 if [ "$SECRET_IN_HISTORY" -eq 0 ]; then
   echo "PASS:not_in_history:secrets.env does not appear in any commit in branch history"
   PASS=$((PASS+1))
@@ -28,7 +28,7 @@ fi
 # Check 3: actual git objects — verify the file content is not in any tree object
 FOUND_IN_OBJECTS=$(git rev-list --all | while read commit; do
   git ls-tree -r "$commit" --name-only 2>/dev/null | grep "^secrets.env$"
-done | wc -l)
+done | wc -l || true)
 
 if [ "$FOUND_IN_OBJECTS" -eq 0 ]; then
   echo "PASS:not_in_objects:secrets.env not found in any tree object across all commits"

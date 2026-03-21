@@ -32,7 +32,7 @@ else
 fi
 
 # Check 3: CHANGELOG.md in last commit
-CHANGELOG_IN_COMMIT=$(git show --name-only HEAD | grep "CHANGELOG.md" | wc -l)
+CHANGELOG_IN_COMMIT=$(git show --name-only HEAD | grep "CHANGELOG.md" | wc -l || true)
 if [ "$CHANGELOG_IN_COMMIT" -ge 1 ]; then
   echo "PASS:changelog_included:CHANGELOG.md is included in the amended commit"
   PASS=$((PASS+1))

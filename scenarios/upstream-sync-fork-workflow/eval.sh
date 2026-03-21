@@ -10,9 +10,9 @@ git fetch upstream -q 2>/dev/null
 git fetch origin -q 2>/dev/null
 
 # Check 1: all three upstream commits present in local main
-U1=$(git log main --oneline | grep "core module A" | wc -l)
-U2=$(git log main --oneline | grep "core module B" | wc -l)
-U3=$(git log main --oneline | grep "core module C" | wc -l)
+U1=$(git log main --oneline | grep "core module A" | wc -l || true)
+U2=$(git log main --oneline | grep "core module B" | wc -l || true)
+U3=$(git log main --oneline | grep "core module C" | wc -l || true)
 
 if [ "$U1" -ge 1 ] && [ "$U2" -ge 1 ] && [ "$U3" -ge 1 ]; then
   echo "PASS:upstream_commits:All three upstream commits are in local main"
@@ -23,8 +23,8 @@ else
 fi
 
 # Check 2: own fork commits still present
-F1=$(git log main --oneline | grep "fork contribution" | wc -l)
-F2=$(git log main --oneline | grep "helper utilities" | wc -l)
+F1=$(git log main --oneline | grep "fork contribution" | wc -l || true)
+F2=$(git log main --oneline | grep "helper utilities" | wc -l || true)
 
 if [ "$F1" -ge 1 ] && [ "$F2" -ge 1 ]; then
   echo "PASS:fork_commits:Both fork contribution commits are still present"
@@ -35,7 +35,7 @@ else
 fi
 
 # Check 3: linear history (no merge commits)
-MERGES=$(git log main --merges --oneline | wc -l)
+MERGES=$(git log main --merges --oneline | wc -l || true)
 if [ "$MERGES" -eq 0 ]; then
   echo "PASS:linear_history:History is linear — no merge commits"
   PASS=$((PASS+1))
@@ -45,8 +45,8 @@ else
 fi
 
 # Check 4: fork commits are on top of upstream commits
-UPSTREAM_LINE=$(git log main --oneline | grep -n "core module C" | head -1 | cut -d: -f1)
-FORK_LINE=$(git log main --oneline | grep -n "fork contribution" | head -1 | cut -d: -f1)
+UPSTREAM_LINE=$(git log main --oneline | awk '/core module C/ { print NR; exit }' || true)
+FORK_LINE=$(git log main --oneline | awk '/fork contribution/ { print NR; exit }' || true)
 
 if [ -n "$UPSTREAM_LINE" ] && [ -n "$FORK_LINE" ] && [ "$FORK_LINE" -lt "$UPSTREAM_LINE" ]; then
   echo "PASS:correct_order:Fork commits are on top of upstream commits"

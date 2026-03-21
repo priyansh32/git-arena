@@ -17,9 +17,9 @@ else
 fi
 
 # Check 2: no single commit touches all three files
-FAT_COMMIT=$(git log --oneline --diff-filter=A -- bugfix.js feature.js config.json | head -1 | awk '{print $1}')
+FAT_COMMIT=$(git log --oneline --diff-filter=A -- bugfix.js feature.js config.json | awk 'NR == 1 { print $1; exit }' || true)
 if [ -n "$FAT_COMMIT" ]; then
-  FILES_IN_FAT=$(git diff-tree --no-commit-id -r --name-only "$FAT_COMMIT" 2>/dev/null | wc -l)
+  FILES_IN_FAT=$(git diff-tree --no-commit-id -r --name-only "$FAT_COMMIT" 2>/dev/null | wc -l || true)
   if [ "$FILES_IN_FAT" -ge 3 ]; then
     echo "FAIL:no_fat_commit:A single commit still touches all three files — not fully split"
     FAIL=$((FAIL+1))

@@ -38,12 +38,22 @@ export function SessionResultPage() {
     void run();
   }, [id]);
 
-  const scoreLabel = useMemo(() => {
+  const checkSummary = useMemo(() => {
     if (!attempt) {
-      return "-";
+      return {
+        total: 0,
+        passed: 0,
+        failed: 0
+      };
     }
 
-    return `${attempt.score}/100`;
+    const total = attempt.assertions.length;
+    const passed = attempt.assertions.filter((assertion) => assertion.passed).length;
+    return {
+      total,
+      passed,
+      failed: total - passed
+    };
   }, [attempt]);
 
   if (loading) {
@@ -76,22 +86,26 @@ export function SessionResultPage() {
           <Trophy aria-hidden="true" className="inline-icon title-icon" size={20} />
           {scenario?.title ?? "Session Result"}
         </h1>
-        <p className="state-text">{attempt.passed ? "Passed" : "Not passed"}</p>
-        <div className={`score-pill-hero ${attempt.passed ? "pass" : "fail"}`}>{scoreLabel}</div>
+        <p className="state-text">
+          {checkSummary.passed}/{checkSummary.total} checks passed
+        </p>
+        <div className={`score-pill-hero ${attempt.passed ? "pass" : "fail"}`}>
+          {attempt.passed ? "PASS" : "FAIL"}
+        </div>
       </article>
 
       <dl className="metric-grid">
         <div className="metric-card">
-          <dt>Base Score</dt>
-          <dd>{attempt.baseScore}</dd>
+          <dt>Total Checks</dt>
+          <dd>{checkSummary.total}</dd>
         </div>
         <div className="metric-card">
-          <dt>Time Bonus</dt>
-          <dd>+{attempt.timeBonus}</dd>
+          <dt>Passed Checks</dt>
+          <dd>{checkSummary.passed}</dd>
         </div>
         <div className="metric-card">
-          <dt>Hint Penalty</dt>
-          <dd>-{attempt.hintPenalty}</dd>
+          <dt>Failed Checks</dt>
+          <dd>{checkSummary.failed}</dd>
         </div>
       </dl>
 

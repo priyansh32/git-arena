@@ -43,7 +43,7 @@ export function HistoryPage() {
             <History aria-hidden="true" className="inline-icon title-icon" size={20} />
             Attempt History
           </h1>
-          <p>Your past attempts and scores across all scenarios.</p>
+          <p>Your past attempt outcomes across all scenarios.</p>
         </header>
         <div className="skeleton skeleton-card" />
       </section>
@@ -58,7 +58,7 @@ export function HistoryPage() {
             <History aria-hidden="true" className="inline-icon title-icon" size={20} />
             Attempt History
           </h1>
-          <p>Your past attempts and scores across all scenarios.</p>
+          <p>Your past attempt outcomes across all scenarios.</p>
         </header>
         <article className="panel state-surface">
           <p className="state-text error">{error}</p>
@@ -74,7 +74,7 @@ export function HistoryPage() {
           <History aria-hidden="true" className="inline-icon title-icon" size={20} />
           Attempt History
         </h1>
-        <p>Your past attempts and scores across all scenarios.</p>
+        <p>Your past attempt outcomes across all scenarios.</p>
       </header>
 
       {attempts.length === 0 ? (
@@ -101,7 +101,7 @@ export function HistoryPage() {
                 <th>
                   <span className="table-head-label">
                     <Trophy aria-hidden="true" className="inline-icon" size={13} />
-                    Score
+                    Checks
                   </span>
                 </th>
                 <th>Result</th>
@@ -117,7 +117,10 @@ export function HistoryPage() {
                       {attempt.passed ? "Pass" : "Fail"}
                     </span>
                   </td>
-                  <td className="score-col">{attempt.score}</td>
+                  <td className="score-col">
+                    {attempt.assertions.filter((assertion) => assertion.passed).length}/
+                    {attempt.assertions.length}
+                  </td>
                   <td>
                     <Link to={`/sessions/${attempt.sessionId}/result`}>
                       <Eye aria-hidden="true" className="inline-icon" size={13} />

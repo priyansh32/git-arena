@@ -18,9 +18,9 @@ else
 fi
 
 # Check 2: all three redesign commits present
-C1=$(git log feat/redesign --oneline | grep "update header branding" | wc -l)
-C2=$(git log feat/redesign --oneline | grep "update footer year" | wc -l)
-C3=$(git log feat/redesign --oneline | grep "switch to dark theme" | wc -l)
+C1=$(git log feat/redesign --oneline | grep "update header branding" | wc -l || true)
+C2=$(git log feat/redesign --oneline | grep "update footer year" | wc -l || true)
+C3=$(git log feat/redesign --oneline | grep "switch to dark theme" | wc -l || true)
 
 if [ "$C1" -ge 1 ] && [ "$C2" -ge 1 ] && [ "$C3" -ge 1 ]; then
   echo "PASS:redesign_commits:All three redesign commits are present"

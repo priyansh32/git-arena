@@ -25,8 +25,8 @@ else
 fi
 
 # Check 3: both hotfix commits reachable from rescue
-HOTFIX1=$(git log rescue --oneline | grep "Hotfix: patch line 1" | wc -l)
-HOTFIX2=$(git log rescue --oneline | grep "Hotfix: patch line 2" | wc -l)
+HOTFIX1=$(git log rescue --oneline | grep "Hotfix: patch line 1" | wc -l || true)
+HOTFIX2=$(git log rescue --oneline | grep "Hotfix: patch line 2" | wc -l || true)
 
 if [ "$HOTFIX1" -ge 1 ] && [ "$HOTFIX2" -ge 1 ]; then
   echo "PASS:commits_reachable:Both hotfix commits reachable from branch 'rescue'"

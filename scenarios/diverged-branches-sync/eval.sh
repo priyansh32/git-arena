@@ -9,9 +9,9 @@ FAIL=0
 git fetch origin -q 2>/dev/null
 
 # Check 1: all three remote commits present in local history
-R1=$(git log main --oneline | grep "add docs section 1" | wc -l)
-R2=$(git log main --oneline | grep "add docs section 2" | wc -l)
-R3=$(git log main --oneline | grep "add docs section 3" | wc -l)
+R1=$(git log main --oneline | grep "add docs section 1" | wc -l || true)
+R2=$(git log main --oneline | grep "add docs section 2" | wc -l || true)
+R3=$(git log main --oneline | grep "add docs section 3" | wc -l || true)
 
 if [ "$R1" -ge 1 ] && [ "$R2" -ge 1 ] && [ "$R3" -ge 1 ]; then
   echo "PASS:remote_commits_present:All three remote commits are in local history"
@@ -22,8 +22,8 @@ else
 fi
 
 # Check 2: both local commits present
-L1=$(git log main --oneline | grep "feature flag config" | wc -l)
-L2=$(git log main --oneline | grep "add CI badge" | wc -l)
+L1=$(git log main --oneline | grep "feature flag config" | wc -l || true)
+L2=$(git log main --oneline | grep "add CI badge" | wc -l || true)
 
 if [ "$L1" -ge 1 ] && [ "$L2" -ge 1 ]; then
   echo "PASS:local_commits_present:Both local commits are still in history"
@@ -34,7 +34,7 @@ else
 fi
 
 # Check 3: history is linear (no merge commit)
-MERGE_COMMITS=$(git log main --oneline --merges | wc -l)
+MERGE_COMMITS=$(git log main --oneline --merges | wc -l || true)
 if [ "$MERGE_COMMITS" -eq 0 ]; then
   echo "PASS:linear_history:History is linear — no merge commits"
   PASS=$((PASS+1))

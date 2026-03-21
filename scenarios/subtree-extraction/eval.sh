@@ -27,12 +27,12 @@ else
 fi
 
 # Check 3: only logger commits present (3 commits that touched logger + possibly initial)
-LOGGER_COMMITS=$(git log --oneline | grep -E "logger:|Initial commit" | wc -l)
+LOGGER_COMMITS=$(git log --oneline | grep -E "logger:|Initial commit" | wc -l || true)
 TOTAL_COMMITS=$(git rev-list HEAD --count)
 
 # There should be 3 logger-only commits (+ optionally initial)
-AUTH_COMMITS=$(git log --oneline | grep "auth:" | wc -l)
-DB_COMMITS=$(git log --oneline | grep "db:" | wc -l)
+AUTH_COMMITS=$(git log --oneline | grep "auth:" | wc -l || true)
+DB_COMMITS=$(git log --oneline | grep "db:" | wc -l || true)
 
 if [ "$AUTH_COMMITS" -eq 0 ] && [ "$DB_COMMITS" -eq 0 ]; then
   echo "PASS:filtered_history:No auth or db commits in logger-repo history"

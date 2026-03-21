@@ -9,7 +9,7 @@ FAIL=0
 MERGE_SHA=$(cat /tmp/merge_sha_oracle 2>/dev/null || echo "MISSING")
 
 # Check 1: a revert commit exists in main's history
-REVERT_COUNT=$(git log main --oneline | grep -i "^[a-f0-9]* [Rr]evert" | wc -l)
+REVERT_COUNT=$(git log main --oneline | grep -i "^[a-f0-9]* [Rr]evert" | wc -l || true)
 if [ "$REVERT_COUNT" -ge 1 ]; then
   echo "PASS:revert_exists:A revert commit exists on main"
   PASS=$((PASS+1))

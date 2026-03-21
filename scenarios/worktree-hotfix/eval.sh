@@ -7,7 +7,7 @@ PASS=0
 FAIL=0
 
 # Check 1: hotfix commit on main
-HOTFIX=$(git log main --oneline | grep -iE "hotfix|fix|error.handling|error handling" | wc -l)
+HOTFIX=$(git log main --oneline | grep -iE "hotfix|fix|error.handling|error handling" | wc -l || true)
 if [ "$HOTFIX" -ge 1 ]; then
   echo "PASS:hotfix_on_main:A hotfix commit exists on main"
   PASS=$((PASS+1))
@@ -28,7 +28,7 @@ fi
 
 # Check 3: feat/recommendations still has its commit
 git checkout feat/recommendations -q 2>/dev/null
-REC_COMMIT=$(git log feat/recommendations --oneline | grep "scaffold recommendation engine" | wc -l)
+REC_COMMIT=$(git log feat/recommendations --oneline | grep "scaffold recommendation engine" | wc -l || true)
 if [ "$REC_COMMIT" -ge 1 ]; then
   echo "PASS:feature_intact:feat/recommendations scaffold commit is intact"
   PASS=$((PASS+1))
@@ -47,7 +47,7 @@ else
 fi
 
 # Check 5: no dangling worktrees (cleanup done)
-DANGLING=$(git worktree list | grep -v "^/workspace " | grep -v "(bare)" | wc -l)
+DANGLING=$(git worktree list | grep -v "^/workspace " | grep -v "(bare)" | wc -l || true)
 if [ "$DANGLING" -eq 0 ]; then
   echo "PASS:worktree_cleaned:No dangling worktrees remaining"
   PASS=$((PASS+1))

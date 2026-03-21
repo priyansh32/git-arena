@@ -7,8 +7,8 @@ PASS=0
 FAIL=0
 
 # Check 1: feat/dark-mode's first parent chain reaches main without going through feat/theming
-THEMING_COMMITS=$(git log feat/theming --oneline | grep -E "base theme|applyTheme" | wc -l)
-DM_HAS_THEMING=$(git log feat/dark-mode --oneline | grep -E "base theme|applyTheme" | wc -l)
+THEMING_COMMITS=$(git log feat/theming --oneline | grep -E "base theme|applyTheme" | wc -l || true)
+DM_HAS_THEMING=$(git log feat/dark-mode --oneline | grep -E "base theme|applyTheme" | wc -l || true)
 
 if [ "$DM_HAS_THEMING" -eq 0 ]; then
   echo "PASS:no_theming_commits:feat/dark-mode does not include theming commits"
@@ -19,8 +19,8 @@ else
 fi
 
 # Check 2: dark mode commits are present
-C1=$(git log feat/dark-mode --oneline | grep "dark mode palette" | wc -l)
-C2=$(git log feat/dark-mode --oneline | grep "dark mode toggle" | wc -l)
+C1=$(git log feat/dark-mode --oneline | grep "dark mode palette" | wc -l || true)
+C2=$(git log feat/dark-mode --oneline | grep "dark mode toggle" | wc -l || true)
 
 if [ "$C1" -ge 1 ] && [ "$C2" -ge 1 ]; then
   echo "PASS:dark_commits_present:Both dark mode commits are on feat/dark-mode"

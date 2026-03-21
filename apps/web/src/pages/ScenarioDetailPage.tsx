@@ -89,12 +89,27 @@ export function ScenarioDetailPage() {
     }
   };
 
-  const bestScore = useMemo(() => {
+  const bestResult = useMemo(() => {
     if (attempts.length === 0) {
       return null;
     }
 
-    return Math.max(...attempts.map((attempt) => attempt.score));
+    if (attempts.some((attempt) => attempt.passed)) {
+      return "Pass";
+    }
+
+    let bestPassed = 0;
+    let bestTotal = 0;
+    for (const attempt of attempts) {
+      const passedChecks = attempt.assertions.filter((assertion) => assertion.passed).length;
+      const totalChecks = attempt.assertions.length;
+      if (passedChecks > bestPassed) {
+        bestPassed = passedChecks;
+        bestTotal = totalChecks;
+      }
+    }
+
+    return `${bestPassed}/${bestTotal}`;
   }, [attempts]);
 
   if (loading) {
@@ -186,10 +201,10 @@ export function ScenarioDetailPage() {
               </dd>
             </div>
             <div className="metric-card">
-              <dt>Best Score</dt>
+              <dt>Best Result</dt>
               <dd>
                 <Trophy aria-hidden="true" className="inline-icon" size={20} />
-                {bestScore ?? "-"}
+                {bestResult ?? "-"}
               </dd>
             </div>
           </dl>
@@ -233,7 +248,10 @@ export function ScenarioDetailPage() {
                     <span className={`badge ${attempt.passed ? "pass" : "fail"}`}>
                       {attempt.passed ? "Pass" : "Fail"}
                     </span>
-                    <span className="mono">{attempt.score}</span>
+                    <span className="mono">
+                      {attempt.assertions.filter((assertion) => assertion.passed).length}/
+                      {attempt.assertions.length}
+                    </span>
                   </div>
                   <p className="mono">{new Date(attempt.evaluatedAt).toLocaleString()}</p>
                   <Link className="text-link" to={`/sessions/${attempt.sessionId}/result`}>
