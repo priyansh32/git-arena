@@ -25,18 +25,12 @@ Stop:
 docker compose down --remove-orphans
 ```
 
-### 2) Host Dev Servers + Cloud SQL (recommended for Kubernetes workspace provider)
+### 2) Host Dev Servers (local dev loop)
 
-Run API in Docker workspace mode:
+Run API:
 
 ```bash
 ./scripts/dev-up.sh api docker
-```
-
-Run API in Kubernetes workspace mode:
-
-```bash
-./scripts/dev-up.sh api k8s
 ```
 
 Run web:
@@ -45,17 +39,11 @@ Run web:
 ./scripts/dev-up.sh web
 ```
 
-For one-command startup in Kubernetes mode:
+For one-command startup:
 
 ```bash
-./scripts/dev-up.sh all k8s
+./scripts/dev-up.sh all docker
 ```
-
-Cloud SQL notes for `k8s` mode:
-
-- Default behavior is to load DB credentials from `.dev-runtime/cloudsql.env`.
-- If `DATABASE_URL` there points to `127.0.0.1:5432`, start Cloud SQL Auth Proxy first.
-- To force local docker compose Postgres even in `k8s` mode, set `K8S_USE_CLOUDSQL=false`.
 
 Web URL: `http://localhost:5173`
 
@@ -72,7 +60,6 @@ Set in `.env`:
 - for k8s image auto-resolution when `WORKSPACE_IMAGE` is unset:
   - `GCP_PROJECT_ID`
   - optional `WORKSPACE_AR_LOCATION`, `WORKSPACE_AR_REPOSITORY`, `WORKSPACE_IMAGE_TAG`
-  - `gcp-init.sh`/`gcp-teardown.sh` also accept `AR_LOCATION`, `AR_REPOSITORY`, `IMAGE_TAG` aliases
 
 ## Google Sign-In Local Origins
 
@@ -89,16 +76,13 @@ For `WORKSPACE_PROVIDER=kubernetes`:
 
 - kube context must be configured (`kubectl config current-context`)
 - `runtimeclass/gvisor` must exist
-- namespaces `gitarena-sessions` and `gitarena-api` should exist
+- namespace `gitarena-sessions` should exist (`gitarena-api` is only required when `VERIFY_API_NAMESPACE_INGRESS=true`)
 - workspace image must be available in Artifact Registry
 
 Helpful scripts:
 
 ```bash
-./scripts/gcp-init.sh
-./scripts/gcp-verify.sh
 ./scripts/verify-docker-security.sh
-./scripts/gcp-teardown.sh
 ```
 
 Cluster setup notes: `SETUP.md`

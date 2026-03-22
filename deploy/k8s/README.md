@@ -100,37 +100,4 @@ Important:
 
 ## Verification Scripts
 
-Initialize GCP/Kubernetes resources once:
-
-```bash
-export GCP_PROJECT_ID=my-gcp-project
-./scripts/gcp-init.sh
-```
-
-Run full security verification:
-
-```bash
-export GCP_PROJECT_ID=my-gcp-project
-./scripts/gcp-verify.sh
-```
-
-If the workspace image is not in Artifact Registry yet:
-
-```bash
-export GCP_PROJECT_ID=my-gcp-project
-PUSH_IMAGE=true ./scripts/gcp-init.sh
-```
-
-Teardown everything after verification:
-
-```bash
-export GCP_PROJECT_ID=my-gcp-project
-./scripts/gcp-teardown.sh
-```
-
-Full stack reset/redeploy with stable API IP + cert:
-
-```bash
-export GCP_PROJECT_ID=my-gcp-project
-./scripts/gcp-stack.sh redeploy
-```
+Use manual `kubectl` verification for security controls and network policy behavior.

@@ -20,7 +20,7 @@ npm install
 ## Option A: Fastest Full Stack Start (Recommended)
 
 ```bash
-./launch.sh start
+npm run test:up
 ```
 
 Open:
@@ -31,7 +31,7 @@ Open:
 Stop:
 
 ```bash
-./launch.sh stop
+npm run test:down
 ```
 
 ## Option B: Run Apps in Local Dev Mode
@@ -47,18 +47,6 @@ cp .env.example .env
 In another terminal:
 
 ```bash
-./scripts/dev-up.sh web
-```
-
-Open web app at `http://localhost:5173`.
-
-## Option C: Run API in Kubernetes Workspace Mode (Host Dev)
-
-Use this when testing `WORKSPACE_PROVIDER=kubernetes` against GKE:
-
-```bash
-./scripts/dev-up.sh postgres
-./scripts/dev-up.sh api k8s
 ./scripts/dev-up.sh web
 ```
 

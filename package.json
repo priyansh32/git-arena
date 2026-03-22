@@ -16,7 +16,6 @@
     "dev:api": "npm run build -w @gitarena/shared && npm run dev -w @gitarena/api",
     "dev:web": "npm run build -w @gitarena/shared && npm run dev -w @gitarena/web",
     "dev:all:docker": "./scripts/dev-up.sh all docker",
-    "dev:all:k8s": "./scripts/dev-up.sh all k8s",
     "dev:down": "./scripts/dev-down.sh all",
     "dev:logs": "tail -f .dev-runtime/api.log .dev-runtime/web.log",
     "env:lint": "./scripts/env-lint.sh",

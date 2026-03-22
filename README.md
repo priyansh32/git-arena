@@ -44,26 +44,12 @@ npm run dev
 npm run dev:logs
 ```
 
-Or use the launch script for containers:
-
-```bash
-./launch.sh
-```
-
 Or run each app separately:
 
 ```bash
 cp .env.example .env
 ./scripts/dev-up.sh postgres
 ./scripts/dev-up.sh api docker
-./scripts/dev-up.sh web
-```
-
-For Kubernetes workspace mode in host dev:
-
-```bash
-./scripts/dev-up.sh postgres
-GCP_PROJECT_ID=<your-project-id> ./scripts/dev-up.sh api k8s
 ./scripts/dev-up.sh web
 ```
 
@@ -98,8 +84,6 @@ Publish scenario scripts to DB-backed revisions:
 
 ```bash
 npm run scenario:publish -- --id detached-head-recovery
-# or
-./scripts/scenario-publish.sh --id detached-head-recovery
 ```
 
 ## Test Stack (Docker Compose)
@@ -125,13 +109,13 @@ docker compose down
 npm run test:down
 ```
 
-Equivalent launch script commands:
+Common test stack commands:
 
 ```bash
-./launch.sh start
-./launch.sh logs
-./launch.sh smoke
-./launch.sh stop
+npm run test:up
+npm run test:logs
+npm run smoke:stack
+npm run test:down
 ```
 
 Run smoke test directly:
@@ -153,9 +137,6 @@ For host-based dev loops, primary entrypoints are in [`scripts/README.md`](scrip
 
 - `./scripts/dev-up.sh`
 - `./scripts/dev-down.sh`
-- `./scripts/gcp-init.sh`
-- `./scripts/gcp-verify.sh`
-- `./scripts/gcp-teardown.sh`
 
 ## Current status
 
