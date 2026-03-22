@@ -617,6 +617,40 @@ export function DashboardPage({ mode = "dashboard" }: DashboardPageProps) {
     setOpenMenu(null);
   };
 
+  const recommendedNextCard = (
+    <article className="bg-bg-surface border border-accent-primary/20 bg-accent-primary/5 rounded-xl p-6 h-full flex flex-col group w-full">
+      <h3 className="m-0 text-lg font-bold flex items-center gap-2 text-accent-primary">
+        <Trophy aria-hidden="true" className="shrink-0" size={18} />
+        Recommended Next
+      </h3>
+      <p className="m-0 mt-3 text-sm text-text-secondary leading-relaxed flex-1">
+        Suggestions based on unsolved scenarios overlapping with your solved tags.
+      </p>
+      {recommendedScenarios.length === 0 ? (
+        <p className="m-0 mt-6 text-sm text-text-secondary bg-bg-base p-4 rounded-lg border border-border-subtle text-center">
+          No recommendations yet. Solve a scenario to get suggestions.
+        </p>
+      ) : (
+        <div className="mt-6 flex flex-col gap-3">
+          {recommendedScenarios.slice(0, 3).map((scenario) => (
+            <Link
+              className="flex flex-col gap-1.5 p-3 rounded-lg border border-border-subtle bg-bg-base hover:border-accent-primary/50 transition-colors shadow-sm"
+              key={scenario.id}
+              to={`/scenarios/${scenario.id}`}
+            >
+              <span className="text-sm font-bold text-text-primary line-clamp-1">{scenario.title}</span>
+              <span className="text-xs text-text-secondary font-mono flex items-center gap-2">
+                {getDifficultyLabel(scenario.difficulty)}
+                <span aria-hidden="true">•</span>
+                ~{scenario.estimatedTimeMinutes}m
+              </span>
+            </Link>
+          ))}
+        </div>
+      )}
+    </article>
+  );
+
   if (loading) {
     return (
       <section className="flex flex-col gap-6 w-full" aria-busy="true" aria-live="polite">
@@ -782,17 +816,17 @@ export function DashboardPage({ mode = "dashboard" }: DashboardPageProps) {
 
       {showFilterControls && (
         <section
-          className="flex flex-col md:flex-row gap-4 p-4 bg-bg-surface/60 border border-border-subtle rounded-xl backdrop-blur-md shadow-sm"
+          className="flex flex-col lg:flex-row items-start lg:items-center gap-3 p-3 bg-bg-surface/60 border border-border-subtle rounded-xl backdrop-blur-md shadow-sm w-full"
           aria-label="Scenario search, filter, and sort controls"
           ref={controlsRef}
         >
-          <label className="relative flex-1 min-w-0">
+          <label className="relative w-full lg:flex-1 min-w-0">
             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none" aria-hidden="true">
-              <Search aria-hidden="true" size={16} />
+              <Search aria-hidden="true" size={15} />
             </span>
             <input
               aria-label="Search scenarios"
-              className="w-full min-h-[40px] pl-10 pr-4 bg-bg-base border border-border-strong rounded-lg text-text-primary text-sm transition-colors focus:outline-none focus:border-accent-primary focus:ring-2 focus:ring-accent-primary/20 placeholder:text-text-secondary"
+              className="w-full min-h-[36px] pl-9 pr-3 bg-bg-base border border-border-strong rounded-lg text-text-primary text-[13px] transition-colors focus:outline-none focus:border-accent-primary focus:ring-2 focus:ring-accent-primary/20 placeholder:text-text-secondary"
               onChange={(event) => {
                 setSearchQuery(event.target.value);
               }}
@@ -802,9 +836,9 @@ export function DashboardPage({ mode = "dashboard" }: DashboardPageProps) {
             />
           </label>
 
-          <div className="flex flex-nowrap md:flex-wrap overflow-x-auto md:overflow-x-visible gap-2 pb-1 md:pb-0 scrollbar-hide shrink-0 snap-x snap-mandatory">
+          <div className="flex flex-wrap items-center gap-2 w-full lg:w-auto shrink-0">
             {isLibraryMode && (
-              <div className="inline-flex min-w-fit shrink-0 snap-start rounded-lg border border-border-strong bg-bg-base p-1">
+              <div className="inline-flex min-w-fit shrink-0 rounded-lg border border-border-strong bg-bg-base p-1 w-full sm:w-auto overflow-x-auto sm:overflow-visible">
                 {([
                   {
                     label: `All (${scenarios.length})`,
@@ -820,7 +854,7 @@ export function DashboardPage({ mode = "dashboard" }: DashboardPageProps) {
                   }
                 ] satisfies Array<{ label: string; value: CompletionFilter }>).map((option) => (
                   <button
-                    className={`px-2.5 min-h-[30px] rounded-md font-mono text-[12px] whitespace-nowrap transition-colors ${
+                    className={`px-2 min-h-[28px] rounded-md font-mono text-[11px] whitespace-nowrap transition-colors ${
                       completionFilter === option.value
                         ? "bg-accent-primary/15 text-accent-primary"
                         : "text-text-secondary hover:text-text-primary hover:bg-bg-surface-hover"
@@ -837,18 +871,18 @@ export function DashboardPage({ mode = "dashboard" }: DashboardPageProps) {
               </div>
             )}
 
-            <div className="relative min-w-fit shrink-0 snap-start">
+            <div className="relative flex-1 sm:flex-none min-w-fit shrink-0">
               <button
                 aria-expanded={openMenu === "difficulty"}
                 aria-haspopup="listbox"
-                className="w-full flex items-center justify-between gap-2 px-3 min-h-[40px] bg-bg-base border border-border-strong rounded-lg font-mono text-[13px] text-text-primary whitespace-nowrap transition-colors hover:bg-bg-surface-hover hover:border-accent-primary/50 focus:outline-none focus:ring-2 focus:ring-accent-primary/20"
+                className="w-full flex items-center justify-between gap-2 px-2.5 min-h-[36px] bg-bg-base border border-border-strong rounded-lg font-mono text-[12px] text-text-primary whitespace-nowrap transition-colors hover:bg-bg-surface-hover hover:border-accent-primary/50 focus:outline-none focus:ring-2 focus:ring-accent-primary/20"
                 onClick={() => {
                   toggleMenu("difficulty");
                 }}
                 type="button"
               >
-                <span className="flex items-center gap-2">
-                  <Gauge aria-hidden="true" className="shrink-0 text-text-secondary" size={15} />
+                <span className="flex items-center gap-1.5">
+                  <Gauge aria-hidden="true" className="shrink-0 text-text-secondary" size={14} />
                   Difficulty: {getDifficultyLabel(difficultyFilter)}
                 </span>
                 <ChevronDown
@@ -880,18 +914,18 @@ export function DashboardPage({ mode = "dashboard" }: DashboardPageProps) {
               )}
             </div>
 
-            <div className="relative min-w-fit shrink-0 snap-start">
+            <div className="relative flex-1 sm:flex-none min-w-fit shrink-0">
               <button
                 aria-expanded={openMenu === "commonality"}
                 aria-haspopup="listbox"
-                className="w-full flex items-center justify-between gap-2 px-3 min-h-[40px] bg-bg-base border border-border-strong rounded-lg font-mono text-[13px] text-text-primary whitespace-nowrap transition-colors hover:bg-bg-surface-hover hover:border-accent-primary/50 focus:outline-none focus:ring-2 focus:ring-accent-primary/20"
+                className="w-full flex items-center justify-between gap-2 px-2.5 min-h-[36px] bg-bg-base border border-border-strong rounded-lg font-mono text-[12px] text-text-primary whitespace-nowrap transition-colors hover:bg-bg-surface-hover hover:border-accent-primary/50 focus:outline-none focus:ring-2 focus:ring-accent-primary/20"
                 onClick={() => {
                   toggleMenu("commonality");
                 }}
                 type="button"
               >
-                <span className="flex items-center gap-2">
-                  <Activity aria-hidden="true" className="shrink-0 text-text-secondary" size={15} />
+                <span className="flex items-center gap-1.5">
+                  <Activity aria-hidden="true" className="shrink-0 text-text-secondary" size={14} />
                   Commonality: {commonalityFilter === "all" ? "All" : getCommonalityLabel(commonalityFilter)}
                 </span>
                 <ChevronDown
@@ -923,18 +957,18 @@ export function DashboardPage({ mode = "dashboard" }: DashboardPageProps) {
               )}
             </div>
 
-            <div className="relative min-w-fit shrink-0 snap-start">
+            <div className="relative flex-1 sm:flex-none min-w-fit shrink-0">
               <button
                 aria-expanded={openMenu === "tags"}
                 aria-haspopup="listbox"
-                className="w-full flex items-center justify-between gap-2 px-3 min-h-[40px] bg-bg-base border border-border-strong rounded-lg font-mono text-[13px] text-text-primary whitespace-nowrap transition-colors hover:bg-bg-surface-hover hover:border-accent-primary/50 focus:outline-none focus:ring-2 focus:ring-accent-primary/20"
+                className="w-full flex items-center justify-between gap-2 px-2.5 min-h-[36px] bg-bg-base border border-border-strong rounded-lg font-mono text-[12px] text-text-primary whitespace-nowrap transition-colors hover:bg-bg-surface-hover hover:border-accent-primary/50 focus:outline-none focus:ring-2 focus:ring-accent-primary/20"
                 onClick={() => {
                   toggleMenu("tags");
                 }}
                 type="button"
               >
-                <span className="flex items-center gap-2">
-                  <Tags aria-hidden="true" className="shrink-0 text-text-secondary" size={15} />
+                <span className="flex items-center gap-1.5">
+                  <Tags aria-hidden="true" className="shrink-0 text-text-secondary" size={14} />
                   {selectedTags.length === 0 ? "Tags: All" : `Tags: ${selectedTags.length}`}
                 </span>
                 <ChevronDown
@@ -985,18 +1019,18 @@ export function DashboardPage({ mode = "dashboard" }: DashboardPageProps) {
               )}
             </div>
 
-            <div className="relative min-w-fit shrink-0 snap-start">
+            <div className="relative flex-1 sm:flex-none min-w-fit shrink-0">
               <button
                 aria-expanded={openMenu === "sort"}
                 aria-haspopup="listbox"
-                className="w-full flex items-center justify-between gap-2 px-3 min-h-[40px] bg-bg-base border border-border-strong rounded-lg font-mono text-[13px] text-text-primary whitespace-nowrap transition-colors hover:bg-bg-surface-hover hover:border-accent-primary/50 focus:outline-none focus:ring-2 focus:ring-accent-primary/20"
+                className="w-full flex items-center justify-between gap-2 px-2.5 min-h-[36px] bg-bg-base border border-border-strong rounded-lg font-mono text-[12px] text-text-primary whitespace-nowrap transition-colors hover:bg-bg-surface-hover hover:border-accent-primary/50 focus:outline-none focus:ring-2 focus:ring-accent-primary/20"
                 onClick={() => {
                   toggleMenu("sort");
                 }}
                 type="button"
               >
-                <span className="flex items-center gap-2">
-                  <ArrowDownWideNarrow aria-hidden="true" className="shrink-0 text-text-secondary" size={15} />
+                <span className="flex items-center gap-1.5">
+                  <ArrowDownWideNarrow aria-hidden="true" className="shrink-0 text-text-secondary" size={14} />
                   Sort: {currentSortLabel}
                 </span>
                 <ChevronDown
@@ -1054,15 +1088,15 @@ export function DashboardPage({ mode = "dashboard" }: DashboardPageProps) {
       )}
 
       {activeTab === "overview" && (
-        <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-          <div className="xl:col-span-2">
-            {visibleOverviewScenarios.length === 0 ? (
-              <article className="flex flex-col items-center justify-center gap-4 min-h-[120px] p-8 text-center bg-bg-surface border border-border-subtle rounded-xl">
-                <p className="m-0 text-text-secondary">No scenarios match your current filters.</p>
-              </article>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-6">
-                {visibleOverviewScenarios.map((scenario) => (
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-6">
+          {recommendedNextCard}
+
+          {visibleOverviewScenarios.length === 0 ? (
+            <article className="md:col-span-1 xl:col-span-2 2xl:col-span-3 flex flex-col items-center justify-center gap-4 min-h-[120px] p-8 text-center bg-bg-surface border border-border-subtle rounded-xl">
+              <p className="m-0 text-text-secondary">No scenarios match your current filters.</p>
+            </article>
+          ) : (
+            visibleOverviewScenarios.map((scenario) => (
                   <article
                     className="flex flex-col bg-bg-surface border border-border-subtle rounded-xl p-6 transition-all hover:border-border-strong hover:-translate-y-0.5 hover:shadow-lg hover:shadow-black/50 h-full group"
                     key={scenario.id}
@@ -1117,47 +1151,16 @@ export function DashboardPage({ mode = "dashboard" }: DashboardPageProps) {
                       <ArrowRight aria-hidden="true" className="shrink-0" size={15} />
                     </Link>
                   </article>
-                ))}
-              </div>
-            )}
-          </div>
-
-          <aside className="bg-bg-surface border border-border-subtle rounded-xl p-5 h-fit">
-            <h3 className="m-0 text-base font-semibold flex items-center gap-2">
-              <Trophy aria-hidden="true" className="shrink-0 text-accent-primary" size={16} />
-              Recommended Next
-            </h3>
-            <p className="m-0 mt-2 text-sm text-text-secondary leading-relaxed">
-              Suggestions are based on unsolved scenarios that overlap with tags you already solved.
-            </p>
-            {recommendedScenarios.length === 0 ? (
-              <p className="m-0 mt-4 text-sm text-text-secondary">No recommendations yet. Solve one scenario to get tailored suggestions.</p>
-            ) : (
-              <div className="mt-4 flex flex-col gap-3">
-                {recommendedScenarios.map((scenario) => (
-                  <Link
-                    className="flex flex-col gap-1 p-3 rounded-lg border border-border-subtle bg-bg-surface-soft hover:border-accent-primary/40 transition-colors"
-                    key={scenario.id}
-                    to={`/scenarios/${scenario.id}`}
-                  >
-                    <span className="text-sm font-semibold text-text-primary">{scenario.title}</span>
-                    <span className="text-xs text-text-secondary font-mono flex items-center gap-2">
-                      {getDifficultyLabel(scenario.difficulty)}
-                      <span aria-hidden="true">•</span>
-                      ~{scenario.estimatedTimeMinutes}m
-                    </span>
-                  </Link>
-                ))}
-              </div>
-            )}
-          </aside>
+                ))
+          )}
         </div>
       )}
 
       {activeTab === "solved" && (
-        <>
+        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
+          {recommendedNextCard}
           {visibleSolvedEntries.length === 0 ? (
-            <article className="flex flex-col items-center justify-center gap-4 min-h-[140px] p-8 text-center bg-bg-surface border border-border-subtle rounded-xl">
+            <article className="lg:col-span-1 xl:col-span-2 flex flex-col items-center justify-center gap-4 min-h-[140px] p-8 text-center bg-bg-surface border border-border-subtle rounded-xl h-full">
               <p className="m-0 text-text-secondary">
                 {solvedEntries.length === 0
                   ? "No solved scenarios yet. Complete your first challenge to build your solved list."
@@ -1174,9 +1177,8 @@ export function DashboardPage({ mode = "dashboard" }: DashboardPageProps) {
               )}
             </article>
           ) : (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              {visibleSolvedEntries.map((entry) => (
-                <article className="bg-bg-surface border border-border-subtle rounded-xl p-5 flex flex-col gap-4" key={entry.scenario.id}>
+            visibleSolvedEntries.map((entry) => (
+              <article className="bg-bg-surface border border-border-subtle rounded-xl p-5 flex flex-col gap-4" key={entry.scenario.id}>
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div className="flex flex-wrap gap-2">
                       <span
@@ -1258,16 +1260,16 @@ export function DashboardPage({ mode = "dashboard" }: DashboardPageProps) {
                     </Link>
                   </div>
                 </article>
-              ))}
-            </div>
+              ))
           )}
-        </>
+        </div>
       )}
 
       {activeTab === "inProgress" && (
-        <>
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+          {recommendedNextCard}
           {visibleInProgressEntries.length === 0 ? (
-            <article className="flex flex-col items-center justify-center gap-4 min-h-[140px] p-8 text-center bg-bg-surface border border-border-subtle rounded-xl">
+            <article className="md:col-span-1 xl:col-span-2 flex flex-col items-center justify-center gap-4 min-h-[140px] p-8 text-center bg-bg-surface border border-border-subtle rounded-xl h-full">
               <p className="m-0 text-text-secondary">
                 {inProgressEntries.length === 0
                   ? "No unresolved scenario attempts right now."
@@ -1275,9 +1277,8 @@ export function DashboardPage({ mode = "dashboard" }: DashboardPageProps) {
               </p>
             </article>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-              {visibleInProgressEntries.map((entry) => (
-                <article className="bg-bg-surface border border-border-subtle rounded-xl p-5 flex flex-col gap-4" key={entry.scenario.id}>
+            visibleInProgressEntries.map((entry) => (
+              <article className="bg-bg-surface border border-border-subtle rounded-xl p-5 flex flex-col gap-4" key={entry.scenario.id}>
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <span
                       className={`inline-flex items-center justify-center px-2.5 py-1 rounded-full font-mono text-[10px] font-bold uppercase tracking-wider border leading-none ${difficultyBadgeClass(entry.scenario.difficulty)}`}
@@ -1299,10 +1300,9 @@ export function DashboardPage({ mode = "dashboard" }: DashboardPageProps) {
                     <ArrowRight aria-hidden="true" className="shrink-0" size={15} />
                   </Link>
                 </article>
-              ))}
-            </div>
+            ))
           )}
-        </>
+        </div>
       )}
 
       {activeTab === "activity" && (
