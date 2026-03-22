@@ -42,6 +42,7 @@ Options:
 Notes:
   - k8s mode uses Cloud SQL by default from .dev-runtime/cloudsql.env.
     Set K8S_USE_CLOUDSQL=false to keep using local docker compose postgres.
+  - Host-dev ports come from DEV_API_PORT/DEV_WEB_PORT (defaults: 3002/5174).
   - In k8s mode, WORKSPACE_IMAGE is resolved from:
     1) explicit WORKSPACE_IMAGE (full image ref), else
     2) GCP_PROJECT_ID + WORKSPACE_AR_* + WORKSPACE_IMAGE_TAG, else
@@ -230,13 +231,18 @@ should_start_local_postgres() {
 }
 
 set_common_api_env() {
-  local external_database_url
+  local external_database_url dev_api_port dev_web_port
 
   ensure_env_file
 
-  export API_PORT="${API_PORT:-$(read_env API_PORT 3001)}"
-  export WEB_PORT="${WEB_PORT:-$(read_env WEB_PORT 5173)}"
-  export PORT="${PORT:-${API_PORT}}"
+  dev_api_port="${DEV_API_PORT:-$(read_env DEV_API_PORT 3002)}"
+  dev_web_port="${DEV_WEB_PORT:-$(read_env DEV_WEB_PORT 5174)}"
+
+  export DEV_API_PORT="${dev_api_port}"
+  export DEV_WEB_PORT="${dev_web_port}"
+  export API_PORT="${dev_api_port}"
+  export WEB_PORT="${dev_web_port}"
+  export PORT="${API_PORT}"
 
   export GOOGLE_CLIENT_ID="${GOOGLE_CLIENT_ID:-$(read_env GOOGLE_CLIENT_ID)}"
   [[ -n "${GOOGLE_CLIENT_ID}" ]] || fail "GOOGLE_CLIENT_ID is required"
@@ -319,9 +325,14 @@ start_api_foreground() {
 }
 
 start_web_foreground() {
+  local dev_api_port dev_web_port
   ensure_env_file
-  export API_PORT="${API_PORT:-$(read_env API_PORT 3001)}"
-  export WEB_PORT="${WEB_PORT:-$(read_env WEB_PORT 5173)}"
+  dev_api_port="${DEV_API_PORT:-$(read_env DEV_API_PORT 3002)}"
+  dev_web_port="${DEV_WEB_PORT:-$(read_env DEV_WEB_PORT 5174)}"
+  export DEV_API_PORT="${dev_api_port}"
+  export DEV_WEB_PORT="${dev_web_port}"
+  export API_PORT="${dev_api_port}"
+  export WEB_PORT="${dev_web_port}"
   export VITE_API_PROXY_HOST="${VITE_API_PROXY_HOST:-$(read_env VITE_API_PROXY_HOST localhost)}"
   export VITE_API_PROXY_TARGET="${VITE_API_PROXY_TARGET:-http://${VITE_API_PROXY_HOST}:${API_PORT}}"
   export VITE_GOOGLE_CLIENT_ID="${VITE_GOOGLE_CLIENT_ID:-$(read_env VITE_GOOGLE_CLIENT_ID)}"
@@ -366,13 +377,18 @@ start_api_background() {
 }
 
 start_web_background() {
+  local dev_api_port dev_web_port
   mkdir -p "${RUNTIME_DIR}"
   stop_pidfile_if_running "${RUNTIME_DIR}/web.pid"
 
   (
     ensure_env_file
-    export API_PORT="${API_PORT:-$(read_env API_PORT 3001)}"
-    export WEB_PORT="${WEB_PORT:-$(read_env WEB_PORT 5173)}"
+    dev_api_port="${DEV_API_PORT:-$(read_env DEV_API_PORT 3002)}"
+    dev_web_port="${DEV_WEB_PORT:-$(read_env DEV_WEB_PORT 5174)}"
+    export DEV_API_PORT="${dev_api_port}"
+    export DEV_WEB_PORT="${dev_web_port}"
+    export API_PORT="${dev_api_port}"
+    export WEB_PORT="${dev_web_port}"
     export VITE_API_PROXY_HOST="${VITE_API_PROXY_HOST:-$(read_env VITE_API_PROXY_HOST localhost)}"
     export VITE_API_PROXY_TARGET="${VITE_API_PROXY_TARGET:-http://${VITE_API_PROXY_HOST}:${API_PORT}}"
     export VITE_GOOGLE_CLIENT_ID="${VITE_GOOGLE_CLIENT_ID:-$(read_env VITE_GOOGLE_CLIENT_ID)}"
@@ -388,8 +404,8 @@ start_web_background() {
 
 start_all() {
   local web_port_display api_port_display
-  api_port_display="${API_PORT:-$(read_env API_PORT 3001)}"
-  web_port_display="${WEB_PORT:-$(read_env WEB_PORT 5173)}"
+  api_port_display="${DEV_API_PORT:-$(read_env DEV_API_PORT 3002)}"
+  web_port_display="${DEV_WEB_PORT:-$(read_env DEV_WEB_PORT 5174)}"
 
   set_common_api_env
   if should_start_local_postgres; then

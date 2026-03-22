@@ -20,12 +20,27 @@ Detailed onboarding + architecture docs live in [`dev-docs/`](dev-docs/README.md
 - Deployment and ops: [`dev-docs/09-deployment-and-ops.md`](dev-docs/09-deployment-and-ops.md)
 - Internet test exposure: [`docs/internet-test-setup.md`](docs/internet-test-setup.md)
 
+## Workflow Modes
+
+- **Test stack (`docker compose up --build`)**
+  - Uses containerized API + web preview build.
+  - Intended for internet-exposed testing/showcase.
+  - Host ports: `TEST_WEB_PORT` (default `5173`) and `TEST_API_PORT` (default `3001`).
+  - Shortcuts: `npm run test:up`, `npm run test:logs`, `npm run test:down`.
+- **Dev stack (`./scripts/dev-up.sh ...`)**
+  - Uses host-run hot-reload API/web processes.
+  - Intended for coding/debugging loops.
+  - Host ports: `DEV_WEB_PORT` (default `5174`) and `DEV_API_PORT` (default `3002`).
+  - Shortcuts: `npm run dev`, `npm run dev:logs`, `npm run dev:down`.
+
 ## Quick start
 
 ```bash
 # optional (if using nvm): nvm use 24 || nvm install 24
 npm install
+cp .env.example .env
 npm run dev
+npm run dev:logs
 ```
 
 Or use the launch script for containers:
@@ -67,6 +82,11 @@ Env surfaces are intentionally reduced to:
 - `.env` for local/dev runtime
 - `deploy/k8s/api-deploy.env` for GKE API deployment (local-only, generated from `.example`)
 
+Port envs:
+
+- Test stack: `TEST_WEB_PORT`, `TEST_API_PORT`
+- Host dev stack: `DEV_WEB_PORT`, `DEV_API_PORT`
+
 Run API scoring tests:
 
 ```bash
@@ -81,28 +101,27 @@ npm run scenario:publish -- --id detached-head-recovery
 ./scripts/scenario-publish.sh --id detached-head-recovery
 ```
 
-## Docker
+## Test Stack (Docker Compose)
 
 Build and run the full stack:
 
 ```bash
 docker compose up --build
+# or
+npm run test:up
 ```
 
 Endpoints:
 
-- Web app: `http://localhost:5173`
-- API readiness: `http://localhost:3001/api/v1/health/ready`
-
-Default local ports are aligned across host-dev and compose:
-
-- `WEB_PORT` (default `5173`)
-- `API_PORT` (default `3001`)
+- Web app: `http://localhost:5173` (override with `TEST_WEB_PORT`)
+- API readiness: `http://localhost:3001/api/v1/health/ready` (override with `TEST_API_PORT`)
 
 Stop and remove containers:
 
 ```bash
 docker compose down
+# or
+npm run test:down
 ```
 
 Equivalent launch script commands:

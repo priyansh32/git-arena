@@ -18,6 +18,17 @@ export default defineConfig(({ mode }) => {
     .split(",")
     .map((host) => host.trim())
     .filter((host) => host.length > 0);
+  const proxyConfig = {
+    "/api": {
+      target: apiProxyTarget,
+      changeOrigin: true
+    },
+    "/ws": {
+      target: apiProxyTarget,
+      changeOrigin: true,
+      ws: true
+    }
+  };
 
   return {
     envDir: ROOT_ENV_DIR,
@@ -26,17 +37,14 @@ export default defineConfig(({ mode }) => {
       host: "0.0.0.0",
       port: webPort,
       strictPort: true,
-      proxy: {
-        "/api": {
-          target: apiProxyTarget,
-          changeOrigin: true
-        },
-        "/ws": {
-          target: apiProxyTarget,
-          changeOrigin: true,
-          ws: true
-        }
-      },
+      proxy: proxyConfig,
+      allowedHosts: allowedHosts.length > 0 ? allowedHosts : undefined
+    },
+    preview: {
+      host: "0.0.0.0",
+      port: webPort,
+      strictPort: true,
+      proxy: proxyConfig,
       allowedHosts: allowedHosts.length > 0 ? allowedHosts : undefined
     }
   };
