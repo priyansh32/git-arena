@@ -126,111 +126,117 @@ function AuthenticatedLayout() {
 
   return (
     <div className="flex flex-col lg:flex-row min-h-screen">
-      {/* Mobile Topbar */}
-      <header className="flex lg:hidden items-center justify-between h-14 px-4 bg-[#18181be6] border-b border-border-subtle sticky top-0 z-40 backdrop-blur-md">
-        <Link className="flex items-center gap-2 font-mono font-bold lowercase text-text-primary hover:text-text-primary" to="/dashboard">
-          <GitBranch aria-hidden="true" className="shrink-0 text-accent-primary" size={16} />
-          git-arena
-        </Link>
-        <button
-          aria-expanded={mobileNavOpen}
-          aria-label="Toggle navigation menu"
-          className="inline-flex items-center justify-center gap-2 px-3 py-1 bg-transparent border border-border-strong text-text-primary hover:border-accent-primary hover:bg-bg-surface-hover rounded-md font-mono text-xs uppercase tracking-wider transition-colors min-h-[32px]"
-          onClick={() => {
-            setMobileNavOpen((open) => !open);
-          }}
-          type="button"
-        >
-          {mobileNavOpen ? (
-            <>
-              <X aria-hidden="true" className="shrink-0" size={14} />
-              Close
-            </>
-          ) : (
-            <>
-              <Menu aria-hidden="true" className="shrink-0" size={14} />
-              Menu
-            </>
-          )}
-        </button>
-      </header>
+      {!isWorkspaceRoute && (
+        <>
+          {/* Mobile Topbar */}
+          <header className="flex lg:hidden items-center justify-between h-14 px-4 bg-[#18181be6] border-b border-border-subtle sticky top-0 z-40 backdrop-blur-md">
+            <Link className="flex items-center gap-2 font-mono font-bold lowercase text-text-primary hover:text-text-primary" to="/dashboard">
+              <GitBranch aria-hidden="true" className="shrink-0 text-accent-primary" size={16} />
+              git-arena
+            </Link>
+            <button
+              aria-expanded={mobileNavOpen}
+              aria-label="Toggle navigation menu"
+              className="inline-flex items-center justify-center gap-2 px-3 py-1 bg-transparent border border-border-strong text-text-primary hover:border-accent-primary hover:bg-bg-surface-hover rounded-md font-mono text-xs uppercase tracking-wider transition-colors min-h-[32px]"
+              onClick={() => {
+                setMobileNavOpen((open) => !open);
+              }}
+              type="button"
+            >
+              {mobileNavOpen ? (
+                <>
+                  <X aria-hidden="true" className="shrink-0" size={14} />
+                  Close
+                </>
+              ) : (
+                <>
+                  <Menu aria-hidden="true" className="shrink-0" size={14} />
+                  Menu
+                </>
+              )}
+            </button>
+          </header>
 
-      {/* Mobile Nav Menu */}
-      {mobileNavOpen && (
-        <nav aria-label="Mobile" className="flex lg:hidden flex-col gap-2 p-4 bg-bg-surface border-b border-border-subtle">
-          <NavLink className={navClassName} to="/dashboard">
-            <LayoutDashboard aria-hidden="true" className="shrink-0" size={16} />
-            Dashboard
-            {/* Active Indicator is handled by pseudo element in Tailwind via class below */}
-          </NavLink>
-          <NavLink className={navClassName} to="/library">
-            <BookOpen aria-hidden="true" className="shrink-0" size={16} />
-            Library
-          </NavLink>
-          <div className="mt-4 pt-4 border-t border-border-subtle flex items-center gap-4 px-2">
-            {user.avatarUrl ? (
-              <img alt="" className="w-8 h-8 rounded-full border border-border-strong shrink-0" src={user.avatarUrl} />
-            ) : (
-              <span className="w-8 h-8 rounded-full border border-border-strong shrink-0 flex items-center justify-center bg-accent-primary/10 text-accent-primary font-mono text-xs font-bold" aria-hidden="true">
-                {userInitial(user.displayName)}
-              </span>
-            )}
-            <div className="min-w-0">
-              <p className="m-0 text-sm font-semibold whitespace-nowrap overflow-hidden text-ellipsis">{user.displayName}</p>
-              <p className="m-0 text-xs text-text-secondary font-mono whitespace-nowrap overflow-hidden text-ellipsis">{user.email}</p>
-            </div>
-          </div>
-          <button className="mt-4 inline-flex w-full items-center justify-center gap-2 px-4 py-2 bg-transparent border border-border-strong text-text-primary hover:border-accent-primary hover:bg-bg-surface-hover rounded-lg text-sm font-semibold transition-colors min-h-[40px]" onClick={() => void logout()} type="button">
-            <LogOut aria-hidden="true" className="shrink-0" size={15} />
-            Logout
-          </button>
-        </nav>
+          {/* Mobile Nav Menu */}
+          {mobileNavOpen && (
+            <nav aria-label="Mobile" className="flex lg:hidden flex-col gap-2 p-4 bg-bg-surface border-b border-border-subtle">
+              <NavLink className={navClassName} to="/dashboard">
+                <LayoutDashboard aria-hidden="true" className="shrink-0" size={16} />
+                Dashboard
+                {/* Active Indicator is handled by pseudo element in Tailwind via class below */}
+              </NavLink>
+              <NavLink className={navClassName} to="/library">
+                <BookOpen aria-hidden="true" className="shrink-0" size={16} />
+                Library
+              </NavLink>
+              <div className="mt-4 pt-4 border-t border-border-subtle flex items-center gap-4 px-2">
+                {user.avatarUrl ? (
+                  <img alt="" className="w-8 h-8 rounded-full border border-border-strong shrink-0" src={user.avatarUrl} />
+                ) : (
+                  <span className="w-8 h-8 rounded-full border border-border-strong shrink-0 flex items-center justify-center bg-accent-primary/10 text-accent-primary font-mono text-xs font-bold" aria-hidden="true">
+                    {userInitial(user.displayName)}
+                  </span>
+                )}
+                <div className="min-w-0">
+                  <p className="m-0 text-sm font-semibold whitespace-nowrap overflow-hidden text-ellipsis">{user.displayName}</p>
+                  <p className="m-0 text-xs text-text-secondary font-mono whitespace-nowrap overflow-hidden text-ellipsis">{user.email}</p>
+                </div>
+              </div>
+              <button className="mt-4 inline-flex w-full items-center justify-center gap-2 px-4 py-2 bg-transparent border border-border-strong text-text-primary hover:border-accent-primary hover:bg-bg-surface-hover rounded-lg text-sm font-semibold transition-colors min-h-[40px]" onClick={() => void logout()} type="button">
+                <LogOut aria-hidden="true" className="shrink-0" size={15} />
+                Logout
+              </button>
+            </nav>
+          )}
+        </>
       )}
 
       {/* Desktop Sidebar */}
-      <aside className="hidden lg:flex flex-col w-[252px] xl:w-[276px] 2xl:w-[296px] 3xl:w-[320px] h-screen sticky top-0 bg-bg-surface border-r border-border-subtle p-6 gap-6 z-20 shrink-0">
-        <div className="flex flex-col gap-1 px-2">
-          <Link className="flex items-center gap-2 font-mono text-lg font-bold tracking-wide lowercase text-text-primary hover:text-text-primary" to="/dashboard">
-            <GitBranch aria-hidden="true" className="shrink-0 text-accent-primary" size={16} />
-            git-arena
-          </Link>
-          <span className="text-text-secondary font-mono text-xs uppercase tracking-wider">Git Practice Platform</span>
-        </div>
-
-        <nav aria-label="Primary" className="flex flex-col gap-1">
-          <NavLink className={({ isActive }) => `flex items-center gap-2 px-4 py-2 rounded-lg text-text-secondary transition-colors relative hover:bg-bg-surface-hover hover:text-text-primary ${isActive ? "bg-accent-primary/10 text-[#7fe5f7] before:content-[''] before:absolute before:left-0 before:top-1/2 before:-translate-y-1/2 before:h-[calc(100%-16px)] before:w-[3px] before:rounded-r-md before:bg-accent-primary" : ""}`} to="/dashboard">
-            <LayoutDashboard aria-hidden="true" className="shrink-0" size={16} />
-            Dashboard
-          </NavLink>
-          <NavLink className={({ isActive }) => `flex items-center gap-2 px-4 py-2 rounded-lg text-text-secondary transition-colors relative hover:bg-bg-surface-hover hover:text-text-primary ${isActive ? "bg-accent-primary/10 text-[#7fe5f7] before:content-[''] before:absolute before:left-0 before:top-1/2 before:-translate-y-1/2 before:h-[calc(100%-16px)] before:w-[3px] before:rounded-r-md before:bg-accent-primary" : ""}`} to="/library">
-            <BookOpen aria-hidden="true" className="shrink-0" size={16} />
-            Library
-          </NavLink>
-        </nav>
-
-        <div className="mt-auto border-t border-border-subtle pt-6 flex flex-col gap-4">
-          <div className="flex items-center gap-4 px-2">
-            {user.avatarUrl ? (
-              <img alt="" className="w-8 h-8 rounded-full border border-border-strong shrink-0" src={user.avatarUrl} />
-            ) : (
-              <span className="w-8 h-8 rounded-full border border-border-strong shrink-0 flex items-center justify-center bg-accent-primary/10 text-accent-primary font-mono text-xs font-bold" aria-hidden="true">
-                {userInitial(user.displayName)}
-              </span>
-            )}
-            <div className="min-w-0">
-              <p className="m-0 text-sm font-semibold whitespace-nowrap overflow-hidden text-ellipsis">{user.displayName}</p>
-              <p className="m-0 text-xs text-text-secondary font-mono whitespace-nowrap overflow-hidden text-ellipsis">{user.email}</p>
-            </div>
+      {!isWorkspaceRoute && (
+        <aside className="hidden lg:flex flex-col w-[252px] xl:w-[276px] 2xl:w-[296px] 3xl:w-[320px] h-screen sticky top-0 bg-bg-surface border-r border-border-subtle p-6 gap-6 z-20 shrink-0">
+          <div className="flex flex-col gap-1 px-2">
+            <Link className="flex items-center gap-2 font-mono text-lg font-bold tracking-wide lowercase text-text-primary hover:text-text-primary" to="/dashboard">
+              <GitBranch aria-hidden="true" className="shrink-0 text-accent-primary" size={16} />
+              git-arena
+            </Link>
+            <span className="text-text-secondary font-mono text-xs uppercase tracking-wider">Git Practice Platform</span>
           </div>
-          <button className="inline-flex w-full items-center justify-center gap-2 px-4 py-2 bg-transparent border border-border-strong text-text-primary hover:border-accent-primary hover:bg-bg-surface-hover rounded-lg text-sm font-semibold transition-colors min-h-[40px]" onClick={() => void logout()} type="button">
-            <LogOut aria-hidden="true" className="shrink-0" size={15} />
-            Logout
-          </button>
-        </div>
-      </aside>
+
+          <nav aria-label="Primary" className="flex flex-col gap-1">
+            <NavLink className={({ isActive }) => `flex items-center gap-2 px-4 py-2 rounded-lg text-text-secondary transition-colors relative hover:bg-bg-surface-hover hover:text-text-primary ${isActive ? "bg-accent-primary/10 text-[#7fe5f7] before:content-[''] before:absolute before:left-0 before:top-1/2 before:-translate-y-1/2 before:h-[calc(100%-16px)] before:w-[3px] before:rounded-r-md before:bg-accent-primary" : ""}`} to="/dashboard">
+              <LayoutDashboard aria-hidden="true" className="shrink-0" size={16} />
+              Dashboard
+            </NavLink>
+            <NavLink className={({ isActive }) => `flex items-center gap-2 px-4 py-2 rounded-lg text-text-secondary transition-colors relative hover:bg-bg-surface-hover hover:text-text-primary ${isActive ? "bg-accent-primary/10 text-[#7fe5f7] before:content-[''] before:absolute before:left-0 before:top-1/2 before:-translate-y-1/2 before:h-[calc(100%-16px)] before:w-[3px] before:rounded-r-md before:bg-accent-primary" : ""}`} to="/library">
+              <BookOpen aria-hidden="true" className="shrink-0" size={16} />
+              Library
+            </NavLink>
+          </nav>
+
+          <div className="mt-auto border-t border-border-subtle pt-6 flex flex-col gap-4">
+            <div className="flex items-center gap-4 px-2">
+              {user.avatarUrl ? (
+                <img alt="" className="w-8 h-8 rounded-full border border-border-strong shrink-0" src={user.avatarUrl} />
+              ) : (
+                <span className="w-8 h-8 rounded-full border border-border-strong shrink-0 flex items-center justify-center bg-accent-primary/10 text-accent-primary font-mono text-xs font-bold" aria-hidden="true">
+                  {userInitial(user.displayName)}
+                </span>
+              )}
+              <div className="min-w-0">
+                <p className="m-0 text-sm font-semibold whitespace-nowrap overflow-hidden text-ellipsis">{user.displayName}</p>
+                <p className="m-0 text-xs text-text-secondary font-mono whitespace-nowrap overflow-hidden text-ellipsis">{user.email}</p>
+              </div>
+            </div>
+            <button className="inline-flex w-full items-center justify-center gap-2 px-4 py-2 bg-transparent border border-border-strong text-text-primary hover:border-accent-primary hover:bg-bg-surface-hover rounded-lg text-sm font-semibold transition-colors min-h-[40px]" onClick={() => void logout()} type="button">
+              <LogOut aria-hidden="true" className="shrink-0" size={15} />
+              Logout
+            </button>
+          </div>
+        </aside>
+      )}
 
       {/* Main Content Area */}
-      <main className={`flex-1 flex flex-col min-w-0 ${isWorkspaceRoute ? "h-[calc(100vh-56px)] lg:h-screen p-0 overflow-hidden" : ""}`}>
+      <main className={`flex-1 flex flex-col min-w-0 ${isWorkspaceRoute ? "h-screen p-0 overflow-hidden" : ""}`}>
         {isWorkspaceRoute ? (
           <Outlet />
         ) : (

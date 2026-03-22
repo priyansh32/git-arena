@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import type { Attempt, CreateSessionConflictResponse, Scenario } from "@gitarena/shared";
 import {
@@ -8,8 +8,7 @@ import {
   Gauge,
   Lightbulb,
   PlayCircle,
-  Target,
-  Trophy
+  Target
 } from "lucide-react";
 
 import { createSession, fetchScenario, fetchScenarioAttempts, isApiError } from "../api/client";
@@ -91,28 +90,7 @@ export function ScenarioDetailPage() {
     }
   };
 
-  const bestResult = useMemo(() => {
-    if (attempts.length === 0) {
-      return null;
-    }
-
-    if (attempts.some((attempt) => attempt.passed)) {
-      return "Pass";
-    }
-
-    let bestPassed = 0;
-    let bestTotal = 0;
-    for (const attempt of attempts) {
-      const passedChecks = attempt.assertions.filter((assertion) => assertion.passed).length;
-      const totalChecks = attempt.assertions.length;
-      if (passedChecks > bestPassed) {
-        bestPassed = passedChecks;
-        bestTotal = totalChecks;
-      }
-    }
-
-    return `${bestPassed}/${bestTotal}`;
-  }, [attempts]);
+  const isSolved = attempts.some((attempt) => attempt.passed);
 
   if (loading) {
     return (
@@ -180,6 +158,11 @@ export function ScenarioDetailPage() {
               <Clock3 aria-hidden="true" className="shrink-0" size={14} />
               ~{scenario.estimatedTimeMinutes} min
             </span>
+            <span
+              className={`inline-flex items-center justify-center px-3 py-1 rounded-full font-mono text-[11px] font-bold uppercase tracking-wider border leading-none ${isSolved ? "text-status-pass bg-status-pass-bg border-status-pass-border" : "text-status-secondary bg-bg-surface-soft border-border-strong"}`}
+            >
+              {isSolved ? "Solved" : "Unsolved"}
+            </span>
           </div>
 
           <div className="flex flex-col gap-4 text-text-readable leading-relaxed">
@@ -190,7 +173,7 @@ export function ScenarioDetailPage() {
             <p className="m-0">{scenario.objective}</p>
           </div>
 
-          <dl className="grid grid-cols-1 sm:grid-cols-3 gap-4 m-0 mt-4">
+          <dl className="grid grid-cols-1 sm:grid-cols-2 gap-4 m-0 mt-4">
             <div className="bg-bg-surface-soft border border-border-strong rounded-xl p-4 flex flex-col gap-1 shadow-sm">
               <dt className="m-0 text-text-secondary font-mono text-[11px] font-semibold uppercase tracking-wider">Hints Available</dt>
               <dd className="m-0 font-mono text-xl font-bold flex items-center gap-2">
@@ -203,13 +186,6 @@ export function ScenarioDetailPage() {
               <dd className="m-0 font-mono text-xl font-bold flex items-center gap-2 capitalize">
                 <Gauge aria-hidden="true" className="shrink-0 text-accent-primary" size={20} />
                 {attempts.length}
-              </dd>
-            </div>
-            <div className="bg-bg-surface-soft border border-border-strong rounded-xl p-4 flex flex-col gap-1 shadow-sm">
-              <dt className="m-0 text-text-secondary font-mono text-[11px] font-semibold uppercase tracking-wider">Best Result</dt>
-              <dd className="m-0 font-mono text-xl font-bold flex items-center gap-2">
-                <Trophy aria-hidden="true" className="shrink-0 text-status-pass" size={20} />
-                {bestResult ?? "-"}
               </dd>
             </div>
           </dl>
