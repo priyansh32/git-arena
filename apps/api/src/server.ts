@@ -257,7 +257,10 @@ const sessionCookieMaxAgeSeconds = config.auth.sessionTtlHours * 60 * 60;
 
 await app.register(cors, {
   origin: config.corsOrigins,
-  credentials: true
+  credentials: true,
+  methods: ["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization", CSRF_HEADER_NAME],
+  maxAge: 86_400
 });
 await app.register(cookie);
 await app.register(websocket);
