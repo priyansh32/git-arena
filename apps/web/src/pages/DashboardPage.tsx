@@ -1210,12 +1210,6 @@ export function DashboardPage({ mode = "dashboard" }: DashboardPageProps) {
                       Retry
                     </Link>
                     <Link
-                      className="inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-md border border-border-strong text-text-primary text-sm hover:border-accent-primary/40 hover:bg-bg-surface-hover transition-colors"
-                      to={`/scenarios/${entry.scenario.id}`}
-                    >
-                      View Scenario
-                    </Link>
-                    <Link
                       className="inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-md border border-accent-primary/30 text-accent-primary text-sm hover:bg-accent-primary/10 transition-colors"
                       to={`/sessions/${entry.latestAttemptSessionId}/result`}
                     >
