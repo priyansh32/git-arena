@@ -3,6 +3,37 @@ import { z } from "zod";
 const workspaceProviderSchema = z.enum(["docker", "kubernetes"]);
 const workspaceImagePullPolicySchema = z.enum(["Always", "IfNotPresent", "Never"]);
 
+function parseBooleanEnv(value: string, key: string): boolean {
+  const normalized = value.trim().toLowerCase();
+
+  if (normalized.length === 0) {
+    return false;
+  }
+
+  if (["1", "true", "yes", "on"].includes(normalized)) {
+    return true;
+  }
+
+  if (["0", "false", "no", "off"].includes(normalized)) {
+    return false;
+  }
+
+  throw new Error(`${key} must be a boolean-like value (true/false/1/0/yes/no/on/off)`);
+}
+
+function parseCsvList(value: string | undefined): string[] {
+  if (!value) {
+    return [];
+  }
+
+  return Array.from(new Set(
+    value
+      .split(",")
+      .map((item) => item.trim())
+      .filter((item) => item.length > 0)
+  ));
+}
+
 const envSchema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
   HOST: z.string().default("0.0.0.0"),
@@ -25,6 +56,8 @@ const envSchema = z.object({
   WORKSPACE_K8S_IMAGE_PULL_POLICY: workspaceImagePullPolicySchema.default("IfNotPresent"),
   WORKSPACE_K8S_POD_READY_TIMEOUT_SECONDS: z.coerce.number().int().min(5).max(600).default(240),
   GOOGLE_CLIENT_ID: z.string().trim().min(1),
+  AUTH_TEST_MODE: z.string().default("false"),
+  AUTH_TEST_ALLOWED_EMAILS: z.string().optional(),
   SESSION_COOKIE_NAME: z.string().default("gitarena_session"),
   SESSION_TTL_HOURS: z.coerce.number().int().min(1).max(24 * 30).default(24 * 7)
 });
@@ -58,6 +91,8 @@ export interface AppConfig {
   workspace: WorkspaceConfig;
   auth: {
     googleClientId: string;
+    testMode: boolean;
+    testAllowedEmails: string[];
     sessionCookieName: string;
     sessionTtlHours: number;
   };
@@ -65,6 +100,16 @@ export interface AppConfig {
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
   const parsed = envSchema.parse(env);
+  const authTestMode = parseBooleanEnv(parsed.AUTH_TEST_MODE, "AUTH_TEST_MODE");
+  const testAllowedEmails = Array.from(new Set(
+    parseCsvList(parsed.AUTH_TEST_ALLOWED_EMAILS)
+      .map((email) => email.toLowerCase())
+  ));
+
+  if (authTestMode && testAllowedEmails.length === 0) {
+    throw new Error("AUTH_TEST_MODE=true requires AUTH_TEST_ALLOWED_EMAILS to be set");
+  }
+
   const corsOriginSource =
     parsed.CORS_ORIGINS && parsed.CORS_ORIGINS.trim().length > 0
       ? parsed.CORS_ORIGINS
@@ -95,6 +140,8 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     },
     auth: {
       googleClientId: parsed.GOOGLE_CLIENT_ID,
+      testMode: authTestMode,
+      testAllowedEmails,
       sessionCookieName: parsed.SESSION_COOKIE_NAME,
       sessionTtlHours: parsed.SESSION_TTL_HOURS
     }

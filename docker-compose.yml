@@ -34,6 +34,8 @@ services:
       DATABASE_URL: postgres://gitarena:gitarena@postgres:5432/gitarena
       CORS_ORIGINS: ${CORS_ORIGINS:-}
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+      AUTH_TEST_MODE: ${AUTH_TEST_MODE:-false}
+      AUTH_TEST_ALLOWED_EMAILS: ${AUTH_TEST_ALLOWED_EMAILS:-}
       SESSION_COOKIE_NAME: ${SESSION_COOKIE_NAME:-gitarena_session}
       SESSION_TTL_HOURS: ${SESSION_TTL_HOURS:-168}
       WORKSPACE_PROVIDER: docker

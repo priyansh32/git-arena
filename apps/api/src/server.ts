@@ -58,6 +58,7 @@ const googleLoginSchema = z.object({
 const config = loadConfig();
 const repository = new Repository(config.databaseUrl);
 const workspaceManager = new WorkspaceManager(config.workspace);
+const testAllowedEmailSet = new Set(config.auth.testAllowedEmails);
 
 const app = Fastify({
   logger: {
@@ -382,6 +383,17 @@ app.post("/api/v1/auth/google", async (request, reply) => {
   } catch (error) {
     app.log.warn({ err: error }, "Rejected invalid Google ID token");
     return reply.code(401).send({ message: "Invalid Google ID token" });
+  }
+
+  if (config.auth.testMode) {
+    const normalizedEmail = identity.email.toLowerCase();
+    if (!testAllowedEmailSet.has(normalizedEmail)) {
+      app.log.info(
+        { email: normalizedEmail },
+        "Blocked Google login in test mode for non-allowlisted email"
+      );
+      return reply.code(403).send({ message: "This test environment is invite-only" });
+    }
   }
 
   const user = await repository.upsertGoogleUser(identity);

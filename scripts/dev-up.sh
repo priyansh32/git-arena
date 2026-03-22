@@ -252,6 +252,8 @@ set_common_api_env() {
   export CORS_ORIGINS="${CORS_ORIGINS:-http://localhost:${WEB_PORT}}"
   export SESSION_COOKIE_NAME="${SESSION_COOKIE_NAME:-$(read_env SESSION_COOKIE_NAME gitarena_session)}"
   export SESSION_TTL_HOURS="${SESSION_TTL_HOURS:-$(read_env SESSION_TTL_HOURS 168)}"
+  export AUTH_TEST_MODE="${AUTH_TEST_MODE:-$(read_env AUTH_TEST_MODE false)}"
+  export AUTH_TEST_ALLOWED_EMAILS="${AUTH_TEST_ALLOWED_EMAILS:-$(read_env AUTH_TEST_ALLOWED_EMAILS '')}"
 
   export WORKSPACE_SHELL="${WORKSPACE_SHELL:-$(read_env WORKSPACE_SHELL /bin/bash)}"
 }
