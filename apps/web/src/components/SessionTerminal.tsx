@@ -36,11 +36,49 @@ function readCssVar(name: string, fallback: string): string {
 }
 
 function writeWorkspaceIntro(terminal: Terminal): void {
-  terminal.writeln("Workspace connected.");
-  terminal.writeln("[git-arena] Git workspace is ready.");
-  terminal.writeln("[git-arena] Primary repo: /workspace");
-  terminal.writeln("[git-arena] Local remotes and fixtures: /repos");
-  terminal.writeln("[git-arena] When done, use Submit Solution in the side panel.");
+  const reset = "\x1b[0m";
+  const dim = "\x1b[2m";
+  const bold = "\x1b[1m";
+  const green = "\x1b[32m";
+  const yellow = "\x1b[33m";
+
+  if (terminal.cols < 40) {
+    terminal.writeln(`${green}${bold}git-arena ready${reset}`);
+    terminal.writeln(`${dim}repo:${reset} /workspace`);
+    terminal.writeln(`${dim}fixtures:${reset} /repos`);
+    terminal.writeln(`${dim}paste:${reset} ${yellow}Ctrl+Shift+V${reset}`);
+    terminal.writeln("");
+    return;
+  }
+
+  if (terminal.cols < 62) {
+    terminal.writeln(`${green}${bold}git-arena ready${reset}`);
+    terminal.writeln(`${dim}repo:${reset} /workspace   ${dim}remotes:${reset} /repos`);
+    terminal.writeln(`${dim}paste:${reset} ${yellow}Ctrl+Shift+V${reset}`);
+    terminal.writeln("");
+    return;
+  }
+
+  if (terminal.cols < 94) {
+    terminal.writeln(`  ${dim}┌─ ${green}${bold}git-arena${reset}${dim} ──────────────────────────────────────────┐${reset}`);
+    terminal.writeln(`  ${dim}│${reset} repo ${bold}/workspace${reset}    ${dim}•${reset} fixtures + remotes ${bold}/repos${reset}       ${dim}│${reset}`);
+    terminal.writeln(`  ${dim}│${reset} paste ${yellow}Ctrl+Shift+V${reset}   ${dim}•${reset} submit from the side panel    ${dim}│${reset}`);
+    terminal.writeln(`  ${dim}└──────────────────────────────────────────────────────┘${reset}`);
+    terminal.writeln("");
+    return;
+  }
+
+  terminal.writeln(`  ${dim}┌───────────────────────────────────────────────────────────────────────────┐${reset}`);
+  terminal.writeln(`  ${dim}│${reset}  ${green}${bold}  ██████╗ ██╗████████╗      █████╗ ██████╗ ███████╗███╗   ██╗ █████╗   ${reset}  ${dim}│${reset}`);
+  terminal.writeln(`  ${dim}│${reset}  ${green}${bold} ██╔════╝ ██║╚══██╔══╝     ██╔══██╗██╔══██╗██╔════╝████╗  ██║██╔══██╗  ${reset}  ${dim}│${reset}`);
+  terminal.writeln(`  ${dim}│${reset}  ${green}${bold} ██║  ███╗██║   ██║ █████╗ ███████║██████╔╝█████╗  ██╔██╗ ██║███████║  ${reset}  ${dim}│${reset}`);
+  terminal.writeln(`  ${dim}│${reset}  ${green}${bold} ██║   ██║██║   ██║ ╚════╝ ██╔══██║██╔══██╗██╔══╝  ██║╚██╗██║██╔══██║  ${reset}  ${dim}│${reset}`);
+  terminal.writeln(`  ${dim}│${reset}  ${green}${bold} ╚██████╔╝██║   ██║        ██║  ██║██║  ██║███████╗██║ ╚████║██║  ██║  ${reset}  ${dim}│${reset}`);
+  terminal.writeln(`  ${dim}│${reset}  ${green}${bold}  ╚═════╝ ╚═╝   ╚═╝        ╚═╝  ╚═╝╚═╝  ╚═╝╚══════╝╚═╝  ╚═══╝╚═╝  ╚═╝  ${reset}  ${dim}│${reset}`);
+  terminal.writeln(`  ${dim}│${reset}                                                                           ${dim}│${reset}`);
+  terminal.writeln(`  ${dim}│${reset}  ${dim}repo${reset}  /workspace    ${dim}fixtures${reset}  /repos                                     ${dim}│${reset}`);
+  terminal.writeln(`  ${dim}│${reset}  ${yellow}Ctrl+Shift+V to paste  ·  submit solution from side panel${reset}                ${dim}│${reset}`);
+  terminal.writeln(`  ${dim}└───────────────────────────────────────────────────────────────────────────┘${reset}`);
   terminal.writeln("");
 }
 
@@ -115,6 +153,7 @@ export function SessionTerminal({ wsUrl, wsToken, onStateChange }: SessionTermin
 
     socket.onopen = () => {
       updateConnectionState("connected");
+      terminal.clear();
       writeWorkspaceIntro(terminal);
       terminal.focus();
     };
