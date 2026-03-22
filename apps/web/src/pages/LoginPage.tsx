@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { GitBranch, LogIn } from "lucide-react";
 
 import { useAuth } from "../auth/AuthContext";
@@ -168,6 +168,18 @@ export function LoginPage() {
             {error}
           </p>
         )}
+
+        <p className="m-0 text-xs text-text-secondary text-center leading-relaxed">
+          By signing in, you agree to our{" "}
+          <Link className="text-accent-primary hover:underline" to="/terms">
+            Terms of Use
+          </Link>{" "}
+          and{" "}
+          <Link className="text-accent-primary hover:underline" to="/privacy">
+            Privacy Policy
+          </Link>
+          .
+        </p>
       </article>
     </section>
   );
