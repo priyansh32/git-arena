@@ -130,10 +130,34 @@ export function SessionTerminal({ wsUrl, wsToken, onStateChange }: SessionTermin
       }
     });
     const fitAddon = new FitAddon();
+    const fitTerminal = () => {
+      window.requestAnimationFrame(() => {
+        try {
+          fitAddon.fit();
+        } catch {
+          // Ignore fit failures while the node is hidden/unmounted.
+        }
+      });
+    };
+
     terminalRef.current = terminal;
     terminal.loadAddon(fitAddon);
     terminal.open(mount);
-    fitAddon.fit();
+    fitTerminal();
+    window.setTimeout(fitTerminal, 0);
+    window.setTimeout(fitTerminal, 120);
+    void document.fonts?.ready.then(() => {
+      fitTerminal();
+    });
+
+    const resizeObserver =
+      typeof ResizeObserver !== "undefined"
+        ? new ResizeObserver(() => {
+            fitTerminal();
+          })
+        : null;
+    resizeObserver?.observe(mount);
+
     terminal.focus();
     terminal.writeln("Connecting to workspace...");
 
@@ -173,7 +197,7 @@ export function SessionTerminal({ wsUrl, wsToken, onStateChange }: SessionTermin
     });
 
     const onResize = () => {
-      fitAddon.fit();
+      fitTerminal();
     };
     window.addEventListener("resize", onResize);
 
@@ -187,6 +211,7 @@ export function SessionTerminal({ wsUrl, wsToken, onStateChange }: SessionTermin
       updateConnectionState("connected");
       terminal.clear();
       writeWorkspaceIntro(terminal);
+      fitTerminal();
       terminal.focus();
     };
 
@@ -217,6 +242,7 @@ export function SessionTerminal({ wsUrl, wsToken, onStateChange }: SessionTermin
     return () => {
       inputDisposable.dispose();
       window.removeEventListener("resize", onResize);
+      resizeObserver?.disconnect();
       if (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING) {
         socket.close();
       }
@@ -227,13 +253,13 @@ export function SessionTerminal({ wsUrl, wsToken, onStateChange }: SessionTermin
 
   return (
     <div
-      className="session-terminal-shell"
+      className="session-terminal-shell h-full w-full min-h-0 min-w-0"
       data-state={connectionState}
       onClick={() => {
         terminalRef.current?.focus();
       }}
     >
-      <div className="session-terminal-canvas" ref={mountRef} />
+      <div className="session-terminal-canvas h-full w-full min-h-0 min-w-0" ref={mountRef} />
     </div>
   );
 }
