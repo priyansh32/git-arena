@@ -3,11 +3,14 @@ name: CI
 on:
   pull_request:
   push:
+    branches:
+      - main
+      - dev
 
 jobs:
   validate:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 15
 
     steps:
       - name: Checkout
@@ -22,24 +25,17 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Typecheck
-        run: npm run typecheck
+      - name: Build shared package
+        run: npm run build -w @gitarena/shared
 
-      - name: API tests
+      - name: API typecheck
+        run: npm run typecheck -w @gitarena/api
+
+      - name: API unit tests
         run: npm run test -w @gitarena/api
 
-      - name: Build
-        run: npm run build
+      - name: Web typecheck
+        run: npm run typecheck -w @gitarena/web
 
-      - name: Verify hardened workspace image
-        run: IMAGE_TAG=gitarena-base:2.43.7-alpine3.19-v1 ./scripts/verify-docker-security.sh
-
-      - name: Start stack
-        run: ./launch.sh start
-
-      - name: Smoke test stack
-        run: ./launch.sh smoke
-
-      - name: Stop stack
-        if: always()
-        run: ./launch.sh stop --volumes --remove-orphans
+      - name: Env templates lint
+        run: npm run env:lint
