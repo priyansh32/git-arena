@@ -19,6 +19,7 @@ Detailed onboarding + architecture docs live in [`dev-docs/`](dev-docs/README.md
 - Scenario runtime and challenge authoring: [`dev-docs/05-workspace-runtime-and-scenarios.md`](dev-docs/05-workspace-runtime-and-scenarios.md)
 - Deployment and ops: [`dev-docs/09-deployment-and-ops.md`](dev-docs/09-deployment-and-ops.md)
 - Internet test exposure: [`docs/internet-test-setup.md`](docs/internet-test-setup.md)
+- Autopilot session migration: [`docs/autopilot-migration.md`](docs/autopilot-migration.md)
 
 ## Workflow Modes
 
@@ -209,6 +210,7 @@ This is a bootstrap foundation with:
     - `--security-opt no-new-privileges`
     - resource limits (`memory/cpu/pids`)
 - Kubernetes mode provisions one pod per active session in `WORKSPACE_K8S_NAMESPACE`.
+- Optional safe migration support: set `WORKSPACE_K8S_CONTEXT` (and optionally `WORKSPACE_K8S_KUBECONFIG`) to target a separate sessions cluster while keeping API deployment unchanged.
 - Kubernetes network isolation policy manifest is available at:
   - `deploy/k8s/session-isolation-networkpolicy.yaml`
 

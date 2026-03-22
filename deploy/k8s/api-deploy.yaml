@@ -63,6 +63,8 @@ stringData:
   WORKSPACE_PROVIDER: "kubernetes"
   WORKSPACE_IMAGE: "${WORKSPACE_IMAGE}"
   WORKSPACE_K8S_NAMESPACE: "gitarena-sessions"
+  WORKSPACE_K8S_CONTEXT: "${WORKSPACE_K8S_CONTEXT}"
+  WORKSPACE_K8S_KUBECONFIG: "${WORKSPACE_K8S_KUBECONFIG}"
   WORKSPACE_K8S_RUNTIME_CLASS_NAME: "gvisor"
   WORKSPACE_K8S_IMAGE_PULL_POLICY: "IfNotPresent"
   WORKSPACE_K8S_POD_READY_TIMEOUT_SECONDS: "240"
@@ -89,6 +91,13 @@ spec:
         app: api-backend
     spec:
       serviceAccountName: api-backend
+      nodeSelector:
+        cloud.google.com/gke-nodepool: control-plane
+      tolerations:
+        - key: dedicated
+          operator: Equal
+          value: api
+          effect: NoSchedule
       containers:
         - name: api
           image: ${API_IMAGE}
@@ -97,9 +106,13 @@ spec:
           envFrom:
             - secretRef:
                 name: gitarena-api-env
+          volumeMounts:
+            - name: session-kubeconfig
+              mountPath: /var/run/gitarena-session-kubeconfig
+              readOnly: true
           resources:
             requests:
-              cpu: "250m"
+              cpu: "100m"
               memory: "256Mi"
             limits:
               cpu: "500m"
@@ -125,11 +138,16 @@ spec:
             - "${INSTANCE_CONNECTION_NAME}"
           resources:
             requests:
-              cpu: "50m"
+              cpu: "20m"
               memory: "64Mi"
             limits:
               cpu: "250m"
               memory: "128Mi"
+      volumes:
+        - name: session-kubeconfig
+          secret:
+            secretName: gitarena-session-kubeconfig
+            optional: true
 ---
 apiVersion: cloud.google.com/v1
 kind: BackendConfig
