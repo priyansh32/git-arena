@@ -4,7 +4,7 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "NODE_ENV=development vite",
     "build": "npm --prefix ../.. run build -w @gitarena/shared && tsc -b && node scripts/prerender-landing.mjs",
     "prerender:landing": "node scripts/prerender-landing.mjs",
     "preview": "vite preview",
