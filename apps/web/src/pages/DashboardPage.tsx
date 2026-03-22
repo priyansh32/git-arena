@@ -549,12 +549,6 @@ export function DashboardPage({ mode = "dashboard" }: DashboardPageProps) {
     activeSession?.scenarioId;
 
   const solvedCount = solvedEntries.length;
-  const totalAttempts = attempts.length;
-  const firstTrySolves = solvedEntries.filter((entry) => entry.attemptsBeforePass === 1).length;
-  const lastSevenDaysSolved = solvedEntries.filter((entry) => {
-    const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
-    return new Date(entry.firstSolvedAt).getTime() >= sevenDaysAgo;
-  }).length;
   const solvedLibraryCount = solvedScenarioIds.size;
   const unsolvedLibraryCount = Math.max(0, scenarios.length - solvedLibraryCount);
 
@@ -617,9 +611,6 @@ export function DashboardPage({ mode = "dashboard" }: DashboardPageProps) {
         <Trophy aria-hidden="true" className="shrink-0" size={18} />
         Recommended Next
       </h3>
-      <p className="m-0 mt-3 text-sm text-text-secondary leading-relaxed flex-1">
-        Suggestions based on unsolved scenarios overlapping with your solved tags.
-      </p>
       {recommendedScenarios.length === 0 ? (
         <p className="m-0 mt-6 text-sm text-text-secondary bg-bg-base p-4 rounded-lg border border-border-subtle text-center">
           No recommendations yet. Solve a scenario to get suggestions.
@@ -761,24 +752,6 @@ export function DashboardPage({ mode = "dashboard" }: DashboardPageProps) {
             </button>
           </nav>
 
-          <section className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-            <article className="bg-bg-surface border border-border-subtle rounded-xl p-4">
-              <p className="m-0 text-xs uppercase tracking-wider text-text-secondary font-mono mb-1">Solved Scenarios</p>
-              <p className="m-0 text-2xl font-bold text-text-primary">{solvedCount}</p>
-            </article>
-            <article className="bg-bg-surface border border-border-subtle rounded-xl p-4">
-              <p className="m-0 text-xs uppercase tracking-wider text-text-secondary font-mono mb-1">Total Attempts</p>
-              <p className="m-0 text-2xl font-bold text-text-primary">{totalAttempts}</p>
-            </article>
-            <article className="bg-bg-surface border border-border-subtle rounded-xl p-4">
-              <p className="m-0 text-xs uppercase tracking-wider text-text-secondary font-mono mb-1">First-Try Solves</p>
-              <p className="m-0 text-2xl font-bold text-text-primary">{firstTrySolves}</p>
-            </article>
-            <article className="bg-bg-surface border border-border-subtle rounded-xl p-4">
-              <p className="m-0 text-xs uppercase tracking-wider text-text-secondary font-mono mb-1">Last 7 Days Solved</p>
-              <p className="m-0 text-2xl font-bold text-text-primary">{lastSevenDaysSolved}</p>
-            </article>
-          </section>
         </>
       )}
 

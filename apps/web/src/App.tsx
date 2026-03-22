@@ -188,7 +188,7 @@ function AuthenticatedLayout() {
       )}
 
       {/* Desktop Sidebar */}
-      <aside className="hidden lg:flex flex-col w-[240px] h-screen sticky top-0 bg-bg-surface border-r border-border-subtle p-6 gap-6 z-20 shrink-0">
+      <aside className="hidden lg:flex flex-col w-[252px] xl:w-[276px] 2xl:w-[296px] 3xl:w-[320px] h-screen sticky top-0 bg-bg-surface border-r border-border-subtle p-6 gap-6 z-20 shrink-0">
         <div className="flex flex-col gap-1 px-2">
           <Link className="flex items-center gap-2 font-mono text-lg font-bold tracking-wide lowercase text-text-primary hover:text-text-primary" to="/dashboard">
             <GitBranch aria-hidden="true" className="shrink-0 text-accent-primary" size={16} />
@@ -234,7 +234,7 @@ function AuthenticatedLayout() {
         {isWorkspaceRoute ? (
           <Outlet />
         ) : (
-          <div className="w-full max-w-7xl mx-auto p-4 lg:p-8 flex-1">
+          <div className="w-full max-w-[1600px] 2xl:max-w-[1800px] 3xl:max-w-[2060px] mx-auto p-4 lg:p-8 2xl:px-10 3xl:px-14 flex-1">
             <Outlet />
           </div>
         )}
