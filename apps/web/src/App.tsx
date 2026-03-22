@@ -12,12 +12,12 @@ import {
   useMatch,
   useSearchParams
 } from "react-router-dom";
-import { GitBranch, History, LayoutDashboard, LogOut, Menu, X } from "lucide-react";
+import { BookOpen, GitBranch, LayoutDashboard, LogOut, Menu, X } from "lucide-react";
 
 import { useAuth } from "./auth/AuthContext";
 import { DashboardPage } from "./pages/DashboardPage";
-import { HistoryPage } from "./pages/HistoryPage";
 import { LandingPage } from "./pages/LandingPage";
+import { LibraryPage } from "./pages/LibraryPage";
 import { LoginPage } from "./pages/LoginPage";
 import { PrivacyPage } from "./pages/PrivacyPage";
 import { ScenarioDetailPage } from "./pages/ScenarioDetailPage";
@@ -163,9 +163,9 @@ function AuthenticatedLayout() {
             Dashboard
             {/* Active Indicator is handled by pseudo element in Tailwind via class below */}
           </NavLink>
-          <NavLink className={navClassName} to="/history">
-            <History aria-hidden="true" className="shrink-0" size={16} />
-            History
+          <NavLink className={navClassName} to="/library">
+            <BookOpen aria-hidden="true" className="shrink-0" size={16} />
+            Library
           </NavLink>
           <div className="mt-4 pt-4 border-t border-border-subtle flex items-center gap-4 px-2">
             {user.avatarUrl ? (
@@ -202,9 +202,9 @@ function AuthenticatedLayout() {
             <LayoutDashboard aria-hidden="true" className="shrink-0" size={16} />
             Dashboard
           </NavLink>
-          <NavLink className={({ isActive }) => `flex items-center gap-2 px-4 py-2 rounded-lg text-text-secondary transition-colors relative hover:bg-bg-surface-hover hover:text-text-primary ${isActive ? "bg-accent-primary/10 text-[#7fe5f7] before:content-[''] before:absolute before:left-0 before:top-1/2 before:-translate-y-1/2 before:h-[calc(100%-16px)] before:w-[3px] before:rounded-r-md before:bg-accent-primary" : ""}`} to="/history">
-            <History aria-hidden="true" className="shrink-0" size={16} />
-            History
+          <NavLink className={({ isActive }) => `flex items-center gap-2 px-4 py-2 rounded-lg text-text-secondary transition-colors relative hover:bg-bg-surface-hover hover:text-text-primary ${isActive ? "bg-accent-primary/10 text-[#7fe5f7] before:content-[''] before:absolute before:left-0 before:top-1/2 before:-translate-y-1/2 before:h-[calc(100%-16px)] before:w-[3px] before:rounded-r-md before:bg-accent-primary" : ""}`} to="/library">
+            <BookOpen aria-hidden="true" className="shrink-0" size={16} />
+            Library
           </NavLink>
         </nav>
 
@@ -260,7 +260,8 @@ export function AppRoutes() {
         }
       >
         <Route element={<DashboardPage />} path="/dashboard" />
-        <Route element={<HistoryPage />} path="/history" />
+        <Route element={<LibraryPage />} path="/library" />
+        <Route element={<Navigate replace to="/dashboard" />} path="/history" />
         <Route element={<ScenarioDetailPage />} path="/scenarios/:id" />
         <Route element={<SessionWorkspacePage />} path="/sessions/:id" />
         <Route element={<SessionResultPage />} path="/sessions/:id/result" />
