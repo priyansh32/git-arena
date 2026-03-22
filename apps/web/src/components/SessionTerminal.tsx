@@ -139,6 +139,38 @@ export function SessionTerminal({ wsUrl, wsToken, onStateChange }: SessionTermin
 
     const socket = new WebSocket(buildSocketUrl(wsUrl, wsToken));
     socket.binaryType = "arraybuffer";
+    const isMac = /Mac|iPod|iPhone|iPad/.test(navigator.platform);
+
+    const copySelectionToClipboard = async () => {
+      const selectedText = terminal.getSelection();
+      if (!selectedText) {
+        return;
+      }
+
+      try {
+        await navigator.clipboard.writeText(selectedText);
+      } catch {
+        // Ignore clipboard write failures in restricted browser contexts.
+      }
+    };
+
+    terminal.attachCustomKeyEventHandler((event: KeyboardEvent) => {
+      const key = event.key.toLowerCase();
+      const primaryModifier = isMac ? event.metaKey : event.ctrlKey;
+
+      if (primaryModifier && key === "c" && !event.shiftKey && !event.altKey) {
+        if (terminal.hasSelection()) {
+          void copySelectionToClipboard();
+          event.preventDefault();
+          return false;
+        }
+
+        // No selection: preserve shell interrupt behavior.
+        return true;
+      }
+
+      return true;
+    });
 
     const onResize = () => {
       fitAddon.fit();
