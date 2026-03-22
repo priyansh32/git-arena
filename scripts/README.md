@@ -4,6 +4,11 @@ This directory contains local development and verification scripts.
 
 All shell scripts support `-h` / `--help`.
 
+## Workflow Split
+
+- Test stack: `docker compose up --build` (built containers on `TEST_WEB_PORT` / `TEST_API_PORT`)
+- Dev stack: `./scripts/dev-up.sh ...` (host hot-reload on `DEV_WEB_PORT` / `DEV_API_PORT`)
+
 ## Shared Script Library
 
 - `scripts/lib/common.sh`
@@ -65,6 +70,7 @@ All shell scripts support `-h` / `--help`.
     - `./scripts/dev-up.sh api k8s`
     - `./scripts/dev-up.sh web`
     - `./scripts/dev-up.sh all docker|k8s` (starts api/web in background; postgres starts only when applicable)
+  - Uses host-dev ports from `DEV_API_PORT`/`DEV_WEB_PORT` (defaults `3002`/`5174`).
   - `k8s` mode defaults to Cloud SQL via `.dev-runtime/cloudsql.env`.
   - Set `K8S_USE_CLOUDSQL=false` to force local docker-compose postgres in `k8s` mode.
   - Fails fast when API/web ports are already occupied (prints conflicting pid(s)).
@@ -72,9 +78,17 @@ All shell scripts support `-h` / `--help`.
   - Unified shutdown for local dev:
     - `./scripts/dev-down.sh api|web|postgres|all`
   - Also cleans stale repo-owned listeners on API/web ports by default (`FORCE_STALE_KILL=true`).
+  - Cleans listeners on `DEV_API_PORT`/`DEV_WEB_PORT`.
 - `scripts/scenario-publish.sh`
   - Publishes `seed.sh` + `eval.sh` from `apps/api/scenarios/<scenario-id>` into DB-backed immutable scenario revisions.
   - Passes through to `npm run scenario:publish`.
+- `scripts/env-lint.sh`
+  - Validates `.env` / `.env.example` and `deploy/k8s/api-deploy.env` / `.example`.
+  - Flags unknown keys, duplicate keys, and missing required keys.
+  - Run with `npm run env:lint`.
+  - Intended env model is:
+    - `.env` for local/dev runtime
+    - `deploy/k8s/api-deploy.env` for GKE API deploy only
 
 Use these as the primary host-dev entrypoints.
 `launch.sh` remains available for compose-centric lifecycle commands.

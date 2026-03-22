@@ -35,6 +35,53 @@ function readCssVar(name: string, fallback: string): string {
   return value.length > 0 ? value : fallback;
 }
 
+function writeWorkspaceIntro(terminal: Terminal): void {
+  const reset = "\x1b[0m";
+  const dim = "\x1b[2m";
+  const bold = "\x1b[1m";
+  const green = "\x1b[32m";
+  const yellow = "\x1b[33m";
+
+  if (terminal.cols < 40) {
+    terminal.writeln(`${green}${bold}git-arena ready${reset}`);
+    terminal.writeln(`${dim}repo:${reset} /workspace`);
+    terminal.writeln(`${dim}fixtures:${reset} /repos`);
+    terminal.writeln(`${dim}paste:${reset} ${yellow}Ctrl+Shift+V${reset}`);
+    terminal.writeln("");
+    return;
+  }
+
+  if (terminal.cols < 62) {
+    terminal.writeln(`${green}${bold}git-arena ready${reset}`);
+    terminal.writeln(`${dim}repo:${reset} /workspace   ${dim}remotes:${reset} /repos`);
+    terminal.writeln(`${dim}paste:${reset} ${yellow}Ctrl+Shift+V${reset}`);
+    terminal.writeln("");
+    return;
+  }
+
+  if (terminal.cols < 94) {
+    terminal.writeln(`  ${dim}┌─ ${green}${bold}git-arena${reset}${dim} ──────────────────────────────────────────┐${reset}`);
+    terminal.writeln(`  ${dim}│${reset} repo ${bold}/workspace${reset}    ${dim}•${reset} fixtures + remotes ${bold}/repos${reset}       ${dim}│${reset}`);
+    terminal.writeln(`  ${dim}│${reset} paste ${yellow}Ctrl+Shift+V${reset}   ${dim}•${reset} submit from the side panel    ${dim}│${reset}`);
+    terminal.writeln(`  ${dim}└──────────────────────────────────────────────────────┘${reset}`);
+    terminal.writeln("");
+    return;
+  }
+
+  terminal.writeln(`  ${dim}┌───────────────────────────────────────────────────────────────────────────┐${reset}`);
+  terminal.writeln(`  ${dim}│${reset}  ${green}${bold}  ██████╗ ██╗████████╗      █████╗ ██████╗ ███████╗███╗   ██╗ █████╗   ${reset}  ${dim}│${reset}`);
+  terminal.writeln(`  ${dim}│${reset}  ${green}${bold} ██╔════╝ ██║╚══██╔══╝     ██╔══██╗██╔══██╗██╔════╝████╗  ██║██╔══██╗  ${reset}  ${dim}│${reset}`);
+  terminal.writeln(`  ${dim}│${reset}  ${green}${bold} ██║  ███╗██║   ██║ █████╗ ███████║██████╔╝█████╗  ██╔██╗ ██║███████║  ${reset}  ${dim}│${reset}`);
+  terminal.writeln(`  ${dim}│${reset}  ${green}${bold} ██║   ██║██║   ██║ ╚════╝ ██╔══██║██╔══██╗██╔══╝  ██║╚██╗██║██╔══██║  ${reset}  ${dim}│${reset}`);
+  terminal.writeln(`  ${dim}│${reset}  ${green}${bold} ╚██████╔╝██║   ██║        ██║  ██║██║  ██║███████╗██║ ╚████║██║  ██║  ${reset}  ${dim}│${reset}`);
+  terminal.writeln(`  ${dim}│${reset}  ${green}${bold}  ╚═════╝ ╚═╝   ╚═╝        ╚═╝  ╚═╝╚═╝  ╚═╝╚══════╝╚═╝  ╚═══╝╚═╝  ╚═╝  ${reset}  ${dim}│${reset}`);
+  terminal.writeln(`  ${dim}│${reset}                                                                           ${dim}│${reset}`);
+  terminal.writeln(`  ${dim}│${reset}  ${dim}repo${reset}  /workspace    ${dim}fixtures${reset}  /repos                                     ${dim}│${reset}`);
+  terminal.writeln(`  ${dim}│${reset}  ${yellow}Ctrl+Shift+V to paste  ·  submit solution from side panel${reset}                ${dim}│${reset}`);
+  terminal.writeln(`  ${dim}└───────────────────────────────────────────────────────────────────────────┘${reset}`);
+  terminal.writeln("");
+}
+
 export function SessionTerminal({ wsUrl, wsToken, onStateChange }: SessionTerminalProps) {
   const mountRef = useRef<HTMLDivElement | null>(null);
   const terminalRef = useRef<Terminal | null>(null);
@@ -92,6 +139,38 @@ export function SessionTerminal({ wsUrl, wsToken, onStateChange }: SessionTermin
 
     const socket = new WebSocket(buildSocketUrl(wsUrl, wsToken));
     socket.binaryType = "arraybuffer";
+    const isMac = /Mac|iPod|iPhone|iPad/.test(navigator.platform);
+
+    const copySelectionToClipboard = async () => {
+      const selectedText = terminal.getSelection();
+      if (!selectedText) {
+        return;
+      }
+
+      try {
+        await navigator.clipboard.writeText(selectedText);
+      } catch {
+        // Ignore clipboard write failures in restricted browser contexts.
+      }
+    };
+
+    terminal.attachCustomKeyEventHandler((event: KeyboardEvent) => {
+      const key = event.key.toLowerCase();
+      const primaryModifier = isMac ? event.metaKey : event.ctrlKey;
+
+      if (primaryModifier && key === "c" && !event.shiftKey && !event.altKey) {
+        if (terminal.hasSelection()) {
+          void copySelectionToClipboard();
+          event.preventDefault();
+          return false;
+        }
+
+        // No selection: preserve shell interrupt behavior.
+        return true;
+      }
+
+      return true;
+    });
 
     const onResize = () => {
       fitAddon.fit();
@@ -106,7 +185,8 @@ export function SessionTerminal({ wsUrl, wsToken, onStateChange }: SessionTermin
 
     socket.onopen = () => {
       updateConnectionState("connected");
-      terminal.writeln("\r\nWorkspace connected.");
+      terminal.clear();
+      writeWorkspaceIntro(terminal);
       terminal.focus();
     };
 
@@ -128,9 +208,10 @@ export function SessionTerminal({ wsUrl, wsToken, onStateChange }: SessionTermin
 
     socket.onclose = (event) => {
       updateConnectionState("closed");
-      if (!event.wasClean) {
-        terminal.writeln(`\r\nConnection closed (${event.code}).`);
-      }
+      const reason = event.reason?.trim();
+      terminal.writeln(
+        `\r\nConnection closed (${event.code}${reason ? `: ${reason}` : ""}).`
+      );
     };
 
     return () => {

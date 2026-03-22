@@ -30,7 +30,7 @@ Options:
   -h, --help show this message
 
 Env:
-  FORCE_STALE_KILL=true|false  kill stale repo-owned listeners on API_PORT/WEB_PORT (default: true)
+  FORCE_STALE_KILL=true|false  kill stale repo-owned listeners on DEV_API_PORT/DEV_WEB_PORT (default: true)
 EOF
 }
 
@@ -145,8 +145,8 @@ cleanup_stale_listeners() {
     targets=(api web)
   fi
 
-  api_port="${API_PORT:-$(read_env API_PORT 3001)}"
-  web_port="${WEB_PORT:-$(read_env WEB_PORT 5173)}"
+  api_port="${DEV_API_PORT:-$(read_env DEV_API_PORT 3002)}"
+  web_port="${DEV_WEB_PORT:-$(read_env DEV_WEB_PORT 5174)}"
 
   for target in "${targets[@]}"; do
     case "${target}" in

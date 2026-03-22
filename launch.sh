@@ -104,8 +104,8 @@ main() {
   trap cleanup EXIT
 
   local web_port api_port
-  web_port="$(read_env_with_default WEB_PORT 5173)"
-  api_port="$(read_env_with_default API_PORT 3001)"
+  web_port="$(read_env_with_default TEST_WEB_PORT 5173)"
+  api_port="$(read_env_with_default TEST_API_PORT 3001)"
 
   local command="${1:-start}"
   if [[ $# -gt 0 ]]; then

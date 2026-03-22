@@ -58,6 +58,7 @@ const googleLoginSchema = z.object({
 const config = loadConfig();
 const repository = new Repository(config.databaseUrl);
 const workspaceManager = new WorkspaceManager(config.workspace);
+const testAllowedEmailSet = new Set(config.auth.testAllowedEmails);
 
 const app = Fastify({
   logger: {
@@ -384,6 +385,17 @@ app.post("/api/v1/auth/google", async (request, reply) => {
     return reply.code(401).send({ message: "Invalid Google ID token" });
   }
 
+  if (config.auth.testMode) {
+    const normalizedEmail = identity.email.toLowerCase();
+    if (!testAllowedEmailSet.has(normalizedEmail)) {
+      app.log.info(
+        { email: normalizedEmail },
+        "Blocked Google login in test mode for non-allowlisted email"
+      );
+      return reply.code(403).send({ message: "This test environment is invite-only" });
+    }
+  }
+
   const user = await repository.upsertGoogleUser(identity);
   const sessionToken = createSessionToken();
   const csrfToken = createSessionToken();
@@ -571,6 +583,20 @@ app.get("/api/v1/sessions/:id", async (request, reply) => {
 });
 
 app.get("/ws/sessions/:id", { websocket: true } as any, (connection: any, request: any) => {
+  const socket = (connection?.socket ?? connection) as WebsocketLike | undefined;
+
+  if (!socket) {
+    app.log.warn(
+      {
+        hasConnection: Boolean(connection),
+        hasSocket: Boolean(connection?.socket ?? connection),
+        path: request?.url
+      },
+      "Websocket connection missing socket handle; dropping initialization"
+    );
+    return;
+  }
+
   void (async () => {
     const { id } = paramsSchema.parse(request.params);
     const { token } = wsQuerySchema.parse(request.query);
@@ -578,7 +604,7 @@ app.get("/ws/sessions/:id", { websocket: true } as any, (connection: any, reques
     const sessionToken = cookies[config.auth.sessionCookieName];
 
     if (!sessionToken) {
-      connection.socket.close(1008, "Authentication required");
+      socket.close(1008, "Authentication required");
       return;
     }
 
@@ -586,30 +612,30 @@ app.get("/ws/sessions/:id", { websocket: true } as any, (connection: any, reques
       hashSessionToken(sessionToken)
     );
     if (!authSession) {
-      connection.socket.close(1008, "Authentication required");
+      socket.close(1008, "Authentication required");
       return;
     }
 
     const user = authSession.user;
     const session = await repository.getSessionById(id);
     if (!session || session.userId !== user.id) {
-      connection.socket.close(1008, "Session not found");
+      socket.close(1008, "Session not found");
       return;
     }
 
     if (session.wsToken !== token) {
-      connection.socket.close(1008, "Invalid token");
+      socket.close(1008, "Invalid token");
       return;
     }
 
     if (session.status !== "active" && session.status !== "submitted") {
-      connection.socket.close(1008, "Session is closed");
+      socket.close(1008, "Session is closed");
       return;
     }
 
     const scenarioRuntime = await repository.getScenarioRuntimeForSession(session.id);
     if (!scenarioRuntime) {
-      connection.socket.close(1011, "Scenario runtime unavailable");
+      socket.close(1011, "Scenario runtime unavailable");
       return;
     }
 
@@ -620,7 +646,7 @@ app.get("/ws/sessions/:id", { websocket: true } as any, (connection: any, reques
         { error, sessionId: session.id },
         "Failed to ensure workspace before terminal attach"
       );
-      connection.socket.close(1011, "Workspace unavailable");
+      socket.close(1011, "Workspace unavailable");
       return;
     }
 
@@ -630,16 +656,19 @@ app.get("/ws/sessions/:id", { websocket: true } as any, (connection: any, reques
       session,
       hadPreviousActivity ? "session.ws_reconnected" : "session.ws_connected"
     );
-    registerSocket(session.id, connection.socket as WebsocketLike);
+    registerSocket(session.id, socket);
 
     const terminal = workspaceManager.openTerminal(session.id);
     let missedPongCount = 0;
     let heartbeatInterval: NodeJS.Timeout | null = null;
+    let sawTerminalOutput = false;
+    let promptKickTimeout: NodeJS.Timeout | null = null;
 
     const writeToSocket = (chunk: Buffer): void => {
-      if (connection.socket.readyState === connection.socket.OPEN) {
+      if (socket.readyState === socket.OPEN) {
+        sawTerminalOutput = true;
         noteWebsocketActivity(session.id);
-        connection.socket.send(chunk.toString("utf8"));
+        socket.send(chunk.toString("utf8"));
       }
     };
 
@@ -653,25 +682,35 @@ app.get("/ws/sessions/:id", { websocket: true } as any, (connection: any, reques
 
     terminal.on("error", (error) => {
       app.log.error({ error, sessionId: session.id }, "Terminal process failed");
-      if (connection.socket.readyState === connection.socket.OPEN) {
-        connection.socket.send("\r\n[terminal unavailable]\r\n");
-        connection.socket.close(1011, "Terminal unavailable");
+      if (socket.readyState === socket.OPEN) {
+        socket.send("\r\n[terminal unavailable]\r\n");
+        socket.close(1011, "Terminal unavailable");
       }
     });
 
-    terminal.on("close", () => {
-      if (connection.socket.readyState === connection.socket.OPEN) {
-        connection.socket.close(1000, "Terminal closed");
+    terminal.on("close", (code: number | null, signal: NodeJS.Signals | null) => {
+      app.log.info(
+        { sessionId: session.id, code, signal },
+        "Terminal process exited"
+      );
+
+      if (socket.readyState === socket.OPEN) {
+        const closeReason =
+          code === 0
+            ? "Terminal closed"
+            : `Terminal exited (code=${code ?? "unknown"}, signal=${signal ?? "none"})`;
+        socket.send(`\r\n[${closeReason}]\r\n`);
+        socket.close(code === 0 ? 1000 : 1011, closeReason);
       }
     });
 
-    if (typeof connection.socket.ping === "function") {
-      connection.socket.on?.("pong", () => {
+    if (typeof socket.ping === "function") {
+      socket.on?.("pong", () => {
         missedPongCount = 0;
       });
 
       heartbeatInterval = setInterval(() => {
-        if (connection.socket.readyState !== connection.socket.OPEN) {
+        if (socket.readyState !== socket.OPEN) {
           return;
         }
 
@@ -681,15 +720,15 @@ app.get("/ws/sessions/:id", { websocket: true } as any, (connection: any, reques
             { sessionId: session.id },
             "WebSocket heartbeat missed pong threshold; terminating stale connection"
           );
-          connection.socket.terminate?.();
+          socket.terminate?.();
           return;
         }
 
-        connection.socket.ping?.();
+        socket.ping?.();
       }, WEBSOCKET_HEARTBEAT_INTERVAL_MS);
     }
 
-    connection.socket.on("message", (data: any) => {
+    socket.on?.("message", (data: any) => {
       if (!terminal.stdin.writable) {
         return;
       }
@@ -704,11 +743,22 @@ app.get("/ws/sessions/:id", { websocket: true } as any, (connection: any, reques
       terminal.stdin.write(decoded.raw);
     });
 
-    connection.socket.on("close", () => {
+    // Fallback prompt kick: only nudge the shell if it did not emit any output
+    // shortly after attach. This avoids duplicate prompt lines.
+    promptKickTimeout = setTimeout(() => {
+      if (!sawTerminalOutput && terminal.stdin.writable) {
+        terminal.stdin.write("\n");
+      }
+    }, 250);
+
+    socket.on?.("close", () => {
       if (heartbeatInterval) {
         clearInterval(heartbeatInterval);
       }
-      unregisterSocket(session.id, connection.socket as WebsocketLike);
+      if (promptKickTimeout) {
+        clearTimeout(promptKickTimeout);
+      }
+      unregisterSocket(session.id, socket);
       logAuditEvent(session, "session.ws_disconnected");
 
       if (!terminal.killed) {
@@ -717,8 +767,8 @@ app.get("/ws/sessions/:id", { websocket: true } as any, (connection: any, reques
     });
   })().catch((error) => {
     app.log.error({ error }, "Websocket session initialization failed");
-    if (connection.socket.readyState === connection.socket.OPEN) {
-      connection.socket.close(1011, "Terminal initialization failed");
+    if (socket.readyState === socket.OPEN) {
+      socket.close(1011, "Terminal initialization failed");
     }
   });
 });

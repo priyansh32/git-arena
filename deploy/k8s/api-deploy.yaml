@@ -74,6 +74,12 @@ metadata:
   namespace: gitarena-api
 spec:
   replicas: 1
+  minReadySeconds: 5
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
   selector:
     matchLabels:
       app: api-backend
@@ -91,6 +97,13 @@ spec:
           envFrom:
             - secretRef:
                 name: gitarena-api-env
+          resources:
+            requests:
+              cpu: "250m"
+              memory: "256Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
           readinessProbe:
             httpGet:
               path: /api/v1/health/ready
@@ -110,6 +123,13 @@ spec:
             - "--private-ip"
             - "--port=5432"
             - "${INSTANCE_CONNECTION_NAME}"
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "64Mi"
+            limits:
+              cpu: "250m"
+              memory: "128Mi"
 ---
 apiVersion: cloud.google.com/v1
 kind: BackendConfig
