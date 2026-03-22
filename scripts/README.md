@@ -75,6 +75,13 @@ All shell scripts support `-h` / `--help`.
 - `scripts/scenario-publish.sh`
   - Publishes `seed.sh` + `eval.sh` from `apps/api/scenarios/<scenario-id>` into DB-backed immutable scenario revisions.
   - Passes through to `npm run scenario:publish`.
+- `scripts/env-lint.sh`
+  - Validates `.env` / `.env.example` and `deploy/k8s/api-deploy.env` / `.example`.
+  - Flags unknown keys, duplicate keys, and missing required keys.
+  - Run with `npm run env:lint`.
+  - Intended env model is:
+    - `.env` for local/dev runtime
+    - `deploy/k8s/api-deploy.env` for GKE API deploy only
 
 Use these as the primary host-dev entrypoints.
 `launch.sh` remains available for compose-centric lifecycle commands.

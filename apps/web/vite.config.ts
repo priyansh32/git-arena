@@ -1,32 +1,43 @@
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { defineConfig } from "vite";
+import { defineConfig, loadEnv } from "vite";
 import react from "@vitejs/plugin-react";
 
 const ROOT_ENV_DIR = resolve(fileURLToPath(new URL("../..", import.meta.url)));
-const API_PORT = Number(process.env.API_PORT ?? "3001");
-const WEB_PORT = Number(process.env.WEB_PORT ?? "5173");
-const API_PROXY_HOST = process.env.VITE_API_PROXY_HOST ?? "localhost";
-const API_PROXY_TARGET =
-  process.env.VITE_API_PROXY_TARGET ?? `http://${API_PROXY_HOST}:${API_PORT}`;
 
-export default defineConfig({
-  envDir: ROOT_ENV_DIR,
-  plugins: [react()],
-  server: {
-    host: "0.0.0.0",
-    port: WEB_PORT,
-    strictPort: true,
-    proxy: {
-      "/api": {
-        target: API_PROXY_TARGET,
-        changeOrigin: true
+export default defineConfig(({ mode }) => {
+  const env = loadEnv(mode, ROOT_ENV_DIR, "");
+  const apiPort = Number(env.API_PORT ?? process.env.API_PORT ?? "3001");
+  const webPort = Number(env.WEB_PORT ?? process.env.WEB_PORT ?? "5173");
+  const apiProxyHost = env.VITE_API_PROXY_HOST ?? process.env.VITE_API_PROXY_HOST ?? "localhost";
+  const apiProxyTarget =
+    env.VITE_API_PROXY_TARGET ??
+    process.env.VITE_API_PROXY_TARGET ??
+    `http://${apiProxyHost}:${apiPort}`;
+  const allowedHosts = (env.VITE_ALLOWED_HOSTS ?? process.env.VITE_ALLOWED_HOSTS ?? "")
+    .split(",")
+    .map((host) => host.trim())
+    .filter((host) => host.length > 0);
+
+  return {
+    envDir: ROOT_ENV_DIR,
+    plugins: [react()],
+    server: {
+      host: "0.0.0.0",
+      port: webPort,
+      strictPort: true,
+      proxy: {
+        "/api": {
+          target: apiProxyTarget,
+          changeOrigin: true
+        },
+        "/ws": {
+          target: apiProxyTarget,
+          changeOrigin: true,
+          ws: true
+        }
       },
-      "/ws": {
-        target: API_PROXY_TARGET,
-        changeOrigin: true,
-        ws: true
-      }
+      allowedHosts: allowedHosts.length > 0 ? allowedHosts : undefined
     }
-  }
+  };
 });

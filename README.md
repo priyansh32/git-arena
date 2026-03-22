@@ -18,6 +18,7 @@ Detailed onboarding + architecture docs live in [`dev-docs/`](dev-docs/README.md
 - Backend deep dive: [`dev-docs/04-backend-api.md`](dev-docs/04-backend-api.md)
 - Scenario runtime and challenge authoring: [`dev-docs/05-workspace-runtime-and-scenarios.md`](dev-docs/05-workspace-runtime-and-scenarios.md)
 - Deployment and ops: [`dev-docs/09-deployment-and-ops.md`](dev-docs/09-deployment-and-ops.md)
+- Internet test exposure: [`docs/internet-test-setup.md`](docs/internet-test-setup.md)
 
 ## Quick start
 
@@ -54,6 +55,17 @@ Required env for auth:
 
 - `GOOGLE_CLIENT_ID` (API token audience validation)
 - `VITE_GOOGLE_CLIENT_ID` (frontend Google Sign-In button)
+
+Validate env key consistency:
+
+```bash
+npm run env:lint
+```
+
+Env surfaces are intentionally reduced to:
+
+- `.env` for local/dev runtime
+- `deploy/k8s/api-deploy.env` for GKE API deployment (local-only, generated from `.example`)
 
 Run API scoring tests:
 

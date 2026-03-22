@@ -65,6 +65,7 @@ Quick start:
 ```bash
 cp deploy/k8s/api-deploy.env.example deploy/k8s/api-deploy.env
 # edit deploy/k8s/api-deploy.env
+./scripts/env-lint.sh
 set -a
 source deploy/k8s/api-deploy.env
 set +a
@@ -85,6 +86,7 @@ Important:
 
 - API pods must run in namespace `gitarena-api` with label `app: api-backend`.
 - If the API is running outside the cluster (host machine), this policy blocks terminal ingress by design.
+- `deploy/k8s/api-deploy.env` is local-only and intentionally not tracked in git.
 
 ## Verification Scripts
 
