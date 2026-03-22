@@ -536,9 +536,12 @@ app.post("/api/v1/sessions", async (request, reply) => {
     );
     await repository.terminateSession(session.id, user.id);
 
-    return reply.code(503).send({
-      message: "Unable to provision workspace container. Verify Docker is available."
-    });
+    const message =
+      config.workspace.provider === "kubernetes"
+        ? "Unable to provision workspace pod. Cold starts may take a few moments. Retry shortly."
+        : "Unable to provision workspace container. Retry shortly.";
+
+    return reply.code(503).send({ message });
   }
 
   const response: CreateSessionResponse = { session };
