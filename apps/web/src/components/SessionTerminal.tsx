@@ -35,6 +35,15 @@ function readCssVar(name: string, fallback: string): string {
   return value.length > 0 ? value : fallback;
 }
 
+function writeWorkspaceIntro(terminal: Terminal): void {
+  terminal.writeln("Workspace connected.");
+  terminal.writeln("[git-arena] Git workspace is ready.");
+  terminal.writeln("[git-arena] Primary repo: /workspace");
+  terminal.writeln("[git-arena] Local remotes and fixtures: /repos");
+  terminal.writeln("[git-arena] When done, use Submit Solution in the side panel.");
+  terminal.writeln("");
+}
+
 export function SessionTerminal({ wsUrl, wsToken, onStateChange }: SessionTerminalProps) {
   const mountRef = useRef<HTMLDivElement | null>(null);
   const terminalRef = useRef<Terminal | null>(null);
@@ -106,7 +115,7 @@ export function SessionTerminal({ wsUrl, wsToken, onStateChange }: SessionTermin
 
     socket.onopen = () => {
       updateConnectionState("connected");
-      terminal.writeln("\r\nWorkspace connected.");
+      writeWorkspaceIntro(terminal);
       terminal.focus();
     };
 
@@ -128,9 +137,10 @@ export function SessionTerminal({ wsUrl, wsToken, onStateChange }: SessionTermin
 
     socket.onclose = (event) => {
       updateConnectionState("closed");
-      if (!event.wasClean) {
-        terminal.writeln(`\r\nConnection closed (${event.code}).`);
-      }
+      const reason = event.reason?.trim();
+      terminal.writeln(
+        `\r\nConnection closed (${event.code}${reason ? `: ${reason}` : ""}).`
+      );
     };
 
     return () => {
