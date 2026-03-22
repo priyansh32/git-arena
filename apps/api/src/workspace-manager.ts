@@ -138,6 +138,19 @@ function parseKilobytes(value: string): number {
 export class WorkspaceManager {
   constructor(private readonly config: WorkspaceConfig) {}
 
+  private getKubectlTargetArgs(): string[] {
+    const args: string[] = [];
+
+    if (this.config.kubernetes.kubeconfig) {
+      args.push("--kubeconfig", this.config.kubernetes.kubeconfig);
+    }
+    if (this.config.kubernetes.context) {
+      args.push("--context", this.config.kubernetes.context);
+    }
+
+    return args;
+  }
+
   private buildTerminalBootstrapCommand(): string {
     return [
       "export TERM=xterm-256color",
@@ -299,8 +312,10 @@ export class WorkspaceManager {
   private openKubernetesTerminal(sessionId: string): ChildProcessWithoutNullStreams {
     const podName = this.getPodName(sessionId);
     const bootstrap = this.buildTerminalBootstrapCommand();
+    const targetArgs = this.getKubectlTargetArgs();
     const command = [
       "kubectl",
+      ...targetArgs,
       "exec",
       "-it",
       "-n",
@@ -486,7 +501,15 @@ export class WorkspaceManager {
     podName: string,
     script: string
   ): Promise<{ stdout: string; stderr: string }> {
-    return await runScriptInKubernetesPod(this.config.kubernetes.namespace, podName, script);
+    return await runScriptInKubernetesPod(
+      this.config.kubernetes.namespace,
+      podName,
+      script,
+      {
+        context: this.config.kubernetes.context,
+        kubeconfig: this.config.kubernetes.kubeconfig
+      }
+    );
   }
 
   private async collectDockerRuntimeMetrics(
@@ -807,6 +830,13 @@ export class WorkspaceManager {
     timeout = 30_000,
     maxBuffer = 1024 * 1024
   ): Promise<string> {
-    return await runKubectlCommand(args, { allowFailure, input, timeout, maxBuffer });
+    return await runKubectlCommand(args, {
+      allowFailure,
+      input,
+      timeout,
+      maxBuffer,
+      context: this.config.kubernetes.context,
+      kubeconfig: this.config.kubernetes.kubeconfig
+    });
   }
 }

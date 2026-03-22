@@ -79,12 +79,22 @@ Notes:
 - `API_DOMAIN` is used for GKE Ingress host (for example `api.git-arena.hellopriyansh.xyz`).
 - `API_GLOBAL_STATIC_IP_NAME` should reference a reserved global static IP (for example `gitarena-api-ip`) so ingress IP stays stable across reconciles.
 - `API_PRE_SHARED_CERT_NAME` should reference a global Compute managed SSL certificate name (for example `gitarena-api-cert-global`).
+- API pods are pinned to node pool `control-plane` and tolerate taint `dedicated=api:NoSchedule`.
+  Taint control-plane nodes with:
+  `kubectl taint nodes -l cloud.google.com/gke-nodepool=control-plane dedicated=api:NoSchedule --overwrite`
+- `WORKSPACE_K8S_CONTEXT` is optional. Use it to run session pods in a different cluster context (for example an Autopilot sessions cluster) without moving the API deployment.
+- `WORKSPACE_K8S_KUBECONFIG` is optional. Set it when the target context is not in the default kubeconfig inside the API container.
+  - The deployment includes an optional secret mount at `/var/run/gitarena-session-kubeconfig`.
+  - To provide kubeconfig for cross-cluster session control:
+    `kubectl -n gitarena-api create secret generic gitarena-session-kubeconfig --from-file=config=/path/to/kubeconfig --dry-run=client -o yaml | kubectl apply -f -`
+  - Then set `WORKSPACE_K8S_KUBECONFIG=/var/run/gitarena-session-kubeconfig/config`.
 - The template configures HTTPS-only ingress (`kubernetes.io/ingress.allow-http: "false"`).
 - The template also applies a GKE `BackendConfig` with `timeoutSec: 3600` so long-lived WebSocket terminal sessions are not dropped at the default 30-second backend timeout.
 
 Important:
 
 - API pods must run in namespace `gitarena-api` with label `app: api-backend`.
+- For cross-cluster session execution, ensure the API runtime has credentials and RBAC to create/exec/delete pods in the target sessions cluster namespace.
 - If the API is running outside the cluster (host machine), this policy blocks terminal ingress by design.
 - `deploy/k8s/api-deploy.env` is local-only and intentionally not tracked in git.
 

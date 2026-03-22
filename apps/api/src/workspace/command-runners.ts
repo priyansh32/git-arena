@@ -20,6 +20,25 @@ interface RunKubectlOptions {
   input?: string;
   timeout?: number;
   maxBuffer?: number;
+  context?: string;
+  kubeconfig?: string;
+}
+
+function buildKubectlArgs(
+  args: string[],
+  options: Pick<RunKubectlOptions, "context" | "kubeconfig">
+): string[] {
+  const output: string[] = [];
+
+  if (options.kubeconfig) {
+    output.push("--kubeconfig", options.kubeconfig);
+  }
+  if (options.context) {
+    output.push("--context", options.context);
+  }
+
+  output.push(...args);
+  return output;
 }
 
 export async function runDockerCommand(
@@ -57,11 +76,14 @@ export async function runKubectlCommand(
     allowFailure = false,
     input,
     timeout = 30_000,
-    maxBuffer = 1024 * 1024
+    maxBuffer = 1024 * 1024,
+    context,
+    kubeconfig
   } = options;
+  const kubectlArgs = buildKubectlArgs(args, { context, kubeconfig });
 
   return await new Promise<string>((resolve, reject) => {
-    const child = spawn("kubectl", args, {
+    const child = spawn("kubectl", kubectlArgs, {
       stdio: "pipe"
     });
 
@@ -159,7 +181,7 @@ export async function runKubectlCommand(
           new WorkspaceProvisionError(
             stderr.trim().length > 0
               ? `kubectl command failed: ${stderr.trim()}`
-              : `kubectl command failed with exit code ${code}: kubectl ${args.join(" ")}`
+              : `kubectl command failed with exit code ${code}: kubectl ${kubectlArgs.join(" ")}`
           )
         );
       });
@@ -200,22 +222,28 @@ export async function runScriptInDockerContainer(
 export async function runScriptInKubernetesPod(
   namespace: string,
   podName: string,
-  script: string
+  script: string,
+  options: Pick<RunKubectlOptions, "context" | "kubeconfig"> = {}
 ): Promise<{ stdout: string; stderr: string }> {
+  const kubectlArgs = buildKubectlArgs(
+    [
+      "exec",
+      "-i",
+      "-n",
+      namespace,
+      podName,
+      "--",
+      "sh",
+      "-lc",
+      script
+    ],
+    options
+  );
+
   try {
     const { stdout, stderr } = await execFileAsync(
       "kubectl",
-      [
-        "exec",
-        "-i",
-        "-n",
-        namespace,
-        podName,
-        "--",
-        "sh",
-        "-lc",
-        script
-      ],
+      kubectlArgs,
       {
         timeout: 60_000,
         maxBuffer: 1024 * 1024 * 4
