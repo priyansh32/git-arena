@@ -37,7 +37,6 @@ interface SolvedScenarioEntry {
   totalAttempts: number;
   lastAttemptAt: string;
   lastAttemptPassed: boolean;
-  bestScore: number;
   latestAttemptSessionId: string;
 }
 
@@ -326,10 +325,6 @@ export function DashboardPage({ mode = "dashboard" }: DashboardPageProps) {
       const firstPassAttempt = ascendingAttempts[firstPassIndex];
       const latestPassAttempt = scenarioAttempts.find((attempt) => attempt.passed);
       const latestAttempt = scenarioAttempts[0];
-      const bestScore = scenarioAttempts.reduce(
-        (best, attempt) => Math.max(best, attempt.score),
-        0
-      );
 
       if (!latestPassAttempt || !latestAttempt) {
         continue;
@@ -343,7 +338,6 @@ export function DashboardPage({ mode = "dashboard" }: DashboardPageProps) {
         totalAttempts: scenarioAttempts.length,
         lastAttemptAt: latestAttempt.evaluatedAt,
         lastAttemptPassed: latestAttempt.passed,
-        bestScore,
         latestAttemptSessionId: latestAttempt.sessionId
       });
     }
@@ -816,11 +810,11 @@ export function DashboardPage({ mode = "dashboard" }: DashboardPageProps) {
 
       {showFilterControls && (
         <section
-          className="flex flex-col lg:flex-row items-start lg:items-center gap-3 p-3 bg-bg-surface/60 border border-border-subtle rounded-xl backdrop-blur-md shadow-sm w-full"
+          className="flex flex-col xl:flex-row items-start xl:items-center gap-3 p-3 bg-bg-surface/60 border border-border-subtle rounded-xl backdrop-blur-md shadow-sm w-full"
           aria-label="Scenario search, filter, and sort controls"
           ref={controlsRef}
         >
-          <label className="relative w-full lg:flex-1 min-w-0">
+          <label className="relative w-full xl:flex-1 min-w-0">
             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none" aria-hidden="true">
               <Search aria-hidden="true" size={15} />
             </span>
@@ -836,7 +830,7 @@ export function DashboardPage({ mode = "dashboard" }: DashboardPageProps) {
             />
           </label>
 
-          <div className="flex flex-wrap items-center gap-2 w-full lg:w-auto shrink-0">
+          <div className="flex flex-wrap items-center gap-2 w-full xl:w-auto shrink-0">
             {isLibraryMode && (
               <div className="inline-flex min-w-fit shrink-0 rounded-lg border border-border-strong bg-bg-base p-1 w-full sm:w-auto overflow-x-auto sm:overflow-visible">
                 {([
@@ -1205,7 +1199,7 @@ export function DashboardPage({ mode = "dashboard" }: DashboardPageProps) {
                     </p>
                   </div>
 
-                  <div className="grid grid-cols-2 xl:grid-cols-4 gap-2">
+                  <div className="grid grid-cols-2 xl:grid-cols-3 gap-2">
                     <div className="rounded-lg border border-border-subtle bg-bg-surface-soft p-3">
                       <p className="m-0 text-[10px] uppercase tracking-wider text-text-secondary font-mono mb-1">First Solved</p>
                       <p className="m-0 text-sm font-semibold">{formatDateLabel(entry.firstSolvedAt)}</p>
@@ -1217,10 +1211,6 @@ export function DashboardPage({ mode = "dashboard" }: DashboardPageProps) {
                     <div className="rounded-lg border border-border-subtle bg-bg-surface-soft p-3">
                       <p className="m-0 text-[10px] uppercase tracking-wider text-text-secondary font-mono mb-1">Total Attempts</p>
                       <p className="m-0 text-sm font-semibold">{entry.totalAttempts}</p>
-                    </div>
-                    <div className="rounded-lg border border-border-subtle bg-bg-surface-soft p-3">
-                      <p className="m-0 text-[10px] uppercase tracking-wider text-text-secondary font-mono mb-1">Best Score</p>
-                      <p className="m-0 text-sm font-semibold">{Math.round(entry.bestScore)}%</p>
                     </div>
                   </div>
 
