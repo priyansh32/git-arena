@@ -10,8 +10,6 @@ import type {
 import { Pool, type PoolClient } from "pg";
 
 import { evaluateSubmission } from "./evaluation.js";
-import { getScenarioRuntime as getScenarioRuntimeFromFiles } from "./scenario-runtime.js";
-import { defaultScenarios } from "./scenario-seed.js";
 
 interface ScenarioRow {
   id: string;
@@ -320,7 +318,6 @@ export class Repository {
       await this.normalizeActiveSessions(client);
       await this.ensureConstraints(client);
       await this.purgeExpiredAuthSessions(client);
-      await this.seedScenarios(client);
       await client.query("COMMIT");
     } catch (error) {
       await client.query("ROLLBACK");
@@ -1661,135 +1658,4 @@ export class Repository {
     );
   }
 
-  private async seedScenarios(client: PoolClient): Promise<void> {
-    for (const scenario of defaultScenarios) {
-      await client.query(
-        `
-        INSERT INTO scenarios (
-          id,
-          title,
-          description,
-          objective,
-          difficulty,
-          commonality,
-          estimated_time_minutes,
-          time_limit_seconds,
-          tags,
-          hints,
-          status,
-          active_revision,
-          updated_at
-        )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb, $10::jsonb, $11, 1, NOW())
-        ON CONFLICT (id)
-        DO NOTHING
-        `,
-        [
-          scenario.id,
-          scenario.title,
-          scenario.description,
-          scenario.objective,
-          scenario.difficulty,
-          scenario.commonality,
-          scenario.estimatedTimeMinutes,
-          Math.max(scenario.estimatedTimeMinutes * 60, 60),
-          JSON.stringify(scenario.tags),
-          JSON.stringify(scenario.hints),
-          scenario.status
-        ]
-      );
-
-      const metadataResult = await client.query<ScenarioPublishRow>(
-        `
-        SELECT
-          title,
-          description,
-          objective,
-          difficulty,
-          commonality,
-          estimated_time_minutes,
-          tags,
-          hints,
-          status,
-          time_limit_seconds
-        FROM scenarios
-        WHERE id = $1
-        LIMIT 1
-        `,
-        [scenario.id]
-      );
-
-      if (!metadataResult.rowCount) {
-        throw new Error(`Missing scenario metadata row for '${scenario.id}'`);
-      }
-
-      const existingRevisionResult = await client.query<{ version: number }>(
-        `
-        SELECT version
-        FROM scenario_revisions
-        WHERE scenario_id = $1
-        ORDER BY version DESC
-        LIMIT 1
-        `,
-        [scenario.id]
-      );
-
-      if (existingRevisionResult.rowCount) {
-        continue;
-      }
-
-      const metadataRow = metadataResult.rows[0];
-      const objective = metadataRow.objective;
-      const hints = parseStringArray(metadataRow.hints);
-      const timeLimitSeconds = Math.max(60, metadataRow.time_limit_seconds);
-      const runtime = getScenarioRuntimeFromFiles(scenario.id);
-      const checksum = computeScenarioRevisionChecksum({
-        seedScript: runtime.seedScript,
-        evaluatorScript: runtime.evaluatorScript,
-        objective,
-        hints,
-        timeLimitSeconds
-      });
-
-      await client.query(
-        `
-        INSERT INTO scenario_revisions (
-          scenario_id,
-          version,
-          objective,
-          hints,
-          seed_script,
-          evaluator_script,
-          time_limit_seconds,
-          checksum
-        )
-        VALUES ($1, 1, $2, $3::jsonb, $4, $5, $6, $7)
-        ON CONFLICT (scenario_id, version)
-        DO NOTHING
-        `,
-        [
-          scenario.id,
-          objective,
-          JSON.stringify(hints),
-          runtime.seedScript,
-          runtime.evaluatorScript,
-          timeLimitSeconds,
-          checksum
-        ]
-      );
-
-      await client.query(
-        `
-        UPDATE scenarios
-        SET active_revision = 1,
-            objective = $2,
-            hints = $3::jsonb,
-            time_limit_seconds = $4,
-            updated_at = NOW()
-        WHERE id = $1
-        `,
-        [scenario.id, objective, JSON.stringify(hints), timeLimitSeconds]
-      );
-    }
-  }
 }

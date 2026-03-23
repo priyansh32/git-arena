@@ -26,7 +26,6 @@ COPY packages/shared/package.json ./packages/shared/package.json
 RUN npm ci --omit=dev --workspace @gitarena/api --workspace @gitarena/shared --include-workspace-root=false
 
 COPY --from=build /app/apps/api/dist ./apps/api/dist
-COPY --from=build /app/apps/api/scenarios ./apps/api/scenarios
 COPY --from=build /app/packages/shared/dist ./packages/shared/dist
 
 EXPOSE 3001

@@ -19,7 +19,6 @@
     "dev:down": "./scripts/dev-down.sh all",
     "dev:logs": "tail -f .dev-runtime/api.log .dev-runtime/web.log",
     "env:lint": "./scripts/env-lint.sh",
-    "scenario:publish": "npm run scenario:publish -w @gitarena/api --",
     "test:up": "docker compose up --build -d",
     "test:down": "docker compose down --remove-orphans",
     "test:logs": "docker compose logs -f api web postgres",
