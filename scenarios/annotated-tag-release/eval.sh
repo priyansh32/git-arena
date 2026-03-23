@@ -5,6 +5,7 @@ cd /workspace
 
 PASS=0
 FAIL=0
+TOTAL=5
 
 # Check 1: tag v2.0.0 exists locally
 if git tag | grep -q "^v2.0.0$"; then
@@ -13,7 +14,7 @@ if git tag | grep -q "^v2.0.0$"; then
 else
   echo "FAIL:tag_exists:Tag v2.0.0 does not exist"
   FAIL=$((FAIL+1))
-  echo "SCORE:$PASS/5"
+  echo "SCORE:$PASS/$TOTAL"
   exit 0
 fi
 
@@ -49,7 +50,7 @@ else
 fi
 
 # Check 5: tag pushed to origin
-git fetch origin --tags -q 2>/dev/null
+git fetch origin --tags -q 2>/dev/null || true
 if git ls-remote origin refs/tags/v2.0.0 | grep -q "v2.0.0"; then
   echo "PASS:tag_pushed:v2.0.0 tag is present on origin"
   PASS=$((PASS+1))

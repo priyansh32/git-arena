@@ -36,5 +36,14 @@ else
   FAIL=$((FAIL+1))
 fi
 
+# Check 4: working tree clean
+if [ -z "$(git status --porcelain)" ]; then
+  echo "PASS:clean_tree:Working tree is clean"
+  PASS=$((PASS+1))
+else
+  echo "FAIL:clean_tree:Working tree is not clean"
+  FAIL=$((FAIL+1))
+fi
+
 TOTAL=$((PASS+FAIL))
 echo "SCORE:$PASS/$TOTAL"

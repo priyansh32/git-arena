@@ -14,12 +14,13 @@ EOF
 
 cat > test.sh <<'EOF'
 #!/usr/bin/env bash
-node -e "
-const {add, multiply} = require('./compute');
-if (add(2,3) !== 5) process.exit(1);
-if (multiply(3,4) !== 12) process.exit(1);
-process.exit(0);
-" 2>/dev/null && exit 0 || exit 1
+set -euo pipefail
+
+if grep -q "return a - b" compute.js 2>/dev/null; then
+  exit 1
+fi
+
+exit 0
 EOF
 chmod +x test.sh
 
@@ -39,7 +40,7 @@ git add . && git commit -m "commit 06: performance optimisation"
 
 # Store the bad SHA for the evaluator before adding more commits
 BAD_SHA=$(git rev-parse HEAD)
-echo "$BAD_SHA" > /tmp/bad_sha_oracle
+git update-ref refs/gitarena/oracles/bisect-bad-sha "$BAD_SHA"
 
 for i in 07 08 09 10; do
   echo "// patch $i" >> compute.js

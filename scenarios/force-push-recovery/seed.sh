@@ -29,7 +29,7 @@ git push origin main
 
 # Store the good SHA
 GOOD_SHA=$(git rev-parse HEAD)
-echo "$GOOD_SHA" > /tmp/good_sha_oracle
+git update-ref refs/gitarena/oracles/force-push-good-tip "$GOOD_SHA"
 
 # Simulate a force push from teammate: reset remote to before those 3 commits
 BEFORE_THREE=$(git rev-parse HEAD~3)

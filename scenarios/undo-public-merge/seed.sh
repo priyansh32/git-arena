@@ -28,4 +28,4 @@ git push origin main
 
 # Save merge commit SHA for evaluator
 MERGE_SHA=$(git rev-parse HEAD)
-echo "$MERGE_SHA" > /tmp/merge_sha_oracle
+git update-ref refs/gitarena/oracles/undo-public-merge-sha "$MERGE_SHA"

@@ -14,7 +14,7 @@
     "history-rewriting"
   ],
   "hints": [
-    "`git filter-branch --subdirectory-filter packages/logger` or `git filter-repo --path packages/logger --path-rename packages/logger:` can extract a subdirectory with its history.",
+    "`git filter-repo --path packages/logger --path-rename packages/logger:` is the preferred way to extract a subdirectory with history. `git filter-branch --subdirectory-filter` is the legacy fallback.",
     "Clone the repo first, then run the filter on the clone so the original repo is preserved.",
     "After filtering, the contents of `packages/logger` should be at the root of the new repo."
   ],

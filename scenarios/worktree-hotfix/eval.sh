@@ -7,7 +7,7 @@ PASS=0
 FAIL=0
 
 # Check 1: hotfix commit on main
-HOTFIX=$(git log main --oneline | grep -iE "hotfix|fix|error.handling|error handling" | wc -l || true)
+HOTFIX=$(git log main --format="%s" | grep -icE "^(hotfix|fix)(\\(|:)" || true)
 if [ "$HOTFIX" -ge 1 ]; then
   echo "PASS:hotfix_on_main:A hotfix commit exists on main"
   PASS=$((PASS+1))
@@ -17,7 +17,7 @@ else
 fi
 
 # Check 2: api.js on main contains error handling
-git show main:api.js > /tmp/api_main.js 2>/dev/null
+git show main:api.js 2>/dev/null > /tmp/api_main.js || true
 if grep -qiE "error|throw|catch|try|404|null" /tmp/api_main.js; then
   echo "PASS:error_handling_in_api:api.js on main contains error handling"
   PASS=$((PASS+1))
@@ -27,7 +27,6 @@ else
 fi
 
 # Check 3: feat/recommendations still has its commit
-git checkout feat/recommendations -q 2>/dev/null
 REC_COMMIT=$(git log feat/recommendations --oneline | grep "scaffold recommendation engine" | wc -l || true)
 if [ "$REC_COMMIT" -ge 1 ]; then
   echo "PASS:feature_intact:feat/recommendations scaffold commit is intact"
@@ -38,11 +37,12 @@ else
 fi
 
 # Check 4: WIP collaborative filter code still in working tree on feature branch
-if grep -q "collaborativeFilter" recommend.js 2>/dev/null; then
-  echo "PASS:wip_preserved:WIP collaborative filter code is still in working tree"
+CURRENT_BRANCH=$(git symbolic-ref --quiet --short HEAD || echo "DETACHED")
+if [ "$CURRENT_BRANCH" = "feat/recommendations" ] && grep -q "collaborativeFilter" recommend.js 2>/dev/null; then
+  echo "PASS:wip_preserved:WIP collaborative filter code is still present and you're back on feat/recommendations"
   PASS=$((PASS+1))
 else
-  echo "FAIL:wip_preserved:WIP code is missing from recommend.js — did the worktree operation affect it?"
+  echo "FAIL:wip_preserved:Expected to finish on feat/recommendations with WIP code still present"
   FAIL=$((FAIL+1))
 fi
 

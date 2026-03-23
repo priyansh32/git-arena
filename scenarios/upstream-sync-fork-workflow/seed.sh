@@ -10,6 +10,8 @@ git config user.name "Git Arena"
 mkdir -p /repos/upstream.git /repos/origin.git
 git init --bare /repos/upstream.git
 git init --bare /repos/origin.git
+git --git-dir=/repos/upstream.git symbolic-ref HEAD refs/heads/main
+git --git-dir=/repos/origin.git symbolic-ref HEAD refs/heads/main
 
 git remote add upstream file:///repos/upstream.git
 git remote add origin file:///repos/origin.git
@@ -31,6 +33,7 @@ git push origin main
 TMPDIR=$(mktemp -d)
 git clone file:///repos/upstream.git "$TMPDIR/upstream-clone" -q
 cd "$TMPDIR/upstream-clone"
+git checkout -q main 2>/dev/null || git checkout -q -b main origin/main
 git config user.email "arena@gitarena.dev"
 git config user.name "Git Arena"
 echo "const coreA = {};" > core-a.js && git add . && git commit -m "upstream: core module A"

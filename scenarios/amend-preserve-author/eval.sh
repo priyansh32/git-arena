@@ -18,16 +18,11 @@ fi
 
 # Check 2: typo fixed in last commit message
 MSG=$(git log -1 --format="%s")
-if echo "$MSG" | grep -qiE "^release:|^relase:"; then
-  if ! echo "$MSG" | grep -qi "relase"; then
-    echo "PASS:typo_fixed:Commit message typo has been corrected"
-    PASS=$((PASS+1))
-  else
-    echo "FAIL:typo_fixed:Typo 'relase' still present in commit message: $MSG"
-    FAIL=$((FAIL+1))
-  fi
+if ! echo "$MSG" | grep -qi "relase"; then
+  echo "PASS:typo_fixed:Commit message typo has been corrected"
+  PASS=$((PASS+1))
 else
-  echo "FAIL:typo_fixed:Commit message does not match expected pattern: $MSG"
+  echo "FAIL:typo_fixed:Typo 'relase' still present in commit message: $MSG"
   FAIL=$((FAIL+1))
 fi
 

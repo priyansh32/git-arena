@@ -6,8 +6,6 @@ cd /workspace
 PASS=0
 FAIL=0
 
-git checkout feat/user-auth 2>/dev/null
-
 # Check 1: exactly one commit ahead of main
 AHEAD=$(git rev-list main..feat/user-auth --count)
 if [ "$AHEAD" -eq 1 ]; then
@@ -31,8 +29,9 @@ fi
 # Check 3: all five functions present in auth.js
 EXPECTED=("login" "logout" "register" "token" "refreshToken")
 ALL_PRESENT=true
+AUTH_CONTENT=$(git show feat/user-auth:auth.js 2>/dev/null || true)
 for fn in "${EXPECTED[@]}"; do
-  if ! grep -q "$fn" auth.js 2>/dev/null; then
+  if ! echo "$AUTH_CONTENT" | grep -q "$fn"; then
     ALL_PRESENT=false
     break
   fi
@@ -43,6 +42,15 @@ if $ALL_PRESENT; then
   PASS=$((PASS+1))
 else
   echo "FAIL:content_preserved:auth.js is missing content that was in the original commits"
+  FAIL=$((FAIL+1))
+fi
+
+# Check 4: working tree clean
+if [ -z "$(git status --porcelain)" ]; then
+  echo "PASS:clean_tree:Working tree is clean"
+  PASS=$((PASS+1))
+else
+  echo "FAIL:clean_tree:Working tree is not clean"
   FAIL=$((FAIL+1))
 fi
 

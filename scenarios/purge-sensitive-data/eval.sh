@@ -26,9 +26,9 @@ else
 fi
 
 # Check 3: actual git objects — verify the file content is not in any tree object
-FOUND_IN_OBJECTS=$(git rev-list --all | while read commit; do
-  git ls-tree -r "$commit" --name-only 2>/dev/null | grep "^secrets.env$"
-done | wc -l || true)
+FOUND_IN_OBJECTS=$(git rev-list --all | while read -r commit; do
+  git ls-tree -r "$commit" --name-only 2>/dev/null | grep "^secrets.env$" || true
+done | wc -l)
 
 if [ "$FOUND_IN_OBJECTS" -eq 0 ]; then
   echo "PASS:not_in_objects:secrets.env not found in any tree object across all commits"

@@ -31,11 +31,11 @@ else
 fi
 
 # Check 3: ui.js contains all expected values
-git checkout feat/redesign -q
+UI_CONTENT=$(git show feat/redesign:ui.js 2>/dev/null || true)
 CHECKS=("SuperApp" "2024" "dark" "version" "locale" "analytics")
 ALL_OK=true
 for term in "${CHECKS[@]}"; do
-  if ! grep -q "$term" ui.js 2>/dev/null; then
+  if ! echo "$UI_CONTENT" | grep -q "$term"; then
     ALL_OK=false
     break
   fi
@@ -50,7 +50,7 @@ else
 fi
 
 # Check 4: no conflict markers
-if ! grep -qE "^(<<<<<<<|=======|>>>>>>>)" ui.js 2>/dev/null; then
+if ! echo "$UI_CONTENT" | grep -qE "^(<<<<<<<|=======|>>>>>>>)"; then
   echo "PASS:no_markers:No conflict markers in ui.js"
   PASS=$((PASS+1))
 else
