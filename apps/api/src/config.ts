@@ -54,6 +54,7 @@ const envSchema = z.object({
   WORKSPACE_K8S_NAMESPACE: z.string().default("gitarena-sessions"),
   WORKSPACE_K8S_CONTEXT: z.string().optional(),
   WORKSPACE_K8S_KUBECONFIG: z.string().optional(),
+  WORKSPACE_K8S_NODE_POOL: z.string().optional(),
   WORKSPACE_K8S_RUNTIME_CLASS_NAME: z.string().default("gvisor"),
   WORKSPACE_K8S_IMAGE_PULL_POLICY: workspaceImagePullPolicySchema.default("IfNotPresent"),
   WORKSPACE_K8S_POD_READY_TIMEOUT_SECONDS: z.coerce.number().int().min(5).max(600).default(240),
@@ -71,6 +72,7 @@ export interface WorkspaceKubernetesConfig {
   namespace: string;
   context?: string;
   kubeconfig?: string;
+  nodePool?: string;
   runtimeClassName: string;
   imagePullPolicy: WorkspaceImagePullPolicy;
   podReadyTimeoutSeconds: number;
@@ -144,6 +146,10 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
         kubeconfig:
           parsed.WORKSPACE_K8S_KUBECONFIG && parsed.WORKSPACE_K8S_KUBECONFIG.trim().length > 0
             ? parsed.WORKSPACE_K8S_KUBECONFIG.trim()
+            : undefined,
+        nodePool:
+          parsed.WORKSPACE_K8S_NODE_POOL && parsed.WORKSPACE_K8S_NODE_POOL.trim().length > 0
+            ? parsed.WORKSPACE_K8S_NODE_POOL.trim()
             : undefined,
         runtimeClassName: parsed.WORKSPACE_K8S_RUNTIME_CLASS_NAME,
         imagePullPolicy: parsed.WORKSPACE_K8S_IMAGE_PULL_POLICY,

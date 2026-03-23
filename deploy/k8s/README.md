@@ -82,12 +82,16 @@ Notes:
 - API pods are pinned to node pool `control-plane` and tolerate taint `dedicated=api:NoSchedule`.
   Taint control-plane nodes with:
   `kubectl taint nodes -l cloud.google.com/gke-nodepool=control-plane dedicated=api:NoSchedule --overwrite`
-- `WORKSPACE_K8S_CONTEXT` is optional. Use it to run session pods in a different cluster context (for example an Autopilot sessions cluster) without moving the API deployment.
+- `WORKSPACE_K8S_CONTEXT` is optional. Use it to run session pods in a different cluster context (for example `sandbox-cluster`) without moving the API deployment.
 - `WORKSPACE_K8S_KUBECONFIG` is optional. Set it when the target context is not in the default kubeconfig inside the API container.
   - The deployment includes an optional secret mount at `/var/run/gitarena-session-kubeconfig`.
   - To provide kubeconfig for cross-cluster session control:
     `kubectl -n gitarena-api create secret generic gitarena-session-kubeconfig --from-file=config=/path/to/kubeconfig --dry-run=client -o yaml | kubectl apply -f -`
   - Then set `WORKSPACE_K8S_KUBECONFIG=/var/run/gitarena-session-kubeconfig/config`.
+- `WORKSPACE_K8S_NODE_POOL` is optional. Set this to pin session pods to a dedicated pool in the target cluster (for example `sandbox-pool`).
+- Example for the new sessions cluster:
+  - `WORKSPACE_K8S_CONTEXT=gke_<project>_<zone-or-region>_sandbox-cluster`
+  - `WORKSPACE_K8S_NODE_POOL=sandbox-pool`
 - The template configures HTTPS-only ingress (`kubernetes.io/ingress.allow-http: "false"`).
 - The template also applies a GKE `BackendConfig` with `timeoutSec: 3600` so long-lived WebSocket terminal sessions are not dropped at the default 30-second backend timeout.
 
