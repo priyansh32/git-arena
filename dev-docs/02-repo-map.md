@@ -12,7 +12,6 @@ packages/
   shared/   # shared TypeScript contracts used by api/web
 scripts/
   dev-up.sh / dev-down.sh
-  gcp-init.sh / gcp-verify.sh / gcp-teardown.sh
   lib/common.sh
   verify-docker-security.sh
   smoke-stack.mjs
@@ -72,7 +71,5 @@ Key files:
 
 - `docker-compose.yml`
   - Local postgres + api + web services.
-- `launch.sh`
-  - Helper script to start/stop/log/smoke stack.
 - `.env.example`
   - API env defaults for local non-compose runs.

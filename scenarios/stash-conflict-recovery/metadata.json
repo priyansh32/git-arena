@@ -2,7 +2,7 @@
   "id": "stash-conflict-recovery",
   "title": "Stash Conflict Recovery",
   "description": "You stashed some in-progress work, pulled in a colleague's changes, and now `git stash pop` has exploded with conflicts. The stash needs to be applied and the conflicts resolved without losing either set of changes.",
-  "objective": "The stash must be fully applied and all conflicts resolved. The file `config.js` must contain both the stashed change (a `timeout` setting) and the colleague's change (a `retries` setting). The working tree must be clean and the stash list must be empty.",
+  "objective": "The stash must be fully applied and all conflicts resolved. The file `config.js` must contain both the stashed change (a `timeout` setting) and the colleague's change (a `retries` setting). The working tree must be clean and the stash list must be empty. Commit the resolved file so the working tree is clean.",
   "difficulty": "intermediate",
   "commonality": "occasional",
   "estimatedTimeMinutes": 25,
@@ -15,6 +15,7 @@
   "hints": [
     "`git stash pop` applies and drops the stash in one step — if it conflicts, the stash is NOT dropped automatically.",
     "After resolving the conflict in the file, remove the conflict markers and `git add` the file.",
+    "After resolving and staging the file, commit it: `git commit -m \"merge: resolve stash conflict\"`.",
     "Check `git stash list` — you may need to manually drop the stash entry after resolving."
   ],
   "status": "published"

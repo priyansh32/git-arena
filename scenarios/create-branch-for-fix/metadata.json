@@ -1,0 +1,21 @@
+{
+  "id": "create-branch-for-fix",
+  "title": "Create a Branch for a Small Fix",
+  "description": "A typo in `README.md` needs a quick fix, but your team policy says never commit directly to `main`. Create a new branch, make the fix there, and commit it.",
+  "objective": "A branch named `fix/readme-typo` must exist and be exactly one commit ahead of `main`. `main` must stay unchanged. On `fix/readme-typo`, `README.md` must replace `GitArnea` with `GitArena`. The working tree must be clean.",
+  "difficulty": "beginner",
+  "commonality": "common",
+  "estimatedTimeMinutes": 15,
+  "timeLimitSeconds": 900,
+  "tags": [
+    "branching",
+    "commit",
+    "workflow"
+  ],
+  "hints": [
+    "Create a branch first: `git switch -c fix/readme-typo`.",
+    "Edit `README.md`, then stage and commit.",
+    "Use `git log --oneline --decorate --all` to verify `main` stayed unchanged."
+  ],
+  "status": "published"
+}

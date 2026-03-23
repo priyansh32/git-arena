@@ -5,8 +5,8 @@
   "objective": "The file `bad-commit.txt` must exist in `/workspace` and contain the full SHA of the commit that first caused `test.sh` to exit non-zero. The SHA must be correct.",
   "difficulty": "advanced",
   "commonality": "occasional",
-  "estimatedTimeMinutes": 35,
-  "timeLimitSeconds": 2100,
+  "estimatedTimeMinutes": 40,
+  "timeLimitSeconds": 2400,
   "tags": [
     "bisect",
     "debugging",
@@ -16,7 +16,8 @@
   "hints": [
     "Start with `git bisect start`, then mark the current commit bad and the oldest commit good.",
     "Git will check out commits for you to test — run `test.sh` at each step and mark the result.",
-    "`git bisect run ./test.sh` automates the entire process if the test is scripted."
+    "`git bisect run ./test.sh` automates the entire process if the test is scripted.",
+    "After recording the SHA, run `git bisect reset` to return `HEAD` to your branch tip."
   ],
   "status": "published"
 }

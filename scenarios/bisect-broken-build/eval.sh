@@ -6,7 +6,7 @@ cd /workspace
 PASS=0
 FAIL=0
 
-ORACLE=$(cat /tmp/bad_sha_oracle 2>/dev/null || echo "MISSING")
+ORACLE=$(git rev-parse --verify refs/gitarena/oracles/bisect-bad-sha 2>/dev/null || echo "MISSING")
 
 # Check 1: bad-commit.txt exists
 if [ ! -f bad-commit.txt ]; then
@@ -29,7 +29,10 @@ else
 fi
 
 # Check 3: SHA matches the oracle
-if [ "$SUBMITTED" = "$ORACLE" ]; then
+if [ "$ORACLE" = "MISSING" ]; then
+  echo "FAIL:correct_commit:Oracle ref missing — cannot validate expected bad commit SHA"
+  FAIL=$((FAIL+1))
+elif [ "$SUBMITTED" = "$ORACLE" ]; then
   echo "PASS:correct_commit:SHA matches the commit that introduced the regression"
   PASS=$((PASS+1))
 else

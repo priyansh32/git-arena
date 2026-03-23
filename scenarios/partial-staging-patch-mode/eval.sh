@@ -17,19 +17,28 @@ else
 fi
 
 # Check 2: the fix commit contains the null check
-LAST_COMMIT_DIFF=$(git diff HEAD~1 HEAD -- server.js)
-if echo "$LAST_COMMIT_DIFF" | grep -q "400"; then
-  echo "PASS:fix_committed:The null check / 400 response is in the commit"
-  PASS=$((PASS+1))
+LAST_COMMIT_DIFF=""
+if [ "$COMMIT_COUNT" -ge 2 ]; then
+  LAST_COMMIT_DIFF=$(git diff HEAD~1 HEAD -- server.js)
+  if echo "$LAST_COMMIT_DIFF" | grep -q "400"; then
+    echo "PASS:fix_committed:The null check / 400 response is in the commit"
+    PASS=$((PASS+1))
+  else
+    echo "FAIL:fix_committed:The bug fix does not appear to be in the last commit"
+    FAIL=$((FAIL+1))
+  fi
 else
-  echo "FAIL:fix_committed:The bug fix does not appear to be in the last commit"
+  echo "FAIL:fix_committed:Cannot inspect commit diff because no new commit was created"
   FAIL=$((FAIL+1))
 fi
 
 # Check 3: experimental code NOT in the last commit
-if ! echo "$LAST_COMMIT_DIFF" | grep -q "streamResponse"; then
+if [ "$COMMIT_COUNT" -ge 2 ] && ! echo "$LAST_COMMIT_DIFF" | grep -q "streamResponse"; then
   echo "PASS:experimental_not_committed:Experimental code is not in the commit"
   PASS=$((PASS+1))
+elif [ "$COMMIT_COUNT" -lt 2 ]; then
+  echo "FAIL:experimental_not_committed:Cannot validate commit contents because no new commit was created"
+  FAIL=$((FAIL+1))
 else
   echo "FAIL:experimental_not_committed:Experimental code was included in the commit"
   FAIL=$((FAIL+1))

@@ -29,11 +29,29 @@ else
 fi
 
 # Check 3: search.js contains expected content
-if grep -q "highlight" search.js 2>/dev/null; then
+if git show feat/search:search.js 2>/dev/null | grep -q "highlight"; then
   echo "PASS:content_intact:search.js contains the full feature code"
   PASS=$((PASS+1))
 else
   echo "FAIL:content_intact:search.js is missing expected content"
+  FAIL=$((FAIL+1))
+fi
+
+# Check 4: working tree clean
+if [ -z "$(git status --porcelain)" ]; then
+  echo "PASS:clean_tree:Working tree is clean"
+  PASS=$((PASS+1))
+else
+  echo "FAIL:clean_tree:Working tree is not clean"
+  FAIL=$((FAIL+1))
+fi
+
+# Check 5: HEAD is attached
+if git symbolic-ref HEAD > /dev/null 2>&1; then
+  echo "PASS:head_attached:HEAD is attached to a named branch"
+  PASS=$((PASS+1))
+else
+  echo "FAIL:head_attached:HEAD is in detached state — create and check out feat/search"
   FAIL=$((FAIL+1))
 fi
 

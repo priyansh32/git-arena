@@ -1,7 +1,7 @@
 {
   "id": "upstream-sync-fork-workflow",
   "title": "Upstream Sync — Fork Workflow",
-  "description": "You are working on a fork. Your fork's `main` has diverged from the upstream repository's `main` by several commits. You need to sync your fork with upstream without losing your own commits, then push the updated branch to your `origin`.",
+  "description": "You are working on a fork. Your fork's `main` has diverged from the upstream repository's `main` by several commits. You need to sync your fork with upstream without losing your own commits, then push the updated branch to your `origin`. Note: `origin/main` already contains your older fork commits while your local `main` starts behind to simulate a fresh recovery workflow.",
   "objective": "Local `main` must contain all commits from `upstream/main`. Your own commits that were on top of the old fork state must still be present, rebased on top of the upstream changes. The history must be linear. Both `origin/main` and local `main` must be in sync. The working tree must be clean.",
   "difficulty": "advanced",
   "commonality": "occasional",

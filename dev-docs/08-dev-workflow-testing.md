@@ -28,7 +28,6 @@ Helper scripts:
 ```bash
 ./scripts/dev-up.sh postgres
 ./scripts/dev-up.sh api docker
-./scripts/dev-up.sh api k8s
 ./scripts/dev-up.sh web
 ./scripts/dev-down.sh all
 ```
@@ -36,10 +35,10 @@ Helper scripts:
 Containerized flow:
 
 ```bash
-./launch.sh start
-./launch.sh logs
-./launch.sh smoke
-./launch.sh stop
+npm run test:up
+npm run test:logs
+npm run smoke:stack
+npm run test:down
 ```
 
 ## Testing
@@ -69,10 +68,7 @@ Smoke script validates:
 Security verification scripts:
 
 ```bash
-./scripts/gcp-init.sh
-./scripts/gcp-verify.sh
 ./scripts/verify-docker-security.sh
-./scripts/gcp-teardown.sh
 ```
 
 ## Suggested Manual QA Checklist

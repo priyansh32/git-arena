@@ -3,6 +3,7 @@ set -euo pipefail
 
 PASS=0
 FAIL=0
+TOTAL=5
 
 # Check 1: logger-repo exists and is a git repo
 if [ -d /workspace/logger-repo/.git ]; then
@@ -11,7 +12,7 @@ if [ -d /workspace/logger-repo/.git ]; then
 else
   echo "FAIL:repo_exists:logger-repo does not exist or is not a git repository"
   FAIL=$((FAIL+1))
-  echo "SCORE:$PASS/5"
+  echo "SCORE:$PASS/$TOTAL"
   exit 0
 fi
 
@@ -27,18 +28,20 @@ else
 fi
 
 # Check 3: only logger commits present (3 commits that touched logger + possibly initial)
-LOGGER_COMMITS=$(git log --oneline | grep -E "logger:|Initial commit" | wc -l || true)
-TOTAL_COMMITS=$(git rev-list HEAD --count)
-
-# There should be 3 logger-only commits (+ optionally initial)
 AUTH_COMMITS=$(git log --oneline | grep "auth:" | wc -l || true)
 DB_COMMITS=$(git log --oneline | grep "db:" | wc -l || true)
+AUTH_IN_TREE=$(git rev-list HEAD | while read -r commit; do
+  git ls-tree -r "$commit" --name-only 2>/dev/null | grep "^auth/" || true
+done | wc -l)
+DB_IN_TREE=$(git rev-list HEAD | while read -r commit; do
+  git ls-tree -r "$commit" --name-only 2>/dev/null | grep "^db/" || true
+done | wc -l)
 
-if [ "$AUTH_COMMITS" -eq 0 ] && [ "$DB_COMMITS" -eq 0 ]; then
-  echo "PASS:filtered_history:No auth or db commits in logger-repo history"
+if [ "$AUTH_COMMITS" -eq 0 ] && [ "$DB_COMMITS" -eq 0 ] && [ "$AUTH_IN_TREE" -eq 0 ] && [ "$DB_IN_TREE" -eq 0 ]; then
+  echo "PASS:filtered_history:No auth/db commits and no auth/db tree objects in logger-repo history"
   PASS=$((PASS+1))
 else
-  echo "FAIL:filtered_history:Non-logger commits found in logger-repo (auth: $AUTH_COMMITS, db: $DB_COMMITS)"
+  echo "FAIL:filtered_history:Non-logger history remains (auth commits: $AUTH_COMMITS, db commits: $DB_COMMITS, auth tree hits: $AUTH_IN_TREE, db tree hits: $DB_IN_TREE)"
   FAIL=$((FAIL+1))
 fi
 

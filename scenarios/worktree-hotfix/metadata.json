@@ -2,7 +2,7 @@
   "id": "worktree-hotfix",
   "title": "Worktree — Hotfix While Mid-Feature",
   "description": "You're deep into feature work on `feat/recommendations` with uncommitted changes you can't stash. A critical bug needs to be fixed on `main` right now. Use `git worktree` to check out `main` in a separate directory, apply the hotfix there, and return to your feature work untouched.",
-  "objective": "A `git worktree` must exist or have existed for the `main` branch. A hotfix commit must be present on `main` that adds error handling to `api.js`. Your `feat/recommendations` branch must be unaffected — its working tree must contain the in-progress changes exactly as before the hotfix.",
+  "objective": "A hotfix commit must be present on `main` that adds error handling to `api.js`. You must return to `feat/recommendations` with your in-progress changes still present exactly as before the hotfix. No extra worktrees should remain attached after cleanup.",
   "difficulty": "advanced",
   "commonality": "occasional",
   "estimatedTimeMinutes": 35,

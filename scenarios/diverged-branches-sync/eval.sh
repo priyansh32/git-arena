@@ -6,7 +6,7 @@ cd /workspace
 PASS=0
 FAIL=0
 
-git fetch origin -q 2>/dev/null
+git fetch origin -q 2>/dev/null || true
 
 # Check 1: all three remote commits present in local history
 R1=$(git log main --oneline | grep "add docs section 1" | wc -l || true)
@@ -45,10 +45,10 @@ fi
 
 # Check 4: local commits are on top of remote commits
 # The remote commits should appear before the local commits in log
-LAST_REMOTE_LINE=$(git log main --oneline | grep -n "add docs section 3" | cut -d: -f1)
-FIRST_LOCAL_LINE=$(git log main --oneline | grep -n "feature flag config" | cut -d: -f1)
+REMOTE_LOG_POS=$(git log main --oneline | awk '/add docs section 3/ { print NR; exit }')
+LOCAL_LOG_POS=$(git log main --oneline | awk '/feature flag config/ { print NR; exit }')
 
-if [ -n "$LAST_REMOTE_LINE" ] && [ -n "$FIRST_LOCAL_LINE" ] && [ "$FIRST_LOCAL_LINE" -lt "$LAST_REMOTE_LINE" ]; then
+if [ -n "$REMOTE_LOG_POS" ] && [ -n "$LOCAL_LOG_POS" ] && [ "$LOCAL_LOG_POS" -lt "$REMOTE_LOG_POS" ]; then
   echo "PASS:correct_order:Local commits are on top of remote commits"
   PASS=$((PASS+1))
 else

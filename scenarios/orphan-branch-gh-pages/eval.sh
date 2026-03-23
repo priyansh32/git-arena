@@ -5,6 +5,7 @@ cd /workspace
 
 PASS=0
 FAIL=0
+TOTAL=5
 
 # Check 1: gh-pages branch exists
 if git show-ref --verify --quiet refs/heads/gh-pages; then
@@ -13,7 +14,7 @@ if git show-ref --verify --quiet refs/heads/gh-pages; then
 else
   echo "FAIL:branch_exists:gh-pages branch does not exist"
   FAIL=$((FAIL+1))
-  echo "SCORE:$PASS/5"
+  echo "SCORE:$PASS/$TOTAL"
   exit 0
 fi
 
@@ -38,8 +39,7 @@ else
 fi
 
 # Check 4: index.html present on gh-pages
-git checkout gh-pages -q 2>/dev/null
-if [ -f index.html ]; then
+if git cat-file -e gh-pages:index.html 2>/dev/null; then
   echo "PASS:index_html:index.html exists on gh-pages"
   PASS=$((PASS+1))
 else

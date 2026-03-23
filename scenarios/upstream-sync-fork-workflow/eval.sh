@@ -6,8 +6,8 @@ cd /workspace
 PASS=0
 FAIL=0
 
-git fetch upstream -q 2>/dev/null
-git fetch origin -q 2>/dev/null
+git fetch upstream -q 2>/dev/null || true
+git fetch origin -q 2>/dev/null || true
 
 # Check 1: all three upstream commits present in local main
 U1=$(git log main --oneline | grep "core module A" | wc -l || true)
@@ -45,10 +45,10 @@ else
 fi
 
 # Check 4: fork commits are on top of upstream commits
-UPSTREAM_LINE=$(git log main --oneline | awk '/core module C/ { print NR; exit }' || true)
-FORK_LINE=$(git log main --oneline | awk '/fork contribution/ { print NR; exit }' || true)
+UPSTREAM_LOG_POS=$(git log main --oneline | awk '/core module C/ { print NR; exit }' || true)
+FORK_LOG_POS=$(git log main --oneline | awk '/fork contribution/ { print NR; exit }' || true)
 
-if [ -n "$UPSTREAM_LINE" ] && [ -n "$FORK_LINE" ] && [ "$FORK_LINE" -lt "$UPSTREAM_LINE" ]; then
+if [ -n "$UPSTREAM_LOG_POS" ] && [ -n "$FORK_LOG_POS" ] && [ "$FORK_LOG_POS" -lt "$UPSTREAM_LOG_POS" ]; then
   echo "PASS:correct_order:Fork commits are on top of upstream commits"
   PASS=$((PASS+1))
 else
@@ -58,8 +58,11 @@ fi
 
 # Check 5: origin/main in sync with local main
 LOCAL=$(git rev-parse main)
-REMOTE=$(git rev-parse origin/main)
-if [ "$LOCAL" = "$REMOTE" ]; then
+REMOTE=$(git rev-parse origin/main 2>/dev/null || echo "MISSING")
+if [ "$REMOTE" = "MISSING" ]; then
+  echo "FAIL:origin_synced:origin/main is missing — cannot verify push status"
+  FAIL=$((FAIL+1))
+elif [ "$LOCAL" = "$REMOTE" ]; then
   echo "PASS:origin_synced:origin/main is in sync with local main"
   PASS=$((PASS+1))
 else

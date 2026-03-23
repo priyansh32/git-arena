@@ -16,11 +16,9 @@
     "dev:api": "npm run build -w @gitarena/shared && npm run dev -w @gitarena/api",
     "dev:web": "npm run build -w @gitarena/shared && npm run dev -w @gitarena/web",
     "dev:all:docker": "./scripts/dev-up.sh all docker",
-    "dev:all:k8s": "./scripts/dev-up.sh all k8s",
     "dev:down": "./scripts/dev-down.sh all",
     "dev:logs": "tail -f .dev-runtime/api.log .dev-runtime/web.log",
     "env:lint": "./scripts/env-lint.sh",
-    "scenario:publish": "npm run scenario:publish -w @gitarena/api --",
     "test:up": "docker compose up --build -d",
     "test:down": "docker compose down --remove-orphans",
     "test:logs": "docker compose logs -f api web postgres",
@@ -30,6 +28,7 @@
     "smoke:stack:docker": "node scripts/smoke-stack.mjs --provider docker",
     "smoke:stack:k8s": "node scripts/smoke-stack.mjs --provider k8s",
     "scenarios:seed": "tsx scripts/seed-scenarios.ts",
+    "scenarios:sql": "tsx scripts/generate-scenarios-upsert-sql.ts",
     "docker:up": "npm run test:up",
     "docker:down": "npm run test:down"
   }

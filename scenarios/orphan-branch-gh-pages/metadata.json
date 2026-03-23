@@ -14,7 +14,7 @@
   ],
   "hints": [
     "`git checkout --orphan gh-pages` creates a branch with no parent commits.",
-    "After checking out the orphan branch, the index still has all the files from `main` — you need to `git rm -rf .` to clear it before making your first commit.",
+    "After checking out the orphan branch, the index still has files from `main`. Clear the staged tree (for example, `git rm -rf .`) before making the first commit.",
     "An orphan branch's first commit becomes a root commit with no parent."
   ],
   "status": "published"
