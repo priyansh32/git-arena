@@ -7,6 +7,7 @@ import {
   Flag,
   Lightbulb,
   LogOut,
+  RefreshCw,
   SendHorizontal,
   Terminal,
   Zap
@@ -58,6 +59,7 @@ export function SessionWorkspacePage() {
   const [submitLoading, setSubmitLoading] = useState(false);
   const [quitLoading, setQuitLoading] = useState(false);
   const [terminalState, setTerminalState] = useState<TerminalConnectionState>("connecting");
+  const [terminalInstanceKey, setTerminalInstanceKey] = useState(0);
 
   useEffect(() => {
     if (!id) {
@@ -179,6 +181,15 @@ export function SessionWorkspacePage() {
     } finally {
       setQuitLoading(false);
     }
+  };
+
+  const onReconnectTerminal = () => {
+    if (!isWorkspaceLive) {
+      return;
+    }
+
+    setTerminalState("connecting");
+    setTerminalInstanceKey((previous) => previous + 1);
   };
 
   if (loading) {
@@ -317,15 +328,26 @@ export function SessionWorkspacePage() {
             <span className={`w-2 h-2 rounded-full ${terminalState === 'connected' ? 'bg-status-pass shadow-[0_0_0_2px_rgba(16,185,129,0.2)]' : terminalState === 'connecting' ? 'bg-status-warn shadow-[0_0_0_2px_rgba(245,158,11,0.2)]' : 'bg-status-fail shadow-[0_0_0_2px_rgba(239,68,68,0.2)]'}`} />
             {terminalState}
           </div>
-          <button
-            className="inline-flex items-center justify-center gap-2 px-3 py-1.5 bg-transparent border border-border-strong text-text-primary hover:border-accent-primary hover:bg-bg-surface-hover rounded-md font-mono text-xs uppercase tracking-wider transition-colors min-h-[32px] disabled:opacity-50 disabled:cursor-not-allowed"
-            disabled={hintLoading || submitLoading || quitLoading || hintsExhausted || !isWorkspaceLive}
-            onClick={() => void onHint()}
-            type="button"
-          >
-            {hintLoading ? "..." : hintsExhausted ? "No hints left" : "Request Hint"}
-            {!hintLoading && !hintsExhausted && <Zap aria-hidden="true" className="shrink-0 text-status-warn" size={14} />}
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              className="inline-flex items-center justify-center gap-2 px-3 py-1.5 bg-transparent border border-border-strong text-text-primary hover:border-accent-primary hover:bg-bg-surface-hover rounded-md font-mono text-xs uppercase tracking-wider transition-colors min-h-[32px] disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={!isWorkspaceLive || terminalState === "connecting"}
+              onClick={onReconnectTerminal}
+              type="button"
+            >
+              Reconnect
+              <RefreshCw aria-hidden="true" className="shrink-0" size={13} />
+            </button>
+            <button
+              className="inline-flex items-center justify-center gap-2 px-3 py-1.5 bg-transparent border border-border-strong text-text-primary hover:border-accent-primary hover:bg-bg-surface-hover rounded-md font-mono text-xs uppercase tracking-wider transition-colors min-h-[32px] disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={hintLoading || submitLoading || quitLoading || hintsExhausted || !isWorkspaceLive}
+              onClick={() => void onHint()}
+              type="button"
+            >
+              {hintLoading ? "..." : hintsExhausted ? "No hints left" : "Request Hint"}
+              {!hintLoading && !hintsExhausted && <Zap aria-hidden="true" className="shrink-0 text-status-warn" size={14} />}
+            </button>
+          </div>
         </header>
 
         <div className="flex-1 bg-black relative min-h-0 overflow-hidden">
@@ -338,6 +360,7 @@ export function SessionWorkspacePage() {
               }
             >
               <SessionTerminal
+                key={terminalInstanceKey}
                 onStateChange={setTerminalState}
                 wsToken={session.wsToken}
                 wsUrl={session.wsUrl}
