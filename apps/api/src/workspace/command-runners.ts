@@ -202,7 +202,7 @@ export async function runScriptInDockerContainer(
   try {
     const { stdout, stderr } = await execFileAsync(
       "docker",
-      ["exec", "-i", containerName, "sh", "-lc", script],
+      ["exec", "-i", containerName, "/bin/bash", "-lc", script],
       {
         timeout: 60_000,
         maxBuffer: 1024 * 1024 * 4
@@ -233,7 +233,7 @@ export async function runScriptInKubernetesPod(
       namespace,
       podName,
       "--",
-      "sh",
+      "/bin/bash",
       "-lc",
       script
     ],
