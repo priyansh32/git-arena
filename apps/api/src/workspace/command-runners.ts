@@ -9,6 +9,12 @@ import {
 
 const execFileAsync = promisify(execFile);
 
+function normalizeScriptForShell(script: string): string {
+  // Scenario scripts may come from Windows-edited content; normalize to LF so
+  // shell flags like `set -euo pipefail` are parsed correctly.
+  return script.replace(/\r\n?/g, "\n");
+}
+
 interface RunDockerOptions {
   allowFailure?: boolean;
   timeout?: number;
@@ -199,10 +205,12 @@ export async function runScriptInDockerContainer(
   containerName: string,
   script: string
 ): Promise<{ stdout: string; stderr: string }> {
+  const normalizedScript = normalizeScriptForShell(script);
+
   try {
     const { stdout, stderr } = await execFileAsync(
       "docker",
-      ["exec", "-i", containerName, "/bin/bash", "-lc", script],
+      ["exec", "-i", containerName, "/bin/bash", "-lc", normalizedScript],
       {
         timeout: 60_000,
         maxBuffer: 1024 * 1024 * 4
@@ -225,6 +233,7 @@ export async function runScriptInKubernetesPod(
   script: string,
   options: Pick<RunKubectlOptions, "context" | "kubeconfig"> = {}
 ): Promise<{ stdout: string; stderr: string }> {
+  const normalizedScript = normalizeScriptForShell(script);
   const kubectlArgs = buildKubectlArgs(
     [
       "exec",
@@ -235,7 +244,7 @@ export async function runScriptInKubernetesPod(
       "--",
       "/bin/bash",
       "-lc",
-      script
+      normalizedScript
     ],
     options
   );
