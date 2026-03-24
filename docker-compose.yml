@@ -34,7 +34,7 @@ services:
       DATABASE_URL: postgres://gitarena:gitarena@postgres:5432/gitarena
       CORS_ORIGINS: ${CORS_ORIGINS:-}
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
-      AUTH_TEST_MODE: ${AUTH_TEST_MODE:-false}
+      AUTH_TEST_MODE: ${AUTH_TEST_MODE:-true}
       AUTH_TEST_ALLOWED_EMAILS: ${AUTH_TEST_ALLOWED_EMAILS:-}
       SESSION_COOKIE_NAME: ${SESSION_COOKIE_NAME:-gitarena_session}
       SESSION_TTL_HOURS: ${SESSION_TTL_HOURS:-168}
@@ -73,17 +73,11 @@ services:
         VITE_GOOGLE_CLIENT_ID: ${VITE_GOOGLE_CLIENT_ID}
         VITE_API_BASE_URL: ${VITE_API_BASE_URL:-/api/v1}
         VITE_WS_BASE_URL: ${VITE_WS_BASE_URL:-}
-    environment:
-      VITE_GOOGLE_CLIENT_ID: ${VITE_GOOGLE_CLIENT_ID}
-      VITE_API_PROXY_TARGET: ${VITE_API_PROXY_TARGET:-http://api:3001}
-      VITE_ALLOWED_HOSTS: ${VITE_ALLOWED_HOSTS:-}
-      WEB_PORT: 4173
-      API_PORT: ${TEST_API_PORT:-3001}
     depends_on:
       api:
         condition: service_healthy
     ports:
-      - "${TEST_WEB_PORT:-5173}:4173"
-
+      - "${TEST_WEB_PORT:-5173}:80"
+      
 volumes:
   postgres_data:
