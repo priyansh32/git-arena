@@ -13,6 +13,7 @@ import {
   useSearchParams
 } from "react-router-dom";
 import { BookOpen, GitBranch, LayoutDashboard, LogOut, Menu, X } from "lucide-react";
+import { Analytics } from "@vercel/analytics/react";
 
 import { useAuth } from "./auth/AuthContext";
 import { DashboardPage } from "./pages/DashboardPage";
@@ -282,6 +283,7 @@ export default function App() {
   return (
     <BrowserRouter>
       <AppRoutes />
+      <Analytics />
     </BrowserRouter>
   );
 }
