@@ -15,14 +15,6 @@ services:
       timeout: 5s
       retries: 5
 
-  workspace-image:
-    image: ${WORKSPACE_IMAGE:-gitarena-base:2.43.7-alpine3.19-v1}
-    build:
-      context: apps/workspace
-      dockerfile: Dockerfile
-    command: ["sh", "-lc", "echo workspace image prepared"]
-    restart: "no"
-
   api:
     build:
       context: .
