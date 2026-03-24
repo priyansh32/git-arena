@@ -32,7 +32,7 @@ export function TermsPage() {
         {/* Preamble */}
         <div className="mb-10 rounded-lg border border-border-subtle bg-bg-surface px-6 py-5">
           <p className="m-0 leading-relaxed text-text-readable">
-            GitArena is an independent project operated by a single developer. These terms govern
+            git-arena is an independent project operated by a single developer. These terms govern
             your use of the platform and are written to be read, not to obscure what you are
             agreeing to.
           </p>
@@ -44,13 +44,13 @@ export function TermsPage() {
           <section>
             <h2 className="mb-3 text-xl font-semibold text-text-primary">1. Service description</h2>
             <p className="m-0 leading-relaxed">
-              GitArena provides isolated, containerised Git practice environments and
+              git-arena provides isolated, containerised Git practice environments and
               scenario-based evaluations for educational use. Each challenge session runs in a
               real Linux container with a real Git repository. An automated evaluator assesses
               the outcome of your work, not the specific commands used to reach it.
             </p>
             <p className="mt-4 m-0 leading-relaxed">
-              GitArena is not a course, a certification programme, or a managed learning service.
+              git-arena is not a course, a certification programme, or a managed learning service.
               It is a practice tool.
             </p>
           </section>
@@ -59,7 +59,7 @@ export function TermsPage() {
           <section>
             <h2 className="mb-3 text-xl font-semibold text-text-primary">2. Acceptable use</h2>
             <p className="m-0 leading-relaxed">
-              You may use GitArena for personal learning, team training, and educational
+              You may use git-arena for personal learning, team training, and educational
               purposes. You may not attempt to escape the container sandbox, generate sessions
               in an automated or scripted manner, reproduce scenario content for redistribution,
               or use the platform for any unlawful purpose.
@@ -77,9 +77,9 @@ export function TermsPage() {
           <section>
             <h2 className="mb-3 text-xl font-semibold text-text-primary">3. Your account</h2>
             <p className="m-0 leading-relaxed">
-              Authentication is handled by Google via Firebase Auth. GitArena does not receive
+              Authentication is handled through Sign in with Google. git-arena does not receive
               or store your Google password. You are responsible for maintaining the security of
-              your Google account and for all activity conducted through your GitArena account.
+              your Google account and for activity that occurs through your git-arena account. 
               Accounts may not be shared or used to run automated sessions.
             </p>
           </section>
@@ -88,7 +88,7 @@ export function TermsPage() {
           <section>
             <h2 className="mb-3 text-xl font-semibold text-text-primary">4. Availability</h2>
             <p className="m-0 leading-relaxed">
-              GitArena is operated on a best-effort basis by a single developer. Planned
+              git-arena is operated on a best-effort basis by a single developer. Planned
               maintenance will be communicated where possible. No uptime guarantee is made.
             </p>
             <p className="mt-4 m-0 leading-relaxed">
@@ -104,7 +104,7 @@ export function TermsPage() {
             </h2>
             <p className="m-0 leading-relaxed">
               All platform code, scenario content, evaluator logic, and branding are the
-              property of GitArena. You may reference and discuss them freely but may not
+              property of git-arena. You may reference and discuss them freely but may not
               reproduce or redistribute the scenario library without permission.
             </p>
             <p className="mt-4 m-0 leading-relaxed">
@@ -123,14 +123,14 @@ export function TermsPage() {
               6. Limitation of liability
             </h2>
             <p className="m-0 leading-relaxed">
-              GitArena is provided as-is and without warranty of any kind, including warranties
-              of availability, accuracy, or fitness for a particular purpose. GitArena is not
+              git-arena is provided as-is and without warranty of any kind, including warranties
+              of availability, accuracy, or fitness for a particular purpose. git-arena is not
               liable for any indirect, incidental, or consequential damages arising from your
               use of the platform.
             </p>
             <p className="mt-4 m-0 leading-relaxed">
               In practical terms: if a session crashes, a score is lost, or the platform is
-              temporarily unavailable, GitArena cannot offer compensation. Issues will be
+              temporarily unavailable, git-arena cannot offer compensation. Issues will be
               investigated and corrected where possible.
             </p>
           </section>
@@ -142,7 +142,7 @@ export function TermsPage() {
             </h2>
             <p className="m-0 leading-relaxed">
               These terms may be updated from time to time. Material changes will be reflected
-              in the date at the top of this page. Continued use of GitArena following an update
+              in the date at the top of this page. Continued use of git-arena following an update
               constitutes acceptance of the revised terms.
             </p>
           </section>

@@ -62,10 +62,22 @@ export function LandingPage() {
                 Master Git workflows without the <span className="text-transparent bg-clip-text bg-gradient-to-r from-accent-primary to-[#7fe5f7]">production panic.</span>
               </h1>
               
-              <p className="text-lg sm:text-xl text-text-readable leading-relaxed max-w-2xl mx-auto">
-                GitArena gives engineers safe, sandboxed environments to practice complex rebases, history rewrites, and catastrophic conflict recovery before they happen on the job.
-              </p>
-              
+                <p className="text-lg sm:text-xl text-text-readable leading-relaxed max-w-2xl mx-auto">
+                  <a
+                    className="inline-flex items-center gap-2 whitespace-nowrap align-middle font-mono font-bold lowercase tracking-wide text-text-primary hover:text-accent-primary transition-colors group"
+                    href="/"
+                  >
+                    <GitBranch
+                      aria-hidden="true"
+                      className="shrink-0 text-accent-primary group-hover:scale-110 transition-transform h-[1em] w-[1em]"
+                    />
+                    <span className="whitespace-nowrap leading-none">git-arena</span>
+                  </a>{" "}
+                  gives engineers safe, sandboxed environments to practice complex rebases,
+                  history rewrites, and catastrophic conflict recovery before they happen on
+                  the job.
+                </p>
+                              
               <div className="flex flex-col sm:flex-row items-center justify-center gap-4 w-full sm:w-auto pt-4">
                 <a
                   className="inline-flex w-full sm:w-auto h-12 items-center justify-center gap-2 rounded-lg bg-accent-primary px-8 text-sm font-bold text-bg-base transition-all hover:bg-accent-hover hover:scale-[1.02] active:scale-[0.98] shadow-[0_0_20px_rgba(6,182,212,0.2)]"
@@ -168,7 +180,7 @@ export function LandingPage() {
                     A realistic loop designed for retention.
                   </h2>
                   <p className="text-lg text-text-readable">
-                    We designed GitArena to mimic the exact feedback loop you experience when fixing git issues in your day job, minus the stress.
+                    We designed git-arena to mimic the exact feedback loop you experience when fixing git issues in your day job, minus the stress.
                   </p>
                 </div>
                 

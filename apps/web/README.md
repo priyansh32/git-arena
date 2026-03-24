@@ -1,6 +1,6 @@
-# GitArena Web App
+# git-arena Web App
 
-React + Vite frontend for GitArena.
+React + Vite frontend for git-arena.
 
 ## Purpose
 
