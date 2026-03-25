@@ -2,18 +2,12 @@ import type { AssertionResult, Attempt } from "@gitarena/shared";
 
 export interface EvaluationInput {
   objective: string;
-  startedAt: Date;
-  evaluatedAt: Date;
-  estimatedTimeMinutes: number;
-  hintCount: number;
   assertions?: AssertionResult[];
 }
 
 export interface EvaluationOutput {
   score: number;
   baseScore: number;
-  timeBonus: number;
-  hintPenalty: number;
   passed: boolean;
   assertions: AssertionResult[];
 }
@@ -59,15 +53,11 @@ export function evaluateSubmission(input: EvaluationInput): EvaluationOutput {
   const totalChecks = assertions.length;
   const score = clamp(passedChecks, 0, 100);
   const baseScore = clamp(totalChecks, 0, 100);
-  const timeBonus = 0;
-  const hintPenalty = 0;
   const passed = totalChecks > 0 && passedChecks === totalChecks;
 
   return {
     score,
     baseScore,
-    timeBonus,
-    hintPenalty,
     passed,
     assertions
   };
@@ -75,13 +65,11 @@ export function evaluateSubmission(input: EvaluationInput): EvaluationOutput {
 
 export function toAttemptInsert(input: EvaluationOutput): Pick<
   Attempt,
-  "score" | "baseScore" | "timeBonus" | "hintPenalty" | "passed" | "assertions"
+  "score" | "baseScore" | "passed" | "assertions"
 > {
   return {
     score: input.score,
     baseScore: input.baseScore,
-    timeBonus: input.timeBonus,
-    hintPenalty: input.hintPenalty,
     passed: input.passed,
     assertions: input.assertions
   };

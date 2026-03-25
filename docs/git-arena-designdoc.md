@@ -397,8 +397,6 @@ Result stored in attempts table + returned to browser
 | scenario_id | uuid FK → scenarios | |
 | score | int | 0–100 final score |
 | base_score | int | from evaluator |
-| time_bonus | int | |
-| hint_penalty | int | |
 | assertion_results | jsonb | full breakdown |
 | evaluated_at | timestamp | |
 | passed | bool | |
@@ -486,8 +484,6 @@ The API backend proxies this to the container's ttyd process. The `ws_token` is 
   "scenario_id": "uuid",
   "score": 82,
   "base_score": 75,
-  "time_bonus": 12,
-  "hint_penalty": 5,
   "passed": true,
   "evaluated_at": "ISO8601",
   "assertions": [

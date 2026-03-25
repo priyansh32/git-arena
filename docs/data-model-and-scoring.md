@@ -2,7 +2,7 @@
 
 ## Database Tables
 
-Database is PostgreSQL. Schema is created/updated in `Repository.createSchema()`.
+Database is PostgreSQL. Schema is managed by `runMigrations()` in `apps/api/src/migrations.ts`, runnable standalone via `npm run db:migrate`.
 
 ### `users`
 
@@ -44,20 +44,18 @@ Immutable revisions per `scenario_id + version`. Each stores `seed_script`, `eva
 ### `attempts`
 
 - `id` (PK), `session_id` (FK -> sessions), `user_id`, `scenario_id`
-- `score`, `base_score`, `time_bonus`, `hint_penalty`
+- `score`, `base_score`
 - `passed`, `assertion_results` (jsonb), `evaluated_at`
 
 ## Scoring Logic
 
 Implemented in `apps/api/src/evaluation.ts`.
 
-- `baseScore`: sum of passed assertion weights, clamped `0..100`
-- `timeBonus`: up to `20`, proportional to remaining time
-- `hintPenalty`: `hintCount * 5`, capped at `20`
-- `score`: `clamp(baseScore + timeBonus - hintPenalty, 0, 100)`
-- `passed`: `score >= 70`
+- `baseScore`: total assertion count, clamped `0..100`
+- `score`: count of passed assertions, clamped `0..100`
+- `passed`: all assertions pass (`passedChecks === totalChecks`)
 
-Assertion normalization: `checkId` is sanitized, empty explanations replaced, weights rounded and clamped to `0..100`.
+Assertion normalization: `checkId` is sanitized, empty explanations replaced, weights normalized to `1`.
 
 ## Assertion Output Contract
 
@@ -69,7 +67,7 @@ ASSERT:<checkId>:<PASS|FAIL>:<weight>:<explanation>
 
 Example: `ASSERT:head_attached:PASS:15:HEAD is attached to branch 'main'.`
 
-Parser in `workspace-manager.ts` ignores non-matching lines, converts valid lines into `AssertionResult[]`, throws if zero assertions parsed.
+Parser ignores non-matching lines, converts valid lines into `AssertionResult[]`, throws if zero assertions parsed.
 
 ## Session Expiration
 
