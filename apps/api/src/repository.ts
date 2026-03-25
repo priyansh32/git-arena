@@ -83,7 +83,6 @@ interface AuthenticatedSession {
 interface SessionScenarioRow extends SessionRow {
   scenario_objective: string;
   scenario_hints: unknown;
-  scenario_estimated_time_minutes: number;
 }
 
 interface MonitorSessionRow extends SessionRow {
@@ -685,8 +684,7 @@ export class Repository {
         s.expires_at,
         s.hint_count,
         sr.objective AS scenario_objective,
-        sr.hints AS scenario_hints,
-        sc.estimated_time_minutes AS scenario_estimated_time_minutes
+        sr.hints AS scenario_hints
       `,
       [sessionId, userId]
     );
@@ -714,7 +712,7 @@ export class Repository {
     try {
       await client.query("BEGIN");
 
-      const lockResult = await client.query<SessionScenarioRow>(
+      const lockResult = await client.query<SessionRow & { scenario_objective: string }>(
         `
         SELECT
           s.id,
@@ -727,9 +725,7 @@ export class Repository {
           s.ws_token,
           s.expires_at,
           s.hint_count,
-          sr.objective AS scenario_objective,
-          sr.hints AS scenario_hints,
-          sc.estimated_time_minutes AS scenario_estimated_time_minutes
+          sr.objective AS scenario_objective
         FROM sessions AS s
         JOIN scenarios AS sc
           ON sc.id = s.scenario_id
@@ -751,7 +747,7 @@ export class Repository {
       const row = lockResult.rows[0];
 
       if (row.status === "evaluated") {
-        const existingAttempt = await this.getLatestAttemptForSession(client, row.id);
+        const existingAttempt = await this.getLatestAttemptForSession(row.id, client);
         await client.query("COMMIT");
 
         if (!existingAttempt) {
@@ -908,7 +904,7 @@ export class Repository {
       return null;
     }
 
-    const attempt = await this.getLatestAttemptForSessionById(sessionId);
+    const attempt = await this.getLatestAttemptForSession(sessionId);
     if (!attempt) {
       return null;
     }
@@ -1289,40 +1285,11 @@ export class Repository {
   }
 
   private async getLatestAttemptForSession(
-    client: PoolClient,
-    sessionId: string
+    sessionId: string,
+    queryable?: PoolClient
   ): Promise<Attempt | null> {
-    const result = await client.query<AttemptRow>(
-      `
-      SELECT
-        id,
-        session_id,
-        user_id,
-        scenario_id,
-        score,
-        base_score,
-        passed,
-        assertion_results,
-        evaluated_at
-      FROM attempts
-      WHERE session_id = $1
-      ORDER BY evaluated_at DESC
-      LIMIT 1
-      `,
-      [sessionId]
-    );
-
-    if (!result.rowCount) {
-      return null;
-    }
-
-    return mapAttempt(result.rows[0]);
-  }
-
-  private async getLatestAttemptForSessionById(
-    sessionId: string
-  ): Promise<Attempt | null> {
-    const result = await this.pool.query<AttemptRow>(
+    const db = queryable ?? this.pool;
+    const result = await db.query<AttemptRow>(
       `
       SELECT
         id,
