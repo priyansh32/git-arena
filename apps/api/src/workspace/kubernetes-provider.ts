@@ -9,6 +9,7 @@ import { WorkspaceProvisionError } from "./errors.js";
 import { parseAssertions } from "./parsing.js";
 import { buildWorkspacePodManifest } from "./pod-manifest.js";
 import { shellEscape } from "./shell.js";
+import type { WorkspaceSpec } from "./spec.js";
 import {
   toMb,
   parseCpuMillicores,
@@ -30,7 +31,10 @@ interface PodState {
 }
 
 export class KubernetesWorkspaceProvider implements WorkspaceProvider {
-  constructor(private readonly config: WorkspaceConfig) {}
+  constructor(
+    private readonly config: WorkspaceConfig,
+    private readonly spec: WorkspaceSpec
+  ) {}
 
   private get ns(): string {
     return this.config.kubernetes.namespace;
@@ -116,7 +120,7 @@ export class KubernetesWorkspaceProvider implements WorkspaceProvider {
       this.ns,
       podName,
       "--",
-      this.config.shell,
+      this.spec.shell,
       "-lc",
       bootstrap
     ]
@@ -178,7 +182,7 @@ export class KubernetesWorkspaceProvider implements WorkspaceProvider {
 
     const duOutput = await this.runScript(
       podName,
-      "du -sk /workspace /repos /tmp 2>/dev/null | awk '{total += $1} END {print total + 0}'"
+      `du -sk ${shellEscape(this.spec.workingDir)} /tmp 2>/dev/null | awk '{total += $1} END {print total + 0}'`
     );
     const ephemeralStorageMb = toMb(parseKilobytes(duOutput.stdout));
 
@@ -291,19 +295,19 @@ export class KubernetesWorkspaceProvider implements WorkspaceProvider {
   async findLargeWorkspaceFile(sessionId: string): Promise<string | null> {
     const output = await this.runScript(
       this.getPodName(sessionId),
-      "find /workspace -xdev -type f -size +50M -print -quit 2>/dev/null"
+      `find ${shellEscape(this.spec.workingDir)} -xdev -type f -size +${this.spec.monitoring.largeFileSizeMb}M -print -quit 2>/dev/null`
     );
     const firstPath = output.stdout.split("\n")[0]?.trim();
     return firstPath && firstPath.length > 0 ? firstPath : null;
   }
 
   private buildTerminalBootstrapCommand(): string {
+    const exports = Object.entries(this.spec.terminalBootstrapEnv)
+      .map(([key, value]) => `export ${key}=${shellEscape(value)}`);
     return [
       "export TERM=xterm-256color",
-      "export GIT_PAGER=cat",
-      "export PAGER=cat",
-      "export LESS=FRX",
-      `exec ${shellEscape(this.config.shell)} -i`
+      ...exports,
+      `exec ${shellEscape(this.spec.shell)} -i`
     ].join("; ");
   }
 
@@ -347,7 +351,7 @@ export class KubernetesWorkspaceProvider implements WorkspaceProvider {
   }
 
   private async createPod(podName: string, session: Session): Promise<void> {
-    const podManifest = buildWorkspacePodManifest(podName, session, this.config);
+    const podManifest = buildWorkspacePodManifest(podName, session, this.config, this.spec);
 
     try {
       await this.runKubectl(["apply", "-f", "-"], false, JSON.stringify(podManifest), 30_000, 1024 * 1024 * 4);

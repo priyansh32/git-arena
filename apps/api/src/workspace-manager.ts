@@ -11,18 +11,20 @@ import type {
   WorkspaceHealthStatus,
   WorkspaceScenarioRuntime
 } from "./workspace/provider.js";
+import type { WorkspaceSpec } from "./workspace/spec.js";
 
 export { WorkspaceProvisionError } from "./workspace/errors.js";
 export type { WorkspaceRuntimeMetrics, WorkspaceHealthStatus, WorkspaceScenarioRuntime } from "./workspace/provider.js";
+export type { WorkspaceSpec, WorkspaceMonitoringLimits } from "./workspace/spec.js";
 
 export class WorkspaceManager {
   private readonly provider: WorkspaceProvider;
 
-  constructor(config: WorkspaceConfig) {
+  constructor(config: WorkspaceConfig, spec: WorkspaceSpec) {
     this.provider =
       config.provider === "kubernetes"
-        ? new KubernetesWorkspaceProvider(config)
-        : new DockerWorkspaceProvider(config);
+        ? new KubernetesWorkspaceProvider(config, spec)
+        : new DockerWorkspaceProvider(config, spec);
   }
 
   getRuntimeHandle(sessionId: string): string {

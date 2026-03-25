@@ -30,6 +30,7 @@ import {
   WorkspaceManager,
   WorkspaceProvisionError
 } from "./workspace-manager.js";
+import { buildDefaultWorkspaceSpec } from "./workspace/spec.js";
 
 declare module "fastify" {
   interface FastifyRequest {
@@ -56,8 +57,11 @@ const googleLoginSchema = z.object({
 });
 
 const config = loadConfig();
+const workspaceSpec = buildDefaultWorkspaceSpec({
+  image: config.workspace.imageOverride
+});
 const repository = new Repository(config.databaseUrl);
-const workspaceManager = new WorkspaceManager(config.workspace);
+const workspaceManager = new WorkspaceManager(config.workspace, workspaceSpec);
 const testAllowedEmailSet = new Set(config.auth.testAllowedEmails);
 
 const app = Fastify({
@@ -242,6 +246,7 @@ function trackCommandsFromSocketInput(session: Session, chunk: string): void {
 const sessionMonitor = new SessionMonitor({
   repository,
   workspaceManager,
+  monitoringLimits: workspaceSpec.monitoring,
   logger: app.log,
   getLastWebsocketActivityMs,
   notifyAndCloseSessionSocket

@@ -5,26 +5,12 @@ import type { Session } from "@gitarena/shared";
 
 import type { WorkspaceConfig } from "./config.js";
 import { DockerWorkspaceProvider } from "./workspace/docker-provider.js";
-
-const POLICY_ENV_ALLOWLIST = [
-  "HOME=/home/gituser",
-  "SHELL=/bin/bash",
-  "TERM=xterm-256color",
-  "GIT_AUTHOR_NAME=Git Arena",
-  "GIT_AUTHOR_EMAIL=user@gitarena.dev",
-  "GIT_COMMITTER_NAME=Git Arena",
-  "GIT_COMMITTER_EMAIL=user@gitarena.dev",
-  "LANG=en_US.UTF-8"
-];
+import { buildDefaultWorkspaceSpec, type WorkspaceSpec } from "./workspace/spec.js";
 
 function makeWorkspaceConfig(): WorkspaceConfig {
   return {
     provider: "docker",
-    image: "gitarena-base:2.43.7-alpine3.19-v1",
-    rootDir: "/workspace",
-    shell: "/bin/bash",
     containerPrefix: "gitarena-ws",
-    initCommand: "mkdir -p /workspace && cd /workspace && exec tail -f /dev/null",
     kubernetes: {
       namespace: "gitarena-sessions",
       runtimeClassName: "gvisor",
@@ -32,6 +18,10 @@ function makeWorkspaceConfig(): WorkspaceConfig {
       podReadyTimeoutSeconds: 240
     }
   };
+}
+
+function makeWorkspaceSpec(): WorkspaceSpec {
+  return buildDefaultWorkspaceSpec();
 }
 
 function makeSession(): Session {
@@ -55,7 +45,8 @@ function expectFlagValue(args: string[], flag: string, value: string): void {
 }
 
 test("createWorkspaceContainer applies docker hardening flags", async () => {
-  const provider = new DockerWorkspaceProvider(makeWorkspaceConfig()) as unknown as {
+  const spec = makeWorkspaceSpec();
+  const provider = new DockerWorkspaceProvider(makeWorkspaceConfig(), spec) as unknown as {
     createContainer: (containerName: string, session: Session) => Promise<void>;
     runDocker: (args: string[]) => Promise<string>;
   };
@@ -92,6 +83,7 @@ test("createWorkspaceContainer applies docker hardening flags", async () => {
   expectFlagValue(args, "--health-retries", "3");
   expectFlagValue(args, "--health-start-period", "10s");
 
+  const expectedEnvValues = spec.env.map((e) => `${e.name}=${e.value}`);
   const envValues: string[] = [];
   for (let i = 0; i < args.length; i += 1) {
     if (args[i] !== "--env") {
@@ -99,8 +91,8 @@ test("createWorkspaceContainer applies docker hardening flags", async () => {
     }
     envValues.push(args[i + 1]);
   }
-  assert.equal(envValues.length, POLICY_ENV_ALLOWLIST.length, "unexpected count of --env flags");
-  for (const expectedEnv of POLICY_ENV_ALLOWLIST) {
+  assert.equal(envValues.length, expectedEnvValues.length, "unexpected count of --env flags");
+  for (const expectedEnv of expectedEnvValues) {
     assert.ok(envValues.includes(expectedEnv), `missing policy env value: ${expectedEnv}`);
   }
 });

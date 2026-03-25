@@ -1,18 +1,15 @@
 import type { Session } from "@gitarena/shared";
 
-import type { WorkspaceConfig } from "../config.js";
-import { POLICY_ENV_ALLOWLIST } from "./constants.js";
-
-const DOCKER_WORKSPACE_HEALTHCHECK_CMD = "test -d /workspace && test -w /workspace";
+import type { WorkspaceSpec } from "./spec.js";
 
 export function buildWorkspaceContainerRunArgs(
   containerName: string,
   session: Session,
-  config: WorkspaceConfig
+  spec: WorkspaceSpec
 ): string[] {
-  const policyEnvArgs = POLICY_ENV_ALLOWLIST.flatMap((entry) => ["--env", `${entry.name}=${entry.value}`]);
+  const envArgs = spec.env.flatMap((entry) => ["--env", `${entry.name}=${entry.value}`]);
 
-  return [
+  const args: string[] = [
     "run",
     "-d",
     "--rm",
@@ -25,42 +22,49 @@ export function buildWorkspaceContainerRunArgs(
     "--label",
     `gitarena.user.id=${session.userId}`,
     "--network",
-    "none",
-    "--runtime",
-    "runsc",
+    spec.security.network,
     "--user",
-    "1000:1000",
+    spec.security.user,
     "--cap-drop",
     "ALL",
     "--security-opt",
     "no-new-privileges",
     "--memory",
-    "256m",
+    `${spec.resources.memoryMb}m`,
     "--memory-reservation",
-    "128m",
+    `${Math.floor(spec.resources.memoryMb / 2)}m`,
     "--memory-swap",
-    "256m",
+    `${spec.resources.memoryMb}m`,
     "--cpus",
-    "0.5",
+    `${spec.resources.cpuMillicores / 1000}`,
     "--pids-limit",
-    "100",
+    `${spec.resources.pidsLimit}`,
     "--health-cmd",
-    DOCKER_WORKSPACE_HEALTHCHECK_CMD,
+    spec.healthcheck.command,
     "--health-interval",
-    "10s",
+    `${spec.healthcheck.intervalSeconds}s`,
     "--health-timeout",
-    "2s",
+    `${spec.healthcheck.timeoutSeconds}s`,
     "--health-retries",
-    "3",
+    `${spec.healthcheck.retries}`,
     "--health-start-period",
-    "10s",
-    ...policyEnvArgs,
+    `${spec.healthcheck.startPeriodSeconds}s`,
+    ...envArgs,
     "-w",
-    config.rootDir,
+    spec.workingDir
+  ];
+
+  if (spec.security.runtime) {
+    args.push("--runtime", spec.security.runtime);
+  }
+
+  args.push(
     "--entrypoint",
     "sh",
-    config.image,
+    spec.image,
     "-lc",
-    config.initCommand
-  ];
+    spec.initCommand
+  );
+
+  return args;
 }

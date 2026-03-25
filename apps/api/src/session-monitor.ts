@@ -5,18 +5,13 @@ import type { Repository } from "./repository.js";
 import {
   WorkspaceProvisionError,
   type WorkspaceHealthStatus,
+  type WorkspaceMonitoringLimits,
   type WorkspaceRuntimeMetrics
 } from "./workspace-manager.js";
 import type { WorkspaceManager } from "./workspace-manager.js";
 
 const MONITOR_POLL_INTERVAL_MS = 30_000;
-const IDLE_TIMEOUT_MS = 5 * 60 * 1000;
-const MEMORY_LIMIT_MB = 240;
-const EPHEMERAL_STORAGE_LIMIT_MB = 900;
-const PROCESS_ANOMALY_THRESHOLD = 50;
-const PROCESS_TERMINATION_THRESHOLD = 100;
 const HEALTH_CHECK_FAILURE_THRESHOLD = 3;
-const CPU_LIMIT_MILLICORES = 480;
 const CPU_ANOMALY_WINDOW_MS = 60 * 1000;
 const CPU_TERMINATION_WINDOW_MS = 120 * 1000;
 
@@ -32,6 +27,7 @@ type TerminationReason =
 interface SessionMonitorOptions {
   repository: Repository;
   workspaceManager: WorkspaceManager;
+  monitoringLimits: WorkspaceMonitoringLimits;
   logger: FastifyBaseLogger;
   getLastWebsocketActivityMs: (sessionId: string) => number | null;
   notifyAndCloseSessionSocket: (sessionId: string, message: string) => void;
@@ -42,18 +38,18 @@ interface CpuOverageState {
   warnedAt60s: boolean;
 }
 
-function buildTerminationMessage(reason: TerminationReason): string {
+function buildTerminationMessage(reason: TerminationReason, limits: WorkspaceMonitoringLimits): string {
   if (reason === "time_limit_exceeded") {
     return "Session terminated: time limit exceeded. Your work was auto-submitted.";
   }
   if (reason === "idle_timeout") {
-    return "Session terminated: idle timeout after 5 minutes of inactivity.";
+    return `Session terminated: idle timeout after ${Math.floor(limits.idleTimeoutMs / 60_000)} minutes of inactivity.`;
   }
   if (reason === "memory_limit") {
-    return "Session terminated: memory limit exceeded (240MB).";
+    return `Session terminated: memory limit exceeded (${limits.memoryTerminationMb}MB).`;
   }
   if (reason === "disk_limit") {
-    return "Session terminated: ephemeral storage limit exceeded (900MB).";
+    return `Session terminated: ephemeral storage limit exceeded (${limits.ephemeralStorageTerminationMb}MB).`;
   }
   if (reason === "process_limit") {
     return "Session terminated: process limit exceeded.";
@@ -150,27 +146,27 @@ export class SessionMonitor {
       this.options.getLastWebsocketActivityMs(session.id) ??
       (Number.isFinite(startedAtMs) ? startedAtMs : nowMs);
     const idleMs = Math.max(0, nowMs - lastActivityMs);
-    if (idleMs > IDLE_TIMEOUT_MS) {
+    if (idleMs > this.options.monitoringLimits.idleTimeoutMs) {
       await this.terminateSession(session, "idle_timeout", metrics, elapsedSeconds);
       return;
     }
 
-    if (metrics.memoryMb > MEMORY_LIMIT_MB) {
+    if (metrics.memoryMb > this.options.monitoringLimits.memoryTerminationMb) {
       await this.terminateSession(session, "memory_limit", metrics, elapsedSeconds);
       return;
     }
 
-    if (metrics.ephemeralStorageMb > EPHEMERAL_STORAGE_LIMIT_MB) {
+    if (metrics.ephemeralStorageMb > this.options.monitoringLimits.ephemeralStorageTerminationMb) {
       await this.terminateSession(session, "disk_limit", metrics, elapsedSeconds);
       return;
     }
 
-    if (metrics.processCount > PROCESS_TERMINATION_THRESHOLD) {
+    if (metrics.processCount > this.options.monitoringLimits.processTerminationThreshold) {
       await this.terminateSession(session, "process_limit", metrics, elapsedSeconds);
       return;
     }
 
-    if (metrics.processCount > PROCESS_ANOMALY_THRESHOLD) {
+    if (metrics.processCount > this.options.monitoringLimits.processAnomalyThreshold) {
       if (!this.processAnomalyActive.has(session.id)) {
         this.processAnomalyActive.add(session.id);
         this.logAuditEvent(session, "session.anomaly_detected", {
@@ -245,7 +241,7 @@ export class SessionMonitor {
     elapsedSeconds: number,
     nowMs: number
   ): Promise<void> {
-    if (metrics.cpuMillicores <= CPU_LIMIT_MILLICORES) {
+    if (metrics.cpuMillicores <= this.options.monitoringLimits.cpuTerminationMillicores) {
       this.cpuOverages.delete(session.id);
       return;
     }
@@ -399,7 +395,7 @@ export class SessionMonitor {
       }
     });
 
-    this.options.notifyAndCloseSessionSocket(session.id, buildTerminationMessage(reason));
+    this.options.notifyAndCloseSessionSocket(session.id, buildTerminationMessage(reason, this.options.monitoringLimits));
 
     const terminatedSession = await this.options.repository.terminateSessionByMonitor(
       session.id,

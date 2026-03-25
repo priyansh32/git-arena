@@ -1,23 +1,28 @@
 import type { Session } from "@gitarena/shared";
 
 import type { WorkspaceConfig } from "../config.js";
-import { K8S_SEEDED_ANNOTATION, POLICY_ENV_ALLOWLIST } from "./constants.js";
+import { K8S_SEEDED_ANNOTATION } from "./constants.js";
+import type { WorkspaceSpec } from "./spec.js";
+
 
 export function buildWorkspacePodManifest(
   podName: string,
   session: Session,
-  config: WorkspaceConfig
+  config: WorkspaceConfig,
+  spec: WorkspaceSpec
 ): Record<string, unknown> {
-  const spec: Record<string, unknown> = {
-    runtimeClassName: config.kubernetes.runtimeClassName,
+  const [uid, gid] = spec.security.user.split(":").map(Number);
+
+  const spec_: Record<string, unknown> = {
+    runtimeClassName: spec.security.runtime,
     automountServiceAccountToken: false,
     enableServiceLinks: false,
     serviceAccountName: "",
     securityContext: {
       runAsNonRoot: true,
-      runAsUser: 1000,
-      runAsGroup: 1000,
-      fsGroup: 1000,
+      runAsUser: uid,
+      runAsGroup: gid,
+      fsGroup: gid,
       seccompProfile: {
         type: "RuntimeDefault"
       }
@@ -27,7 +32,7 @@ export function buildWorkspacePodManifest(
     containers: [
       {
         name: "challenge",
-        image: config.image,
+        image: spec.image,
         imagePullPolicy: config.kubernetes.imagePullPolicy,
         securityContext: {
           allowPrivilegeEscalation: false,
@@ -38,36 +43,30 @@ export function buildWorkspacePodManifest(
         },
         resources: {
           requests: {
-            memory: "128Mi",
-            cpu: "250m"
+            memory: `${Math.floor(spec.resources.memoryMb / 2)}Mi`,
+            cpu: `${Math.floor(spec.resources.cpuMillicores / 2)}m`
           },
           limits: {
-            memory: "256Mi",
-            cpu: "500m",
-            "ephemeral-storage": "1Gi"
+            memory: `${spec.resources.memoryMb}Mi`,
+            cpu: `${spec.resources.cpuMillicores}m`,
+            "ephemeral-storage": `${spec.resources.ephemeralStorageMb}Mi`
           }
         },
-        env: POLICY_ENV_ALLOWLIST,
-        ports: [
-          {
-            containerPort: 7681,
-            protocol: "TCP"
-          }
-        ],
+        env: spec.env,
         livenessProbe: {
           exec: {
-            command: ["/bin/bash", "-lc", "echo > /dev/tcp/127.0.0.1/7681"]
+            command: ["/bin/sh", "-c", spec.healthcheck.command]
           },
-          initialDelaySeconds: 5,
-          timeoutSeconds: 2,
-          periodSeconds: 10
+          initialDelaySeconds: spec.healthcheck.startPeriodSeconds,
+          timeoutSeconds: spec.healthcheck.timeoutSeconds,
+          periodSeconds: spec.healthcheck.intervalSeconds
         }
       }
     ]
   };
 
   if (config.kubernetes.nodePool) {
-    spec.nodeSelector = {
+    spec_.nodeSelector = {
       "cloud.google.com/gke-nodepool": config.kubernetes.nodePool
     };
   }
@@ -88,6 +87,6 @@ export function buildWorkspacePodManifest(
         [K8S_SEEDED_ANNOTATION]: "false"
       }
     },
-    spec
+    spec: spec_
   };
 }

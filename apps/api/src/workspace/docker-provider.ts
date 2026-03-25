@@ -8,6 +8,7 @@ import { buildWorkspaceContainerRunArgs } from "./docker-run-args.js";
 import { WorkspaceProvisionError } from "./errors.js";
 import { parseAssertions } from "./parsing.js";
 import { shellEscape } from "./shell.js";
+import type { WorkspaceSpec } from "./spec.js";
 import {
   toMb,
   parseDockerMemUsageBytes,
@@ -23,7 +24,10 @@ import type {
 } from "./provider.js";
 
 export class DockerWorkspaceProvider implements WorkspaceProvider {
-  constructor(private readonly config: WorkspaceConfig) {}
+  constructor(
+    private readonly config: WorkspaceConfig,
+    private readonly spec: WorkspaceSpec
+  ) {}
 
   private getContainerName(sessionId: string): string {
     return `${this.config.containerPrefix}-${sessionId}`.replace(/[^a-zA-Z0-9_.-]/g, "-");
@@ -87,7 +91,7 @@ export class DockerWorkspaceProvider implements WorkspaceProvider {
       "exec",
       "-it",
       containerName,
-      this.config.shell,
+      this.spec.shell,
       "-lc",
       bootstrap
     ]
@@ -135,7 +139,7 @@ export class DockerWorkspaceProvider implements WorkspaceProvider {
     if (ephemeralStorageBytes <= 0) {
       const duOutput = await this.runScript(
         containerName,
-        "du -sk /workspace /repos /tmp 2>/dev/null | awk '{total += $1} END {print total + 0}'"
+        `du -sk ${shellEscape(this.spec.workingDir)} /tmp 2>/dev/null | awk '{total += $1} END {print total + 0}'`
       );
       ephemeralStorageBytes = parseKilobytes(duOutput.stdout);
     }
@@ -201,19 +205,19 @@ export class DockerWorkspaceProvider implements WorkspaceProvider {
   async findLargeWorkspaceFile(sessionId: string): Promise<string | null> {
     const output = await this.runScript(
       this.getContainerName(sessionId),
-      "find /workspace -xdev -type f -size +50M -print -quit 2>/dev/null"
+      `find ${shellEscape(this.spec.workingDir)} -xdev -type f -size +${this.spec.monitoring.largeFileSizeMb}M -print -quit 2>/dev/null`
     );
     const firstPath = output.stdout.split("\n")[0]?.trim();
     return firstPath && firstPath.length > 0 ? firstPath : null;
   }
 
   private buildTerminalBootstrapCommand(): string {
+    const exports = Object.entries(this.spec.terminalBootstrapEnv)
+      .map(([key, value]) => `export ${key}=${shellEscape(value)}`);
     return [
       "export TERM=xterm-256color",
-      "export GIT_PAGER=cat",
-      "export PAGER=cat",
-      "export LESS=FRX",
-      `exec ${shellEscape(this.config.shell)} -i`
+      ...exports,
+      `exec ${shellEscape(this.spec.shell)} -i`
     ].join("; ");
   }
 
@@ -229,8 +233,12 @@ export class DockerWorkspaceProvider implements WorkspaceProvider {
     }
   }
 
-  private async createContainer(containerName: string, session: Session): Promise<void> {
-    const args = buildWorkspaceContainerRunArgs(containerName, session, this.config);
+  createContainer(containerName: string, session: Session): Promise<void> {
+    return this.provisionContainer(containerName, session);
+  }
+
+  private async provisionContainer(containerName: string, session: Session): Promise<void> {
+    const args = buildWorkspaceContainerRunArgs(containerName, session, this.spec);
 
     try {
       await this.runDocker(args);

@@ -2,6 +2,8 @@ import type { ChildProcessWithoutNullStreams } from "node:child_process";
 
 import type { AssertionResult, Session } from "@gitarena/shared";
 
+export type { WorkspaceSpec, WorkspaceMonitoringLimits } from "./spec.js";
+
 export interface WorkspaceRuntimeMetrics {
   cpuMillicores: number;
   memoryMb: number;
