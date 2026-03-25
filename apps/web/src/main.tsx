@@ -1,4 +1,4 @@
-import React from "react";
+import { StrictMode } from "react";
 import { createRoot, hydrateRoot } from "react-dom/client";
 
 import { AuthProvider } from "./auth/AuthContext";
@@ -22,11 +22,11 @@ function normalizePathname(pathname: string): string {
 }
 
 const app = (
-  <React.StrictMode>
+  <StrictMode>
     <AuthProvider>
       <App />
     </AuthProvider>
-  </React.StrictMode>
+  </StrictMode>
 );
 
 const currentPath = normalizePathname(window.location.pathname);
