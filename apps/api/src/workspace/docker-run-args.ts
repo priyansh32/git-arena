@@ -26,6 +26,8 @@ export function buildWorkspaceContainerRunArgs(
     `gitarena.user.id=${session.userId}`,
     "--network",
     "none",
+    "--runtime",
+    "runsc",
     "--user",
     "1000:1000",
     "--cap-drop",

@@ -182,6 +182,7 @@ This is a bootstrap foundation with:
   - `kubernetes` (GKE/K8s pod-backed sessions)
 - Docker mode provisions one container per active session using the host Docker socket.
   - Docker runtime is hardened with:
+    - `--runtime runsc` (gVisor sandbox)
     - `--network none`
     - `--user 1000:1000`
     - `--cap-drop ALL`
