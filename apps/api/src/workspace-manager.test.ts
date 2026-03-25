@@ -4,7 +4,7 @@ import test from "node:test";
 import type { Session } from "@gitarena/shared";
 
 import type { WorkspaceConfig } from "./config.js";
-import { WorkspaceManager } from "./workspace-manager.js";
+import { DockerWorkspaceProvider } from "./workspace/docker-provider.js";
 
 const POLICY_ENV_ALLOWLIST = [
   "HOME=/home/gituser",
@@ -55,18 +55,18 @@ function expectFlagValue(args: string[], flag: string, value: string): void {
 }
 
 test("createWorkspaceContainer applies docker hardening flags", async () => {
-  const manager = new WorkspaceManager(makeWorkspaceConfig()) as unknown as {
-    createWorkspaceContainer: (containerName: string, session: Session) => Promise<void>;
+  const provider = new DockerWorkspaceProvider(makeWorkspaceConfig()) as unknown as {
+    createContainer: (containerName: string, session: Session) => Promise<void>;
     runDocker: (args: string[]) => Promise<string>;
   };
 
   let capturedArgs: string[] | null = null;
-  manager.runDocker = async (args: string[]) => {
+  provider.runDocker = async (args: string[]) => {
     capturedArgs = args;
     return "";
   };
 
-  await manager.createWorkspaceContainer("gitarena-ws-session-hardening-check", makeSession());
+  await provider.createContainer("gitarena-ws-session-hardening-check", makeSession());
 
   if (!capturedArgs) {
     assert.fail("docker run args were not captured");
