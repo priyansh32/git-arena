@@ -24,10 +24,7 @@ import type {
 } from "./provider.js";
 
 export class DockerWorkspaceProvider implements WorkspaceProvider {
-  constructor(
-    private readonly config: WorkspaceConfig,
-    private readonly spec: WorkspaceSpec
-  ) {}
+  constructor(private readonly config: WorkspaceConfig) {}
 
   private getContainerName(sessionId: string): string {
     return `${this.config.containerPrefix}-${sessionId}`.replace(/[^a-zA-Z0-9_.-]/g, "-");
@@ -37,7 +34,7 @@ export class DockerWorkspaceProvider implements WorkspaceProvider {
     return this.getContainerName(sessionId);
   }
 
-  async ensureWorkspace(session: Session, runtime: WorkspaceScenarioRuntime): Promise<void> {
+  async ensureWorkspace(session: Session, runtime: WorkspaceScenarioRuntime, spec: WorkspaceSpec): Promise<void> {
     const containerName = this.getContainerName(session.id);
     const running = await this.isContainerRunning(containerName);
 
@@ -46,7 +43,7 @@ export class DockerWorkspaceProvider implements WorkspaceProvider {
     }
 
     await this.removeContainer(containerName);
-    await this.createContainer(containerName, session);
+    await this.createContainer(containerName, session, spec);
 
     try {
       await this.runScript(containerName, runtime.seedScript);
@@ -85,15 +82,13 @@ export class DockerWorkspaceProvider implements WorkspaceProvider {
 
   openTerminal(sessionId: string): ChildProcessWithoutNullStreams {
     const containerName = this.getContainerName(sessionId);
-    const bootstrap = this.buildTerminalBootstrapCommand();
     const command = [
       "docker",
       "exec",
       "-it",
       containerName,
-      this.spec.shell,
-      "-lc",
-      bootstrap
+      "/bin/bash",
+      "-li"
     ]
       .map(shellEscape)
       .join(" ");
@@ -139,7 +134,7 @@ export class DockerWorkspaceProvider implements WorkspaceProvider {
     if (ephemeralStorageBytes <= 0) {
       const duOutput = await this.runScript(
         containerName,
-        `du -sk ${shellEscape(this.spec.workingDir)} /tmp 2>/dev/null | awk '{total += $1} END {print total + 0}'`
+        "du -sk /workspace /tmp 2>/dev/null | awk '{total += $1} END {print total + 0}'"
       );
       ephemeralStorageBytes = parseKilobytes(duOutput.stdout);
     }
@@ -205,20 +200,10 @@ export class DockerWorkspaceProvider implements WorkspaceProvider {
   async findLargeWorkspaceFile(sessionId: string): Promise<string | null> {
     const output = await this.runScript(
       this.getContainerName(sessionId),
-      `find ${shellEscape(this.spec.workingDir)} -xdev -type f -size +${this.spec.monitoring.largeFileSizeMb}M -print -quit 2>/dev/null`
+      "find /workspace -xdev -type f -size +50M -print -quit 2>/dev/null"
     );
     const firstPath = output.stdout.split("\n")[0]?.trim();
     return firstPath && firstPath.length > 0 ? firstPath : null;
-  }
-
-  private buildTerminalBootstrapCommand(): string {
-    const exports = Object.entries(this.spec.terminalBootstrapEnv)
-      .map(([key, value]) => `export ${key}=${shellEscape(value)}`);
-    return [
-      "export TERM=xterm-256color",
-      ...exports,
-      `exec ${shellEscape(this.spec.shell)} -i`
-    ].join("; ");
   }
 
   private async isContainerRunning(containerName: string): Promise<boolean> {
@@ -233,12 +218,12 @@ export class DockerWorkspaceProvider implements WorkspaceProvider {
     }
   }
 
-  createContainer(containerName: string, session: Session): Promise<void> {
-    return this.provisionContainer(containerName, session);
+  createContainer(containerName: string, session: Session, spec: WorkspaceSpec): Promise<void> {
+    return this.provisionContainer(containerName, session, spec);
   }
 
-  private async provisionContainer(containerName: string, session: Session): Promise<void> {
-    const args = buildWorkspaceContainerRunArgs(containerName, session, this.spec);
+  private async provisionContainer(containerName: string, session: Session, spec: WorkspaceSpec): Promise<void> {
+    const args = buildWorkspaceContainerRunArgs(containerName, session, spec);
 
     try {
       await this.runDocker(args);

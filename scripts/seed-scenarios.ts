@@ -21,6 +21,7 @@ interface ScenarioMetadata {
   tags: string[];
   hints: string[];
   status: ScenarioStatus;
+  workspaceType: string;
 }
 
 interface ScenarioInput {
@@ -178,6 +179,10 @@ async function loadScenarioInputs(rootDir: string): Promise<ScenarioInput[]> {
       throw new Error(`Invalid timeLimitSeconds for ${id}`);
     }
 
+    const workspaceType = typeof parsed.workspaceType === "string" && parsed.workspaceType.trim().length > 0
+      ? parsed.workspaceType.trim()
+      : "git";
+
     const metadata: ScenarioMetadata = {
       id,
       title,
@@ -189,7 +194,8 @@ async function loadScenarioInputs(rootDir: string): Promise<ScenarioInput[]> {
       timeLimitSeconds,
       tags: parseStringArray(parsed.tags),
       hints: parseStringArray(parsed.hints),
-      status: parseStatus(parsed.status, id)
+      status: parseStatus(parsed.status, id),
+      workspaceType
     };
 
     const seedScript = seedScriptRaw.trimEnd();
@@ -271,11 +277,12 @@ async function main(): Promise<void> {
             tags,
             hints,
             status,
+            workspace_type,
             active_revision,
             created_at,
             updated_at
           )
-          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb, $10::jsonb, $11, 1, NOW(), NOW())
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb, $10::jsonb, $11, $12, 1, NOW(), NOW())
           `,
           [
             scenario.id,
@@ -288,7 +295,8 @@ async function main(): Promise<void> {
             scenario.metadata.timeLimitSeconds,
             JSON.stringify(scenario.metadata.tags),
             JSON.stringify(scenario.metadata.hints),
-            scenario.metadata.status
+            scenario.metadata.status,
+            scenario.metadata.workspaceType
           ]
         );
 
@@ -381,7 +389,8 @@ async function main(): Promise<void> {
               tags = $9::jsonb,
               hints = $10::jsonb,
               status = $11,
-              active_revision = $12,
+              workspace_type = $12,
+              active_revision = $13,
               updated_at = NOW()
           WHERE id = $1
           `,
@@ -397,6 +406,7 @@ async function main(): Promise<void> {
             JSON.stringify(scenario.metadata.tags),
             JSON.stringify(scenario.metadata.hints),
             scenario.metadata.status,
+            scenario.metadata.workspaceType,
             nextVersion
           ]
         );
@@ -418,7 +428,8 @@ async function main(): Promise<void> {
             tags = $9::jsonb,
             hints = $10::jsonb,
             status = $11,
-            active_revision = $12,
+            workspace_type = $12,
+            active_revision = $13,
             updated_at = NOW()
         WHERE id = $1
         `,
@@ -434,6 +445,7 @@ async function main(): Promise<void> {
           JSON.stringify(scenario.metadata.tags),
           JSON.stringify(scenario.metadata.hints),
           scenario.metadata.status,
+          scenario.metadata.workspaceType,
           latestRevision.version
         ]
       );

@@ -107,6 +107,9 @@ async function createSchema(client: PoolClient): Promise<void> {
     "ALTER TABLE scenarios ADD COLUMN IF NOT EXISTS active_revision INTEGER NOT NULL DEFAULT 1"
   );
   await client.query(
+    "ALTER TABLE scenarios ADD COLUMN IF NOT EXISTS workspace_type TEXT NOT NULL DEFAULT 'git'"
+  );
+  await client.query(
     `
     UPDATE scenarios
     SET active_revision = 1

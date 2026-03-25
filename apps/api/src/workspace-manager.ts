@@ -20,19 +20,19 @@ export type { WorkspaceSpec, WorkspaceMonitoringLimits } from "./workspace/spec.
 export class WorkspaceManager {
   private readonly provider: WorkspaceProvider;
 
-  constructor(config: WorkspaceConfig, spec: WorkspaceSpec) {
+  constructor(config: WorkspaceConfig) {
     this.provider =
       config.provider === "kubernetes"
-        ? new KubernetesWorkspaceProvider(config, spec)
-        : new DockerWorkspaceProvider(config, spec);
+        ? new KubernetesWorkspaceProvider(config)
+        : new DockerWorkspaceProvider(config);
   }
 
   getRuntimeHandle(sessionId: string): string {
     return this.provider.getRuntimeHandle(sessionId);
   }
 
-  async ensureWorkspace(session: Session, runtime: WorkspaceScenarioRuntime): Promise<void> {
-    return this.provider.ensureWorkspace(session, runtime);
+  async ensureWorkspace(session: Session, runtime: WorkspaceScenarioRuntime, spec: WorkspaceSpec): Promise<void> {
+    return this.provider.ensureWorkspace(session, runtime, spec);
   }
 
   async stopWorkspace(sessionId: string): Promise<void> {

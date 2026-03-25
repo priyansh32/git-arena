@@ -14,6 +14,7 @@ export interface Scenario {
   tags: string[];
   hints: string[];
   status: ScenarioStatus;
+  workspaceType: string;
 }
 
 export interface UserProfile {

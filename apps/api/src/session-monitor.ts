@@ -9,6 +9,7 @@ import {
   type WorkspaceRuntimeMetrics
 } from "./workspace-manager.js";
 import type { WorkspaceManager } from "./workspace-manager.js";
+import { getWorkspaceSpec } from "./workspace/types.js";
 
 const MONITOR_POLL_INTERVAL_MS = 30_000;
 const HEALTH_CHECK_FAILURE_THRESHOLD = 3;
@@ -27,7 +28,7 @@ type TerminationReason =
 interface SessionMonitorOptions {
   repository: Repository;
   workspaceManager: WorkspaceManager;
-  monitoringLimits: WorkspaceMonitoringLimits;
+  imageOverride?: string;
   logger: FastifyBaseLogger;
   getLastWebsocketActivityMs: (sessionId: string) => number | null;
   notifyAndCloseSessionSocket: (sessionId: string, message: string) => void;
@@ -102,7 +103,7 @@ export class SessionMonitor {
 
       for (const entry of activeSessions) {
         try {
-          await this.pollSession(entry.session, entry.timeLimitSeconds);
+          await this.pollSession(entry.session, entry.timeLimitSeconds, entry.workspaceType);
         } catch (error) {
           this.options.logger.error(
             { error, sessionId: entry.session.id },
@@ -117,18 +118,23 @@ export class SessionMonitor {
     }
   }
 
-  private async pollSession(session: Session, timeLimitSeconds: number): Promise<void> {
+  private getMonitoringLimits(workspaceType: string): WorkspaceMonitoringLimits {
+    return getWorkspaceSpec(workspaceType, this.options.imageOverride).monitoring;
+  }
+
+  private async pollSession(session: Session, timeLimitSeconds: number, workspaceType: string): Promise<void> {
     const nowMs = Date.now();
     const startedAtMs = Date.parse(session.startedAt);
     const elapsedSeconds = Number.isFinite(startedAtMs)
       ? Math.max(0, Math.floor((nowMs - startedAtMs) / 1000))
       : 0;
 
+    const limits = this.getMonitoringLimits(workspaceType);
     const metrics = await this.safeCollectMetrics(session);
     const healthStatus = await this.safeCollectHealthStatus(session);
 
     if (elapsedSeconds > timeLimitSeconds) {
-      await this.autoSubmitAndTerminate(session, metrics, elapsedSeconds);
+      await this.autoSubmitAndTerminate(session, metrics, elapsedSeconds, workspaceType);
       return;
     }
 
@@ -136,7 +142,8 @@ export class SessionMonitor {
       session,
       healthStatus,
       metrics,
-      elapsedSeconds
+      elapsedSeconds,
+      limits
     );
     if (healthCheckTerminated) {
       return;
@@ -146,27 +153,27 @@ export class SessionMonitor {
       this.options.getLastWebsocketActivityMs(session.id) ??
       (Number.isFinite(startedAtMs) ? startedAtMs : nowMs);
     const idleMs = Math.max(0, nowMs - lastActivityMs);
-    if (idleMs > this.options.monitoringLimits.idleTimeoutMs) {
-      await this.terminateSession(session, "idle_timeout", metrics, elapsedSeconds);
+    if (idleMs > limits.idleTimeoutMs) {
+      await this.terminateSession(session, "idle_timeout", metrics, elapsedSeconds, limits);
       return;
     }
 
-    if (metrics.memoryMb > this.options.monitoringLimits.memoryTerminationMb) {
-      await this.terminateSession(session, "memory_limit", metrics, elapsedSeconds);
+    if (metrics.memoryMb > limits.memoryTerminationMb) {
+      await this.terminateSession(session, "memory_limit", metrics, elapsedSeconds, limits);
       return;
     }
 
-    if (metrics.ephemeralStorageMb > this.options.monitoringLimits.ephemeralStorageTerminationMb) {
-      await this.terminateSession(session, "disk_limit", metrics, elapsedSeconds);
+    if (metrics.ephemeralStorageMb > limits.ephemeralStorageTerminationMb) {
+      await this.terminateSession(session, "disk_limit", metrics, elapsedSeconds, limits);
       return;
     }
 
-    if (metrics.processCount > this.options.monitoringLimits.processTerminationThreshold) {
-      await this.terminateSession(session, "process_limit", metrics, elapsedSeconds);
+    if (metrics.processCount > limits.processTerminationThreshold) {
+      await this.terminateSession(session, "process_limit", metrics, elapsedSeconds, limits);
       return;
     }
 
-    if (metrics.processCount > this.options.monitoringLimits.processAnomalyThreshold) {
+    if (metrics.processCount > limits.processAnomalyThreshold) {
       if (!this.processAnomalyActive.has(session.id)) {
         this.processAnomalyActive.add(session.id);
         this.logAuditEvent(session, "session.anomaly_detected", {
@@ -190,7 +197,7 @@ export class SessionMonitor {
       }
     }
 
-    await this.handleCpuOverage(session, metrics, elapsedSeconds, nowMs);
+    await this.handleCpuOverage(session, metrics, elapsedSeconds, nowMs, limits);
   }
 
   private async safeCollectMetrics(session: Session): Promise<WorkspaceRuntimeMetrics> {
@@ -239,9 +246,10 @@ export class SessionMonitor {
     session: Session,
     metrics: WorkspaceRuntimeMetrics,
     elapsedSeconds: number,
-    nowMs: number
+    nowMs: number,
+    limits: WorkspaceMonitoringLimits
   ): Promise<void> {
-    if (metrics.cpuMillicores <= this.options.monitoringLimits.cpuTerminationMillicores) {
+    if (metrics.cpuMillicores <= limits.cpuTerminationMillicores) {
       this.cpuOverages.delete(session.id);
       return;
     }
@@ -269,7 +277,7 @@ export class SessionMonitor {
     }
 
     if (overageDurationMs >= CPU_TERMINATION_WINDOW_MS) {
-      await this.terminateSession(session, "cpu_limit", metrics, elapsedSeconds);
+      await this.terminateSession(session, "cpu_limit", metrics, elapsedSeconds, limits);
     }
   }
 
@@ -277,7 +285,8 @@ export class SessionMonitor {
     session: Session,
     healthStatus: WorkspaceHealthStatus,
     metrics: WorkspaceRuntimeMetrics,
-    elapsedSeconds: number
+    elapsedSeconds: number,
+    limits: WorkspaceMonitoringLimits
   ): Promise<boolean> {
     if (healthStatus.status === "healthy") {
       this.healthCheckFailureCounts.delete(session.id);
@@ -317,20 +326,22 @@ export class SessionMonitor {
       return false;
     }
 
-    await this.terminateSession(session, "health_check_failed", metrics, elapsedSeconds);
+    await this.terminateSession(session, "health_check_failed", metrics, elapsedSeconds, limits);
     return true;
   }
 
   private async autoSubmitAndTerminate(
     session: Session,
     metrics: WorkspaceRuntimeMetrics,
-    elapsedSeconds: number
+    elapsedSeconds: number,
+    workspaceType: string
   ): Promise<void> {
     this.logAuditEvent(session, "session.auto_submitted", {
       reason: "time_limit_exceeded"
     });
 
-    const assertions = await this.runAutoEvaluation(session);
+    const limits = this.getMonitoringLimits(workspaceType);
+    const assertions = await this.runAutoEvaluation(session, workspaceType);
     const submitResult = await this.options.repository.submitSession(
       session.id,
       session.userId,
@@ -347,17 +358,19 @@ export class SessionMonitor {
       session,
       "time_limit_exceeded",
       metrics,
-      elapsedSeconds
+      elapsedSeconds,
+      limits
     );
   }
 
-  private async runAutoEvaluation(session: Session): Promise<AssertionResult[] | undefined> {
+  private async runAutoEvaluation(session: Session, workspaceType: string): Promise<AssertionResult[] | undefined> {
     try {
       const runtime = await this.options.repository.getScenarioRuntimeForSession(session.id);
       if (!runtime) {
         throw new Error(`Scenario runtime not found for session '${session.id}'`);
       }
-      await this.options.workspaceManager.ensureWorkspace(session, runtime);
+      const spec = getWorkspaceSpec(workspaceType, this.options.imageOverride);
+      await this.options.workspaceManager.ensureWorkspace(session, runtime, spec);
       return await this.options.workspaceManager.evaluateWorkspace(session, runtime);
     } catch (error) {
       this.options.logger.error(
@@ -381,7 +394,8 @@ export class SessionMonitor {
     session: Session,
     reason: TerminationReason,
     metrics: WorkspaceRuntimeMetrics,
-    elapsedSeconds: number
+    elapsedSeconds: number,
+    limits: WorkspaceMonitoringLimits
   ): Promise<void> {
     this.logAuditEvent(session, "session.terminated", {
       reason,
@@ -395,7 +409,7 @@ export class SessionMonitor {
       }
     });
 
-    this.options.notifyAndCloseSessionSocket(session.id, buildTerminationMessage(reason, this.options.monitoringLimits));
+    this.options.notifyAndCloseSessionSocket(session.id, buildTerminationMessage(reason, limits));
 
     const terminatedSession = await this.options.repository.terminateSessionByMonitor(
       session.id,

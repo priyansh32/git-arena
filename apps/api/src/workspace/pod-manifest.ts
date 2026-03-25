@@ -4,7 +4,6 @@ import type { WorkspaceConfig } from "../config.js";
 import { K8S_SEEDED_ANNOTATION } from "./constants.js";
 import type { WorkspaceSpec } from "./spec.js";
 
-
 export function buildWorkspacePodManifest(
   podName: string,
   session: Session,
@@ -13,7 +12,7 @@ export function buildWorkspacePodManifest(
 ): Record<string, unknown> {
   const [uid, gid] = spec.security.user.split(":").map(Number);
 
-  const spec_: Record<string, unknown> = {
+  const podSpec: Record<string, unknown> = {
     runtimeClassName: spec.security.runtime,
     automountServiceAccountToken: false,
     enableServiceLinks: false,
@@ -51,22 +50,13 @@ export function buildWorkspacePodManifest(
             cpu: `${spec.resources.cpuMillicores}m`,
             "ephemeral-storage": `${spec.resources.ephemeralStorageMb}Mi`
           }
-        },
-        env: spec.env,
-        livenessProbe: {
-          exec: {
-            command: ["/bin/sh", "-c", spec.healthcheck.command]
-          },
-          initialDelaySeconds: spec.healthcheck.startPeriodSeconds,
-          timeoutSeconds: spec.healthcheck.timeoutSeconds,
-          periodSeconds: spec.healthcheck.intervalSeconds
         }
       }
     ]
   };
 
   if (config.kubernetes.nodePool) {
-    spec_.nodeSelector = {
+    podSpec.nodeSelector = {
       "cloud.google.com/gke-nodepool": config.kubernetes.nodePool
     };
   }
@@ -87,6 +77,6 @@ export function buildWorkspacePodManifest(
         [K8S_SEEDED_ANNOTATION]: "false"
       }
     },
-    spec: spec_
+    spec: podSpec
   };
 }

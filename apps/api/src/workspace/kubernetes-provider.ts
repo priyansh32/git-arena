@@ -31,10 +31,7 @@ interface PodState {
 }
 
 export class KubernetesWorkspaceProvider implements WorkspaceProvider {
-  constructor(
-    private readonly config: WorkspaceConfig,
-    private readonly spec: WorkspaceSpec
-  ) {}
+  constructor(private readonly config: WorkspaceConfig) {}
 
   private get ns(): string {
     return this.config.kubernetes.namespace;
@@ -48,7 +45,7 @@ export class KubernetesWorkspaceProvider implements WorkspaceProvider {
     return `${this.ns}/${this.getPodName(sessionId)}`;
   }
 
-  async ensureWorkspace(session: Session, runtime: WorkspaceScenarioRuntime): Promise<void> {
+  async ensureWorkspace(session: Session, runtime: WorkspaceScenarioRuntime, spec: WorkspaceSpec): Promise<void> {
     const podName = this.getPodName(session.id);
     const podState = await this.getPodState(podName);
 
@@ -68,7 +65,7 @@ export class KubernetesWorkspaceProvider implements WorkspaceProvider {
     }
 
     await this.removePod(podName);
-    await this.createPod(podName, session);
+    await this.createPod(podName, session, spec);
 
     try {
       await this.waitForPodReady(podName);
@@ -109,7 +106,6 @@ export class KubernetesWorkspaceProvider implements WorkspaceProvider {
 
   openTerminal(sessionId: string): ChildProcessWithoutNullStreams {
     const podName = this.getPodName(sessionId);
-    const bootstrap = this.buildTerminalBootstrapCommand();
     const targetArgs = this.getKubectlTargetArgs();
     const command = [
       "kubectl",
@@ -120,9 +116,8 @@ export class KubernetesWorkspaceProvider implements WorkspaceProvider {
       this.ns,
       podName,
       "--",
-      this.spec.shell,
-      "-lc",
-      bootstrap
+      "/bin/bash",
+      "-li"
     ]
       .map(shellEscape)
       .join(" ");
@@ -182,7 +177,7 @@ export class KubernetesWorkspaceProvider implements WorkspaceProvider {
 
     const duOutput = await this.runScript(
       podName,
-      `du -sk ${shellEscape(this.spec.workingDir)} /tmp 2>/dev/null | awk '{total += $1} END {print total + 0}'`
+      "du -sk /workspace /tmp 2>/dev/null | awk '{total += $1} END {print total + 0}'"
     );
     const ephemeralStorageMb = toMb(parseKilobytes(duOutput.stdout));
 
@@ -295,20 +290,10 @@ export class KubernetesWorkspaceProvider implements WorkspaceProvider {
   async findLargeWorkspaceFile(sessionId: string): Promise<string | null> {
     const output = await this.runScript(
       this.getPodName(sessionId),
-      `find ${shellEscape(this.spec.workingDir)} -xdev -type f -size +${this.spec.monitoring.largeFileSizeMb}M -print -quit 2>/dev/null`
+      "find /workspace -xdev -type f -size +50M -print -quit 2>/dev/null"
     );
     const firstPath = output.stdout.split("\n")[0]?.trim();
     return firstPath && firstPath.length > 0 ? firstPath : null;
-  }
-
-  private buildTerminalBootstrapCommand(): string {
-    const exports = Object.entries(this.spec.terminalBootstrapEnv)
-      .map(([key, value]) => `export ${key}=${shellEscape(value)}`);
-    return [
-      "export TERM=xterm-256color",
-      ...exports,
-      `exec ${shellEscape(this.spec.shell)} -i`
-    ].join("; ");
   }
 
   private getKubectlTargetArgs(): string[] {
@@ -350,8 +335,8 @@ export class KubernetesWorkspaceProvider implements WorkspaceProvider {
     }
   }
 
-  private async createPod(podName: string, session: Session): Promise<void> {
-    const podManifest = buildWorkspacePodManifest(podName, session, this.config, this.spec);
+  private async createPod(podName: string, session: Session, spec: WorkspaceSpec): Promise<void> {
+    const podManifest = buildWorkspacePodManifest(podName, session, this.config, spec);
 
     try {
       await this.runKubectl(["apply", "-f", "-"], false, JSON.stringify(podManifest), 30_000, 1024 * 1024 * 4);

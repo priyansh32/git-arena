@@ -5,7 +5,8 @@ import type { Session } from "@gitarena/shared";
 
 import type { WorkspaceConfig } from "./config.js";
 import { DockerWorkspaceProvider } from "./workspace/docker-provider.js";
-import { buildDefaultWorkspaceSpec, type WorkspaceSpec } from "./workspace/spec.js";
+import { getWorkspaceSpec } from "./workspace/types.js";
+import type { WorkspaceSpec } from "./workspace/spec.js";
 
 function makeWorkspaceConfig(): WorkspaceConfig {
   return {
@@ -21,7 +22,7 @@ function makeWorkspaceConfig(): WorkspaceConfig {
 }
 
 function makeWorkspaceSpec(): WorkspaceSpec {
-  return buildDefaultWorkspaceSpec();
+  return getWorkspaceSpec("git");
 }
 
 function makeSession(): Session {
@@ -46,8 +47,8 @@ function expectFlagValue(args: string[], flag: string, value: string): void {
 
 test("createWorkspaceContainer applies docker hardening flags", async () => {
   const spec = makeWorkspaceSpec();
-  const provider = new DockerWorkspaceProvider(makeWorkspaceConfig(), spec) as unknown as {
-    createContainer: (containerName: string, session: Session) => Promise<void>;
+  const provider = new DockerWorkspaceProvider(makeWorkspaceConfig()) as unknown as {
+    createContainer: (containerName: string, session: Session, spec: WorkspaceSpec) => Promise<void>;
     runDocker: (args: string[]) => Promise<string>;
   };
 
@@ -57,7 +58,7 @@ test("createWorkspaceContainer applies docker hardening flags", async () => {
     return "";
   };
 
-  await provider.createContainer("gitarena-ws-session-hardening-check", makeSession());
+  await provider.createContainer("gitarena-ws-session-hardening-check", makeSession(), spec);
 
   if (!capturedArgs) {
     assert.fail("docker run args were not captured");
@@ -77,22 +78,4 @@ test("createWorkspaceContainer applies docker hardening flags", async () => {
   expectFlagValue(args, "--memory-swap", "256m");
   expectFlagValue(args, "--cpus", "0.5");
   expectFlagValue(args, "--pids-limit", "100");
-  expectFlagValue(args, "--health-cmd", "test -d /workspace && test -w /workspace");
-  expectFlagValue(args, "--health-interval", "10s");
-  expectFlagValue(args, "--health-timeout", "2s");
-  expectFlagValue(args, "--health-retries", "3");
-  expectFlagValue(args, "--health-start-period", "10s");
-
-  const expectedEnvValues = spec.env.map((e) => `${e.name}=${e.value}`);
-  const envValues: string[] = [];
-  for (let i = 0; i < args.length; i += 1) {
-    if (args[i] !== "--env") {
-      continue;
-    }
-    envValues.push(args[i + 1]);
-  }
-  assert.equal(envValues.length, expectedEnvValues.length, "unexpected count of --env flags");
-  for (const expectedEnv of expectedEnvValues) {
-    assert.ok(envValues.includes(expectedEnv), `missing policy env value: ${expectedEnv}`);
-  }
 });

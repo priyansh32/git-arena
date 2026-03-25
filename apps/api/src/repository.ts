@@ -24,6 +24,7 @@ interface ScenarioRow {
   tags: unknown;
   hints: unknown;
   status: Scenario["status"];
+  workspace_type: string;
 }
 
 interface SessionRow {
@@ -94,6 +95,7 @@ export interface ScenarioRuntime {
   version: number;
   seedScript: string;
   evaluatorScript: string;
+  workspaceType: string;
 }
 
 export interface ScenarioPublishMetadata {
@@ -135,6 +137,7 @@ interface ScenarioRuntimeRow {
   version: number;
   seed_script: string;
   evaluator_script: string;
+  workspace_type: string;
 }
 
 interface ScenarioPublishRow {
@@ -235,7 +238,8 @@ function mapScenario(row: ScenarioRow): Scenario {
     estimatedTimeMinutes: row.estimated_time_minutes,
     tags: parseStringArray(row.tags),
     hints: parseStringArray(row.hints),
-    status: row.status
+    status: row.status,
+    workspaceType: row.workspace_type ?? "git"
   };
 }
 
@@ -468,7 +472,8 @@ export class Repository {
         sc.estimated_time_minutes,
         sc.tags,
         sr.hints,
-        sc.status
+        sc.status,
+        sc.workspace_type
       FROM scenarios AS sc
       JOIN scenario_revisions AS sr
         ON sr.scenario_id = sc.id
@@ -494,7 +499,8 @@ export class Repository {
         sc.estimated_time_minutes,
         sc.tags,
         sr.hints,
-        sc.status
+        sc.status,
+        sc.workspace_type
       FROM scenarios AS sc
       JOIN scenario_revisions AS sr
         ON sr.scenario_id = sc.id
@@ -979,9 +985,9 @@ export class Repository {
   }
 
   async listActiveSessionsForMonitor(): Promise<
-    Array<{ session: Session; timeLimitSeconds: number }>
+    Array<{ session: Session; timeLimitSeconds: number; workspaceType: string }>
   > {
-    const result = await this.pool.query<MonitorSessionRow>(
+    const result = await this.pool.query<MonitorSessionRow & { workspace_type: string }>(
       `
       SELECT
         s.id,
@@ -995,11 +1001,14 @@ export class Repository {
         s.expires_at,
         s.hint_count,
         s.termination_reason,
-        sr.time_limit_seconds
+        sr.time_limit_seconds,
+        sc.workspace_type
       FROM sessions AS s
       JOIN scenario_revisions AS sr
         ON sr.scenario_id = s.scenario_id
        AND sr.version = s.scenario_revision
+      JOIN scenarios AS sc
+        ON sc.id = s.scenario_id
       WHERE s.status IN ('active', 'submitted')
       ORDER BY s.started_at ASC
       `
@@ -1007,7 +1016,8 @@ export class Repository {
 
     return result.rows.map((row) => ({
       session: mapSession(row),
-      timeLimitSeconds: row.time_limit_seconds
+      timeLimitSeconds: row.time_limit_seconds,
+      workspaceType: row.workspace_type ?? "git"
     }));
   }
 
@@ -1018,11 +1028,14 @@ export class Repository {
         s.scenario_id,
         s.scenario_revision AS version,
         sr.seed_script,
-        sr.evaluator_script
+        sr.evaluator_script,
+        sc.workspace_type
       FROM sessions AS s
       JOIN scenario_revisions AS sr
         ON sr.scenario_id = s.scenario_id
        AND sr.version = s.scenario_revision
+      JOIN scenarios AS sc
+        ON sc.id = s.scenario_id
       WHERE s.id = $1
       LIMIT 1
       `,
@@ -1037,7 +1050,8 @@ export class Repository {
       scenarioId: result.rows[0].scenario_id,
       version: result.rows[0].version,
       seedScript: result.rows[0].seed_script,
-      evaluatorScript: result.rows[0].evaluator_script
+      evaluatorScript: result.rows[0].evaluator_script,
+      workspaceType: result.rows[0].workspace_type ?? "git"
     };
   }
 

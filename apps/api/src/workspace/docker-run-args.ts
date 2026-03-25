@@ -7,8 +7,6 @@ export function buildWorkspaceContainerRunArgs(
   session: Session,
   spec: WorkspaceSpec
 ): string[] {
-  const envArgs = spec.env.flatMap((entry) => ["--env", `${entry.name}=${entry.value}`]);
-
   const args: string[] = [
     "run",
     "-d",
@@ -38,33 +36,14 @@ export function buildWorkspaceContainerRunArgs(
     "--cpus",
     `${spec.resources.cpuMillicores / 1000}`,
     "--pids-limit",
-    `${spec.resources.pidsLimit}`,
-    "--health-cmd",
-    spec.healthcheck.command,
-    "--health-interval",
-    `${spec.healthcheck.intervalSeconds}s`,
-    "--health-timeout",
-    `${spec.healthcheck.timeoutSeconds}s`,
-    "--health-retries",
-    `${spec.healthcheck.retries}`,
-    "--health-start-period",
-    `${spec.healthcheck.startPeriodSeconds}s`,
-    ...envArgs,
-    "-w",
-    spec.workingDir
+    `${spec.resources.pidsLimit}`
   ];
 
   if (spec.security.runtime) {
     args.push("--runtime", spec.security.runtime);
   }
 
-  args.push(
-    "--entrypoint",
-    "sh",
-    spec.image,
-    "-lc",
-    spec.initCommand
-  );
+  args.push(spec.image);
 
   return args;
 }

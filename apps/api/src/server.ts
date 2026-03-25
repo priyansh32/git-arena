@@ -30,7 +30,7 @@ import {
   WorkspaceManager,
   WorkspaceProvisionError
 } from "./workspace-manager.js";
-import { buildDefaultWorkspaceSpec } from "./workspace/spec.js";
+import { getWorkspaceSpec } from "./workspace/types.js";
 
 declare module "fastify" {
   interface FastifyRequest {
@@ -57,11 +57,12 @@ const googleLoginSchema = z.object({
 });
 
 const config = loadConfig();
-const workspaceSpec = buildDefaultWorkspaceSpec({
-  image: config.workspace.imageOverride
-});
 const repository = new Repository(config.databaseUrl);
-const workspaceManager = new WorkspaceManager(config.workspace, workspaceSpec);
+const workspaceManager = new WorkspaceManager(config.workspace);
+
+function resolveSpec(workspaceType: string) {
+  return getWorkspaceSpec(workspaceType, config.workspace.imageOverride);
+}
 const testAllowedEmailSet = new Set(config.auth.testAllowedEmails);
 
 const app = Fastify({
@@ -246,7 +247,7 @@ function trackCommandsFromSocketInput(session: Session, chunk: string): void {
 const sessionMonitor = new SessionMonitor({
   repository,
   workspaceManager,
-  monitoringLimits: workspaceSpec.monitoring,
+  imageOverride: config.workspace.imageOverride,
   logger: app.log,
   getLastWebsocketActivityMs,
   notifyAndCloseSessionSocket
@@ -533,7 +534,7 @@ app.post("/api/v1/sessions", async (request, reply) => {
     });
   }
   try {
-    await workspaceManager.ensureWorkspace(session, scenarioRuntime);
+    await workspaceManager.ensureWorkspace(session, scenarioRuntime, resolveSpec(scenarioRuntime.workspaceType));
   } catch (error) {
     app.log.error(
       { error, sessionId: session.id },
@@ -578,7 +579,7 @@ app.get("/api/v1/sessions/:id", async (request, reply) => {
       });
     }
     try {
-      await workspaceManager.ensureWorkspace(session, scenarioRuntime);
+      await workspaceManager.ensureWorkspace(session, scenarioRuntime, resolveSpec(scenarioRuntime.workspaceType));
     } catch (error) {
       app.log.error(
         { error, sessionId: session.id },
@@ -651,7 +652,7 @@ app.get("/ws/sessions/:id", { websocket: true } as any, (connection: any, reques
     }
 
     try {
-      await workspaceManager.ensureWorkspace(session, scenarioRuntime);
+      await workspaceManager.ensureWorkspace(session, scenarioRuntime, resolveSpec(scenarioRuntime.workspaceType));
     } catch (error) {
       app.log.error(
         { error, sessionId: session.id },
@@ -877,7 +878,7 @@ app.post("/api/v1/sessions/:id/submit", async (request, reply) => {
       });
     }
     try {
-      await workspaceManager.ensureWorkspace(session, scenarioRuntime);
+      await workspaceManager.ensureWorkspace(session, scenarioRuntime, resolveSpec(scenarioRuntime.workspaceType));
     } catch (error) {
       app.log.error(
         { error, sessionId: session.id },

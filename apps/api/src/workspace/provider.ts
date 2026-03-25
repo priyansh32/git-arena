@@ -2,6 +2,8 @@ import type { ChildProcessWithoutNullStreams } from "node:child_process";
 
 import type { AssertionResult, Session } from "@gitarena/shared";
 
+import type { WorkspaceSpec } from "./spec.js";
+
 export type { WorkspaceSpec, WorkspaceMonitoringLimits } from "./spec.js";
 
 export interface WorkspaceRuntimeMetrics {
@@ -23,7 +25,7 @@ export interface WorkspaceScenarioRuntime {
 
 export interface WorkspaceProvider {
   getRuntimeHandle(sessionId: string): string;
-  ensureWorkspace(session: Session, runtime: WorkspaceScenarioRuntime): Promise<void>;
+  ensureWorkspace(session: Session, runtime: WorkspaceScenarioRuntime, spec: WorkspaceSpec): Promise<void>;
   stopWorkspace(sessionId: string): Promise<void>;
   evaluateWorkspace(session: Session, runtime: WorkspaceScenarioRuntime): Promise<AssertionResult[]>;
   openTerminal(sessionId: string): ChildProcessWithoutNullStreams;
