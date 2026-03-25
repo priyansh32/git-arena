@@ -10,7 +10,7 @@ import type {
 import { Pool, type PoolClient } from "pg";
 
 import { evaluateSubmission } from "./evaluation.js";
-import { runMigrations } from "./migrations.js";
+import { runStartupMaintenance } from "./startup-maintenance.js";
 
 interface ScenarioRow {
   id: string;
@@ -310,7 +310,7 @@ export class Repository {
   }
 
   async init(): Promise<void> {
-    await runMigrations(this.pool);
+    await runStartupMaintenance(this.pool);
   }
 
   async upsertGoogleUser(input: {
