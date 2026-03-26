@@ -44,14 +44,13 @@ Immutable revisions per `scenario_id + version`. Each stores `seed_script`, `eva
 ### `attempts`
 
 - `id` (PK), `session_id` (FK -> sessions), `user_id`, `scenario_id`
-- `score`, `base_score`
+- `score`
 - `passed`, `assertion_results` (jsonb), `evaluated_at`
 
 ## Scoring Logic
 
 Implemented in `apps/api/src/evaluation.ts`.
 
-- `baseScore`: total assertion count, clamped `0..100`
 - `score`: count of passed assertions, clamped `0..100`
 - `passed`: all assertions pass (`passedChecks === totalChecks`)
 

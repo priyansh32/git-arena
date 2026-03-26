@@ -64,7 +64,6 @@ export interface Attempt {
   userId: string;
   scenarioId: string;
   score: number;
-  baseScore: number;
   passed: boolean;
   assertions: AssertionResult[];
   evaluatedAt: string;

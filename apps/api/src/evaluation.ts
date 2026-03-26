@@ -7,7 +7,6 @@ export interface EvaluationInput {
 
 export interface EvaluationOutput {
   score: number;
-  baseScore: number;
   passed: boolean;
   assertions: AssertionResult[];
 }
@@ -52,12 +51,10 @@ export function evaluateSubmission(input: EvaluationInput): EvaluationOutput {
   const passedChecks = assertions.filter((assertion) => assertion.passed).length;
   const totalChecks = assertions.length;
   const score = clamp(passedChecks, 0, 100);
-  const baseScore = clamp(totalChecks, 0, 100);
   const passed = totalChecks > 0 && passedChecks === totalChecks;
 
   return {
     score,
-    baseScore,
     passed,
     assertions
   };
@@ -65,11 +62,10 @@ export function evaluateSubmission(input: EvaluationInput): EvaluationOutput {
 
 export function toAttemptInsert(input: EvaluationOutput): Pick<
   Attempt,
-  "score" | "baseScore" | "passed" | "assertions"
+  "score" | "passed" | "assertions"
 > {
   return {
     score: input.score,
-    baseScore: input.baseScore,
     passed: input.passed,
     assertions: input.assertions
   };
