@@ -47,7 +47,6 @@ interface AttemptRow {
   user_id: string;
   scenario_id: string;
   score: number;
-  base_score: number;
   passed: boolean;
   assertion_results: unknown;
   evaluated_at: Date;
@@ -264,7 +263,6 @@ function mapAttempt(row: AttemptRow): Attempt {
     userId: row.user_id,
     scenarioId: row.scenario_id,
     score: row.score,
-    baseScore: row.base_score,
     passed: row.passed,
     assertions: parseAssertions(row.assertion_results),
     evaluatedAt: row.evaluated_at.toISOString()
@@ -785,19 +783,17 @@ export class Repository {
           user_id,
           scenario_id,
           score,
-          base_score,
           passed,
           assertion_results,
           evaluated_at
         )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb, $9)
+        VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, $8)
         RETURNING
           id,
           session_id,
           user_id,
           scenario_id,
           score,
-          base_score,
           passed,
           assertion_results,
           evaluated_at
@@ -808,7 +804,6 @@ export class Repository {
           row.user_id,
           row.scenario_id,
           evaluation.score,
-          evaluation.baseScore,
           evaluation.passed,
           JSON.stringify(evaluation.assertions),
           now.toISOString()
@@ -862,7 +857,6 @@ export class Repository {
         user_id,
         scenario_id,
         score,
-        base_score,
         passed,
         assertion_results,
         evaluated_at
@@ -886,7 +880,6 @@ export class Repository {
         user_id,
         scenario_id,
         score,
-        base_score,
         passed,
         assertion_results,
         evaluated_at
@@ -1311,7 +1304,6 @@ export class Repository {
         user_id,
         scenario_id,
         score,
-        base_score,
         passed,
         assertion_results,
         evaluated_at

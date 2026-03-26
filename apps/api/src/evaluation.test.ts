@@ -23,7 +23,6 @@ test("evaluateSubmission passes only when all evaluator checks pass", () => {
   });
 
   assert.equal(output.score, 2);
-  assert.equal(output.baseScore, 2);
   assert.equal(output.passed, true);
 });
 
@@ -53,7 +52,6 @@ test("evaluateSubmission fails when any evaluator check fails", () => {
   });
 
   assert.equal(output.score, 2);
-  assert.equal(output.baseScore, 3);
   assert.equal(output.passed, false);
 });
 
@@ -65,6 +63,5 @@ test("evaluateSubmission provides fallback assertion when none are supplied", ()
   assert.equal(output.assertions.length, 1);
   assert.equal(output.assertions[0]?.checkId, "submission_received");
   assert.equal(output.score, 1);
-  assert.equal(output.baseScore, 1);
   assert.equal(output.passed, true);
 });
