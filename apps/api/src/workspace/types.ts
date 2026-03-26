@@ -2,7 +2,7 @@ import type { WorkspaceSpec } from "./spec.js";
 
 const WORKSPACE_TYPES: Record<string, WorkspaceSpec> = {
   git: {
-    image: "gitarena-base:2.43.7-alpine3.19-v1",
+    image: "gitarena-base:v2",
     resources: {
       memoryMb: 256,
       cpuMillicores: 500,
