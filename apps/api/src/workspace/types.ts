@@ -20,7 +20,7 @@ const WORKSPACE_TYPES: Record<string, WorkspaceSpec> = {
     },
     security: {
       user: "1000:1000",
-      runtime: "runsc",
+      runtime: "runsc", // for docker provider; ignored for k8s provider
       network: "none"
     }
   }

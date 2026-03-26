@@ -13,7 +13,7 @@ export function buildWorkspacePodManifest(
   const [uid, gid] = spec.security.user.split(":").map(Number);
 
   const podSpec: Record<string, unknown> = {
-    runtimeClassName: spec.security.runtime,
+    runtimeClassName: config.kubernetes.runtimeClassName,
     automountServiceAccountToken: false,
     enableServiceLinks: false,
     serviceAccountName: "",
