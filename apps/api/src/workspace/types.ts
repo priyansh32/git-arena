@@ -15,7 +15,7 @@ const WORKSPACE_TYPES: Record<string, WorkspaceSpec> = {
       ephemeralStorageTerminationMb: 900,
       processAnomalyThreshold: 50,
       processTerminationThreshold: 100,
-      idleTimeoutMs: 5 * 60 * 1000,
+      idleTimeoutMs: 20 * 60 * 1000,
       largeFileSizeMb: 50
     },
     security: {
