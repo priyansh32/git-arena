@@ -211,10 +211,10 @@ components:
           type: string
         score:
           type: integer
-          description: Final score (0–100), adjusted for hints used
+          description: Number of passed assertions (clamped to 100)
         baseScore:
           type: integer
-          description: Raw evaluator score before hint penalty
+          description: Total number of assertions (clamped to 100)
         passed:
           type: boolean
           description: True when all required assertions pass

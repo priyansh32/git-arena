@@ -309,8 +309,6 @@ score()
 
 **Anti-cheat:** The evaluator container mounts the workspace **read-only**. The submission snapshot is taken server-side — the user cannot influence what is snapshotted. Container network access is disabled.
 
-**Time-based scoring:** A time bonus of up to 20% is applied for fast completion. Time penalties are applied for hint requests (configurable per scenario).
-
 **Partial credit:** Each assertion has a weight (default: equal). Score = sum of passed assertion weights / total weight × 100.
 
 **Retry behavior:** Users can retry a scenario. Prior attempts are preserved. After 3 retries, hints become available (if configured).
@@ -335,7 +333,7 @@ eval.sh / eval.py runs
 Parse PASS/FAIL output lines
     │
     ▼
-Score computed (base + time bonus − hint penalty)
+Score computed from passed assertions
     │
     ▼
 Result stored in attempts table + returned to browser
