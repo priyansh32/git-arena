@@ -30,6 +30,35 @@ import {
   WorkspaceManager,
   WorkspaceProvisionError
 } from "./workspace-manager.js";
+import { getWorkspaceSpec } from "./workspace/types.js";
+
+function describeWorkspaceError(error: unknown): string {
+  const inner = error instanceof WorkspaceProvisionError && error.cause instanceof Error
+    ? error.cause
+    : error instanceof Error ? error : null;
+
+  const msg = inner?.message ?? "";
+
+  if (/timed?\s*out|timeout/i.test(msg)) {
+    return "Workspace timed out during startup. This can happen on cold starts — retry in a moment.";
+  }
+  if (/image.*not found|pull.*error|ImagePullBackOff|ErrImagePull/i.test(msg)) {
+    return "Workspace image could not be pulled. This is a server configuration issue.";
+  }
+  if (/no space|disk.*full|ephemeral.*storage/i.test(msg)) {
+    return "Workspace could not start due to insufficient storage on the node.";
+  }
+  if (/OOMKilled|memory/i.test(msg)) {
+    return "Workspace was killed due to memory limits.";
+  }
+  if (/connection refused|ECONNREFUSED|network/i.test(msg)) {
+    return "Workspace infrastructure is unreachable. Check cluster connectivity.";
+  }
+
+  return error instanceof WorkspaceProvisionError
+    ? `Workspace provisioning failed: ${error.message}`
+    : "Workspace could not be started. Retry shortly.";
+}
 
 declare module "fastify" {
   interface FastifyRequest {
@@ -58,6 +87,10 @@ const googleLoginSchema = z.object({
 const config = loadConfig();
 const repository = new Repository(config.databaseUrl);
 const workspaceManager = new WorkspaceManager(config.workspace);
+
+function resolveSpec(workspaceType: string) {
+  return getWorkspaceSpec(workspaceType, config.workspace.imageOverride);
+}
 const testAllowedEmailSet = new Set(config.auth.testAllowedEmails);
 
 const app = Fastify({
@@ -242,6 +275,7 @@ function trackCommandsFromSocketInput(session: Session, chunk: string): void {
 const sessionMonitor = new SessionMonitor({
   repository,
   workspaceManager,
+  imageOverride: config.workspace.imageOverride,
   logger: app.log,
   getLastWebsocketActivityMs,
   notifyAndCloseSessionSocket
@@ -528,20 +562,14 @@ app.post("/api/v1/sessions", async (request, reply) => {
     });
   }
   try {
-    await workspaceManager.ensureWorkspace(session, scenarioRuntime);
+    await workspaceManager.ensureWorkspace(session, scenarioRuntime, resolveSpec(scenarioRuntime.workspaceType));
   } catch (error) {
     app.log.error(
       { error, sessionId: session.id },
       "Failed to provision workspace container"
     );
     await repository.terminateSession(session.id, user.id);
-
-    const message =
-      config.workspace.provider === "kubernetes"
-        ? "Unable to provision workspace pod. Cold starts may take a few moments. Retry shortly."
-        : "Unable to provision workspace container. Retry shortly.";
-
-    return reply.code(503).send({ message });
+    return reply.code(503).send({ message: describeWorkspaceError(error) });
   }
 
   const response: CreateSessionResponse = { session };
@@ -573,15 +601,13 @@ app.get("/api/v1/sessions/:id", async (request, reply) => {
       });
     }
     try {
-      await workspaceManager.ensureWorkspace(session, scenarioRuntime);
+      await workspaceManager.ensureWorkspace(session, scenarioRuntime, resolveSpec(scenarioRuntime.workspaceType));
     } catch (error) {
       app.log.error(
         { error, sessionId: session.id },
         "Failed to ensure workspace container"
       );
-      return reply.code(503).send({
-        message: "Workspace is unavailable. Retry in a moment."
-      });
+      return reply.code(503).send({ message: describeWorkspaceError(error) });
     }
   }
 
@@ -646,13 +672,13 @@ app.get("/ws/sessions/:id", { websocket: true } as any, (connection: any, reques
     }
 
     try {
-      await workspaceManager.ensureWorkspace(session, scenarioRuntime);
+      await workspaceManager.ensureWorkspace(session, scenarioRuntime, resolveSpec(scenarioRuntime.workspaceType));
     } catch (error) {
       app.log.error(
         { error, sessionId: session.id },
         "Failed to ensure workspace before terminal attach"
       );
-      socket.close(1011, "Workspace unavailable");
+      socket.close(1011, describeWorkspaceError(error));
       return;
     }
 
@@ -872,15 +898,13 @@ app.post("/api/v1/sessions/:id/submit", async (request, reply) => {
       });
     }
     try {
-      await workspaceManager.ensureWorkspace(session, scenarioRuntime);
+      await workspaceManager.ensureWorkspace(session, scenarioRuntime, resolveSpec(scenarioRuntime.workspaceType));
     } catch (error) {
       app.log.error(
         { error, sessionId: session.id },
         "Failed to ensure workspace before evaluation"
       );
-      return reply.code(503).send({
-        message: "Workspace is unavailable. Retry in a moment."
-      });
+      return reply.code(503).send({ message: describeWorkspaceError(error) });
     }
 
     try {

@@ -4,27 +4,14 @@ import test from "node:test";
 import type { Session } from "@gitarena/shared";
 
 import type { WorkspaceConfig } from "./config.js";
-import { WorkspaceManager } from "./workspace-manager.js";
-
-const POLICY_ENV_ALLOWLIST = [
-  "HOME=/home/gituser",
-  "SHELL=/bin/bash",
-  "TERM=xterm-256color",
-  "GIT_AUTHOR_NAME=Git Arena",
-  "GIT_AUTHOR_EMAIL=user@gitarena.dev",
-  "GIT_COMMITTER_NAME=Git Arena",
-  "GIT_COMMITTER_EMAIL=user@gitarena.dev",
-  "LANG=en_US.UTF-8"
-];
+import { DockerWorkspaceProvider } from "./workspace/docker-provider.js";
+import { getWorkspaceSpec } from "./workspace/types.js";
+import type { WorkspaceSpec } from "./workspace/spec.js";
 
 function makeWorkspaceConfig(): WorkspaceConfig {
   return {
     provider: "docker",
-    image: "gitarena-base:2.43.7-alpine3.19-v1",
-    rootDir: "/workspace",
-    shell: "/bin/bash",
     containerPrefix: "gitarena-ws",
-    initCommand: "mkdir -p /workspace && cd /workspace && exec tail -f /dev/null",
     kubernetes: {
       namespace: "gitarena-sessions",
       runtimeClassName: "gvisor",
@@ -32,6 +19,10 @@ function makeWorkspaceConfig(): WorkspaceConfig {
       podReadyTimeoutSeconds: 240
     }
   };
+}
+
+function makeWorkspaceSpec(): WorkspaceSpec {
+  return getWorkspaceSpec("git");
 }
 
 function makeSession(): Session {
@@ -55,18 +46,19 @@ function expectFlagValue(args: string[], flag: string, value: string): void {
 }
 
 test("createWorkspaceContainer applies docker hardening flags", async () => {
-  const manager = new WorkspaceManager(makeWorkspaceConfig()) as unknown as {
-    createWorkspaceContainer: (containerName: string, session: Session) => Promise<void>;
+  const spec = makeWorkspaceSpec();
+  const provider = new DockerWorkspaceProvider(makeWorkspaceConfig()) as unknown as {
+    createContainer: (containerName: string, session: Session, spec: WorkspaceSpec) => Promise<void>;
     runDocker: (args: string[]) => Promise<string>;
   };
 
   let capturedArgs: string[] | null = null;
-  manager.runDocker = async (args: string[]) => {
+  provider.runDocker = async (args: string[]) => {
     capturedArgs = args;
     return "";
   };
 
-  await manager.createWorkspaceContainer("gitarena-ws-session-hardening-check", makeSession());
+  await provider.createContainer("gitarena-ws-session-hardening-check", makeSession(), spec);
 
   if (!capturedArgs) {
     assert.fail("docker run args were not captured");
@@ -86,21 +78,4 @@ test("createWorkspaceContainer applies docker hardening flags", async () => {
   expectFlagValue(args, "--memory-swap", "256m");
   expectFlagValue(args, "--cpus", "0.5");
   expectFlagValue(args, "--pids-limit", "100");
-  expectFlagValue(args, "--health-cmd", "test -d /workspace && test -w /workspace");
-  expectFlagValue(args, "--health-interval", "10s");
-  expectFlagValue(args, "--health-timeout", "2s");
-  expectFlagValue(args, "--health-retries", "3");
-  expectFlagValue(args, "--health-start-period", "10s");
-
-  const envValues: string[] = [];
-  for (let i = 0; i < args.length; i += 1) {
-    if (args[i] !== "--env") {
-      continue;
-    }
-    envValues.push(args[i + 1]);
-  }
-  assert.equal(envValues.length, POLICY_ENV_ALLOWLIST.length, "unexpected count of --env flags");
-  for (const expectedEnv of POLICY_ENV_ALLOWLIST) {
-    assert.ok(envValues.includes(expectedEnv), `missing policy env value: ${expectedEnv}`);
-  }
 });

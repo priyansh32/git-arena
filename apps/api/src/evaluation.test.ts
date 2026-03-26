@@ -4,15 +4,8 @@ import test from "node:test";
 import { evaluateSubmission } from "./evaluation.js";
 
 test("evaluateSubmission passes only when all evaluator checks pass", () => {
-  const now = new Date("2026-03-19T18:45:00.000Z");
-  const started = new Date("2026-03-19T18:40:00.000Z");
-
   const output = evaluateSubmission({
     objective: "Recover branch history",
-    startedAt: started,
-    evaluatedAt: now,
-    estimatedTimeMinutes: 20,
-    hintCount: 2,
     assertions: [
       {
         checkId: "head_attached",
@@ -30,22 +23,12 @@ test("evaluateSubmission passes only when all evaluator checks pass", () => {
   });
 
   assert.equal(output.score, 2);
-  assert.equal(output.baseScore, 2);
-  assert.equal(output.hintPenalty, 0);
-  assert.equal(output.timeBonus, 0);
   assert.equal(output.passed, true);
 });
 
 test("evaluateSubmission fails when any evaluator check fails", () => {
-  const now = new Date("2026-03-19T19:30:00.000Z");
-  const started = new Date("2026-03-19T18:00:00.000Z");
-
   const output = evaluateSubmission({
     objective: "Recover branch history",
-    startedAt: started,
-    evaluatedAt: now,
-    estimatedTimeMinutes: 30,
-    hintCount: 0,
     assertions: [
       {
         checkId: "head_attached",
@@ -69,27 +52,16 @@ test("evaluateSubmission fails when any evaluator check fails", () => {
   });
 
   assert.equal(output.score, 2);
-  assert.equal(output.baseScore, 3);
-  assert.equal(output.timeBonus, 0);
-  assert.equal(output.hintPenalty, 0);
   assert.equal(output.passed, false);
 });
 
 test("evaluateSubmission provides fallback assertion when none are supplied", () => {
-  const now = new Date("2026-03-19T18:05:00.000Z");
-  const started = new Date("2026-03-19T18:00:00.000Z");
-
   const output = evaluateSubmission({
-    objective: "Recover branch history",
-    startedAt: started,
-    evaluatedAt: now,
-    estimatedTimeMinutes: 20,
-    hintCount: 0
+    objective: "Recover branch history"
   });
 
   assert.equal(output.assertions.length, 1);
   assert.equal(output.assertions[0]?.checkId, "submission_received");
   assert.equal(output.score, 1);
-  assert.equal(output.baseScore, 1);
   assert.equal(output.passed, true);
 });

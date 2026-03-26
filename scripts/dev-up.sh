@@ -115,17 +115,13 @@ set_common_api_env() {
   export AUTH_TEST_MODE="${AUTH_TEST_MODE:-$(read_env AUTH_TEST_MODE false)}"
   export AUTH_TEST_ALLOWED_EMAILS="${AUTH_TEST_ALLOWED_EMAILS:-$(read_env AUTH_TEST_ALLOWED_EMAILS '')}"
 
-  export WORKSPACE_SHELL="${WORKSPACE_SHELL:-$(read_env WORKSPACE_SHELL /bin/bash)}"
 }
 
 set_api_mode_env() {
   [[ "${MODE}" == "docker" ]] || fail "mode must be docker for local dev"
 
   export WORKSPACE_PROVIDER="docker"
-  export WORKSPACE_IMAGE="${WORKSPACE_IMAGE:-$(read_env WORKSPACE_IMAGE gitarena-base:${GITARENA_WORKSPACE_IMAGE_TAG_DEFAULT})}"
-  export WORKSPACE_ROOT="${WORKSPACE_ROOT:-$(read_env WORKSPACE_ROOT /workspace)}"
   export WORKSPACE_CONTAINER_PREFIX="${WORKSPACE_CONTAINER_PREFIX:-$(read_env WORKSPACE_CONTAINER_PREFIX gitarena-ws)}"
-  export WORKSPACE_INIT_COMMAND="${WORKSPACE_INIT_COMMAND:-$(read_env WORKSPACE_INIT_COMMAND 'mkdir -p /workspace && cd /workspace && exec tail -f /dev/null')}"
 }
 
 start_api_foreground() {

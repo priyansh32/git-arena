@@ -309,8 +309,6 @@ score()
 
 **Anti-cheat:** The evaluator container mounts the workspace **read-only**. The submission snapshot is taken server-side — the user cannot influence what is snapshotted. Container network access is disabled.
 
-**Time-based scoring:** A time bonus of up to 20% is applied for fast completion. Time penalties are applied for hint requests (configurable per scenario).
-
 **Partial credit:** Each assertion has a weight (default: equal). Score = sum of passed assertion weights / total weight × 100.
 
 **Retry behavior:** Users can retry a scenario. Prior attempts are preserved. After 3 retries, hints become available (if configured).
@@ -335,7 +333,7 @@ eval.sh / eval.py runs
 Parse PASS/FAIL output lines
     │
     ▼
-Score computed (base + time bonus − hint penalty)
+Score computed from passed assertions
     │
     ▼
 Result stored in attempts table + returned to browser
@@ -397,8 +395,6 @@ Result stored in attempts table + returned to browser
 | scenario_id | uuid FK → scenarios | |
 | score | int | 0–100 final score |
 | base_score | int | from evaluator |
-| time_bonus | int | |
-| hint_penalty | int | |
 | assertion_results | jsonb | full breakdown |
 | evaluated_at | timestamp | |
 | passed | bool | |
@@ -486,8 +482,6 @@ The API backend proxies this to the container's ttyd process. The `ws_token` is 
   "scenario_id": "uuid",
   "score": 82,
   "base_score": 75,
-  "time_bonus": 12,
-  "hint_penalty": 5,
   "passed": true,
   "evaluated_at": "ISO8601",
   "assertions": [

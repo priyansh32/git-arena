@@ -44,13 +44,8 @@ const envSchema = z.object({
     .default("postgres://gitarena:gitarena@localhost:5432/gitarena"),
   CORS_ORIGINS: z.string().optional(),
   WORKSPACE_PROVIDER: workspaceProviderSchema.default("docker"),
-  WORKSPACE_IMAGE: z.string().default("gitarena-base:2.43.7-alpine3.19-v1"),
-  WORKSPACE_ROOT: z.string().default("/workspace"),
-  WORKSPACE_SHELL: z.string().default("/bin/bash"),
+  WORKSPACE_IMAGE: z.string().optional(),
   WORKSPACE_CONTAINER_PREFIX: z.string().default("gitarena-ws"),
-  WORKSPACE_INIT_COMMAND: z
-    .string()
-    .default("mkdir -p /workspace && cd /workspace && exec tail -f /dev/null"),
   WORKSPACE_K8S_NAMESPACE: z.string().default("gitarena-sessions"),
   WORKSPACE_K8S_CONTEXT: z.string().optional(),
   WORKSPACE_K8S_KUBECONFIG: z.string().optional(),
@@ -80,11 +75,8 @@ export interface WorkspaceKubernetesConfig {
 
 export interface WorkspaceConfig {
   provider: WorkspaceProvider;
-  image: string;
-  rootDir: string;
-  shell: string;
+  imageOverride?: string;
   containerPrefix: string;
-  initCommand: string;
   kubernetes: WorkspaceKubernetesConfig;
 }
 
@@ -132,11 +124,11 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     corsOrigins,
     workspace: {
       provider: parsed.WORKSPACE_PROVIDER,
-      image: parsed.WORKSPACE_IMAGE,
-      rootDir: parsed.WORKSPACE_ROOT,
-      shell: parsed.WORKSPACE_SHELL,
+      imageOverride:
+        parsed.WORKSPACE_IMAGE && parsed.WORKSPACE_IMAGE.trim().length > 0
+          ? parsed.WORKSPACE_IMAGE.trim()
+          : undefined,
       containerPrefix: parsed.WORKSPACE_CONTAINER_PREFIX,
-      initCommand: parsed.WORKSPACE_INIT_COMMAND,
       kubernetes: {
         namespace: parsed.WORKSPACE_K8S_NAMESPACE,
         context:

@@ -14,6 +14,7 @@ export interface Scenario {
   tags: string[];
   hints: string[];
   status: ScenarioStatus;
+  workspaceType: string;
 }
 
 export interface UserProfile {
@@ -63,9 +64,6 @@ export interface Attempt {
   userId: string;
   scenarioId: string;
   score: number;
-  baseScore: number;
-  timeBonus: number;
-  hintPenalty: number;
   passed: boolean;
   assertions: AssertionResult[];
   evaluatedAt: string;

@@ -8,18 +8,16 @@ Initial implementation scaffold based on `git-arena-designdoc.md`.
 - `apps/web` - React + Vite frontend
 - `packages/shared` - shared TypeScript types
 
-## Developer Docs
+## Docs
 
-Detailed onboarding + architecture docs live in [`dev-docs/`](dev-docs/README.md):
-
-- Start here: [`dev-docs/README.md`](dev-docs/README.md)
-- Quick setup: [`dev-docs/01-quick-start.md`](dev-docs/01-quick-start.md)
-- System architecture: [`dev-docs/03-architecture-and-flow.md`](dev-docs/03-architecture-and-flow.md)
-- Backend deep dive: [`dev-docs/04-backend-api.md`](dev-docs/04-backend-api.md)
-- Scenario runtime and challenge authoring: [`dev-docs/05-workspace-runtime-and-scenarios.md`](dev-docs/05-workspace-runtime-and-scenarios.md)
-- Deployment and ops: [`dev-docs/09-deployment-and-ops.md`](dev-docs/09-deployment-and-ops.md)
+- API reference (OpenAPI 3.0): [`docs/openapi.yaml`](docs/openapi.yaml)
+- Design doc: [`docs/git-arena-designdoc.md`](docs/git-arena-designdoc.md)
+- Data model and scoring: [`docs/data-model-and-scoring.md`](docs/data-model-and-scoring.md)
+- GCP & K8s CLI reference: [`docs/gcp-reference.md`](docs/gcp-reference.md)
+- Workspace security policy: [`docs/workspace-policy.md`](docs/workspace-policy.md)
+- K8s deployment: [`deploy/k8s/README.md`](deploy/k8s/README.md)
+- Autopilot migration: [`docs/autopilot-migration.md`](docs/autopilot-migration.md)
 - Internet test exposure: [`docs/internet-test-setup.md`](docs/internet-test-setup.md)
-- Autopilot session migration: [`docs/autopilot-migration.md`](docs/autopilot-migration.md)
 
 ## Workflow Modes
 
@@ -156,27 +154,13 @@ This is a bootstrap foundation with:
 - Google Sign-In with server-side session cookies and per-user API isolation
 - CSRF tokens enforced for mutating authenticated API routes
 
-## API routes (current)
+## API reference
 
-- `GET /api/v1/health/live`
-- `GET /api/v1/health/ready`
-- `GET /api/v1/health`
-- `POST /api/v1/auth/google`
-- `POST /api/v1/auth/logout`
-- `GET /api/v1/users/me`
-- `GET /api/v1/scenarios`
-- `GET /api/v1/scenarios/:id`
-- `GET /api/v1/scenarios/:id/attempts`
-- `GET /api/v1/users/me/active-session`
-- `POST /api/v1/sessions`
-  - Returns `409` if user already has an `active`/`submitted` session.
-- `GET /api/v1/sessions/:id`
-- `DELETE /api/v1/sessions/:id`
-- `POST /api/v1/sessions/:id/hint`
-- `POST /api/v1/sessions/:id/submit`
-- `GET /api/v1/sessions/:id/result`
-- `GET /api/v1/users/me/history`
-- `WS /ws/sessions/:id?token=<wsToken>`
+See [`docs/openapi.yaml`](docs/openapi.yaml) for the full OpenAPI 3.0 spec, including
+request/response schemas, authentication requirements, and error shapes.
+
+The WebSocket terminal endpoint (`WS /ws/sessions/:id?token=<wsToken>`) is documented
+in the spec's `info.description` block.
 
 ## Workspace Runtime Notes
 
@@ -185,6 +169,7 @@ This is a bootstrap foundation with:
   - `kubernetes` (GKE/K8s pod-backed sessions)
 - Docker mode provisions one container per active session using the host Docker socket.
   - Docker runtime is hardened with:
+    - `--runtime runsc` (gVisor sandbox)
     - `--network none`
     - `--user 1000:1000`
     - `--cap-drop ALL`
@@ -199,3 +184,33 @@ This is a bootstrap foundation with:
 
 - `GET /api/v1/scenarios` and `GET /api/v1/scenarios/:id` are public.
 - Session, attempt, and history routes require an authenticated cookie session.
+
+## Roadmap
+
+### Highest Priority
+
+1. Phase 4 — session monitor and resource-triggered termination
+2. Phase 5 — seed script validation pipeline for scenario builds
+3. Phase 6 — snapshot/evaluator separation with object storage snapshots
+4. Phase 7 — structured audit logging and ops runbook queries
+
+### Security Gaps
+
+- Phase 3 network policy enforcement depends on a CNI that supports `NetworkPolicy` (Calico/Cilium/Dataplane V2)
+- Docker provider applies `--network none` but does not emulate K8s namespace/label policy semantics
+- No session monitor loop for idle/resource termination yet
+- Evaluator not yet split into separate snapshot-driven runtime (Phase 6)
+- Full security audit event taxonomy not yet implemented
+
+### Product / Platform Gaps
+
+- Role-based access (`learner/author/admin`) is incomplete
+- Scenario authoring admin build/publish workflow is incomplete
+- Richer observability dashboards/alerts not yet implemented
+
+### Testing Gaps
+
+- Integration tests for Kubernetes provider paths
+- Regression tests for websocket attach across provider modes
+- Tests for provider-specific failure behavior (pod ready timeout, image pull failure)
+- Tests for Phase 3+ security controls

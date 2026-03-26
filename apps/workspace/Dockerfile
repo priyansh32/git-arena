@@ -43,10 +43,11 @@ RUN mkdir -p /workspace /repos /tmp && \
 RUN chmod 555 /usr /bin /sbin /etc
 
 COPY bashrc /home/gituser/.bashrc
+COPY bashrc /home/gituser/.bash_profile
 COPY gitarena_eval.py /usr/local/lib/python3.11/gitarena_eval.py
 
-RUN chown gituser:gituser /home/gituser/.bashrc && \
-    chmod 644 /home/gituser/.bashrc && \
+RUN chown gituser:gituser /home/gituser/.bashrc /home/gituser/.bash_profile && \
+    chmod 644 /home/gituser/.bashrc /home/gituser/.bash_profile && \
     chmod 644 /usr/local/lib/python3.11/gitarena_eval.py && \
     git config --system core.hooksPath /dev/null && \
     git config --system core.pager cat && \
@@ -64,4 +65,7 @@ ENV HOME=/home/gituser \
 USER gituser
 WORKDIR /workspace
 
-CMD ["ttyd", "-p", "7681", "-i", "127.0.0.1", "--writable", "bash"]
+HEALTHCHECK --interval=10s --timeout=2s --retries=3 --start-period=10s \
+  CMD test -d /workspace && test -w /workspace
+
+CMD ["sh", "-lc", "mkdir -p /workspace && cd /workspace && exec tail -f /dev/null"]

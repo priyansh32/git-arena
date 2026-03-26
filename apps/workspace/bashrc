@@ -1,2 +1,13 @@
 # Minimal shell profile for GitArena workspace sessions.
-export PS1="gitarena:\w$ "
+export PS1="\[\033[1;32m\]gitarena\[\033[0m\]:\[\033[1;34m\]\w\[\033[0m\]$ "
+export GIT_PAGER=cat
+export PAGER=cat
+export LESS=FRX
+
+# Color support
+alias ls='ls --color=auto'
+alias grep='grep --color=auto'
+alias diff='diff --color=auto'
+export GIT_CONFIG_COUNT=1
+export GIT_CONFIG_KEY_0=color.ui
+export GIT_CONFIG_VALUE_0=always

@@ -102,6 +102,79 @@ Important:
 - If the API is running outside the cluster (host machine), this policy blocks terminal ingress by design.
 - `deploy/k8s/api-deploy.env` is local-only and intentionally not tracked in git.
 
+## Cluster Prerequisites
+
+### Phase 2 — gVisor RuntimeClass
+
+Challenge pods use `runtimeClassName: gvisor`. The cluster needs gVisor support:
+
+1. Use GKE with a node pool that supports GKE Sandbox / runsc-enabled nodes.
+2. Confirm: `kubectl get runtimeclass gvisor`
+3. If missing, install after runsc support is available:
+   ```yaml
+   apiVersion: node.k8s.io/v1
+   kind: RuntimeClass
+   metadata:
+     name: gvisor
+   handler: runsc
+   ```
+
+### Phase 2 — Service Account Token Mounting
+
+Challenge pods disable token mounting (`automountServiceAccountToken: false`, `enableServiceLinks: false`, `serviceAccountName: ""`). Challenge containers never call the Kubernetes API — orchestration is done by the backend. If future scenarios need in-pod K8s API access, this must be explicitly reviewed.
+
+### Phase 2 — API RBAC
+
+The API must create/delete/exec into pods in `gitarena-sessions`:
+
+```bash
+kubectl apply -f deploy/k8s/api-workspace-rbac.yaml
+```
+
+Run the API in namespace `gitarena-api` with service account `api-backend`.
+
+### Phase 3 — NetworkPolicy CNI
+
+`session-isolation-networkpolicy.yaml` enforces ingress (only from `gitarena-api` pods labeled `app: api-backend` on port `7681`) and denies all egress. Requires a CNI that enforces `NetworkPolicy` (GKE Dataplane V2, Calico, or Cilium). Without one, the manifest applies but has no effect.
+
+The API pod must match namespace `gitarena-api` and label `app: api-backend`. If API runs outside the cluster, session pod ingress on `7681` is blocked by design.
+
+### Phase 4 — Metrics API
+
+Session monitor needs `metrics-server` for per-pod CPU/memory:
+
+```bash
+kubectl get apiservice v1beta1.metrics.k8s.io
+kubectl top pods -n gitarena-sessions
+```
+
+The API service account also needs read access to `metrics.k8s.io` and exec into session pods. Phase 2 RBAC remains required.
+
 ## Verification Scripts
 
 Use manual `kubectl` verification for security controls and network policy behavior.
+
+## K8s Operations
+
+### Prerequisites for `WORKSPACE_PROVIDER=kubernetes`
+
+- kube context must be configured (`kubectl config current-context`)
+- `runtimeclass/gvisor` must exist
+- namespace `gitarena-sessions` should exist
+- workspace image must be available in Artifact Registry
+
+### Operational Checks
+
+1. `GET /api/v1/health/ready` returns `200`
+2. Sign in with Google
+3. Start session
+4. Verify pod appears: `kubectl -n gitarena-sessions get pods`
+5. Submit or quit session and verify pod cleanup
+
+### GKE Auth Plugin
+
+If `kubectl` mentions missing `gke-gcloud-auth-plugin`:
+
+```bash
+export USE_GKE_GCLOUD_AUTH_PLUGIN=True
+```

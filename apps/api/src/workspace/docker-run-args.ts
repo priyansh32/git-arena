@@ -1,18 +1,13 @@
 import type { Session } from "@gitarena/shared";
 
-import type { WorkspaceConfig } from "../config.js";
-import { POLICY_ENV_ALLOWLIST } from "./constants.js";
-
-const DOCKER_WORKSPACE_HEALTHCHECK_CMD = "test -d /workspace && test -w /workspace";
+import type { WorkspaceSpec } from "./spec.js";
 
 export function buildWorkspaceContainerRunArgs(
   containerName: string,
   session: Session,
-  config: WorkspaceConfig
+  spec: WorkspaceSpec
 ): string[] {
-  const policyEnvArgs = POLICY_ENV_ALLOWLIST.flatMap((entry) => ["--env", `${entry.name}=${entry.value}`]);
-
-  return [
+  const args: string[] = [
     "run",
     "-d",
     "--rm",
@@ -25,40 +20,30 @@ export function buildWorkspaceContainerRunArgs(
     "--label",
     `gitarena.user.id=${session.userId}`,
     "--network",
-    "none",
+    spec.security.network,
     "--user",
-    "1000:1000",
+    spec.security.user,
     "--cap-drop",
     "ALL",
     "--security-opt",
     "no-new-privileges",
     "--memory",
-    "256m",
+    `${spec.resources.memoryMb}m`,
     "--memory-reservation",
-    "128m",
+    `${Math.floor(spec.resources.memoryMb / 2)}m`,
     "--memory-swap",
-    "256m",
+    `${spec.resources.memoryMb}m`,
     "--cpus",
-    "0.5",
+    `${spec.resources.cpuMillicores / 1000}`,
     "--pids-limit",
-    "100",
-    "--health-cmd",
-    DOCKER_WORKSPACE_HEALTHCHECK_CMD,
-    "--health-interval",
-    "10s",
-    "--health-timeout",
-    "2s",
-    "--health-retries",
-    "3",
-    "--health-start-period",
-    "10s",
-    ...policyEnvArgs,
-    "-w",
-    config.rootDir,
-    "--entrypoint",
-    "sh",
-    config.image,
-    "-lc",
-    config.initCommand
+    `${spec.resources.pidsLimit}`
   ];
+
+  if (spec.security.runtime) {
+    args.push("--runtime", spec.security.runtime);
+  }
+
+  args.push(spec.image);
+
+  return args;
 }
