@@ -1,0 +1,877 @@
+openapi: 3.0.3
+info:
+  title: GitArena API
+  version: 0.1.0
+  description: |
+    REST API for the GitArena Git training platform.
+
+    **Base URL:** `/api/v1`
+
+    **Authentication:** All mutating endpoints (POST / PUT / PATCH / DELETE) except
+    `POST /auth/google` require an authenticated session cookie (`gitarena_session`,
+    set on login) and the CSRF token in the `x-gitarena-csrf` header.
+
+    **CSRF token:** Returned by `POST /auth/google` and `GET /users/me`. Include it
+    in every mutating request as the `x-gitarena-csrf` header.
+
+    **WebSocket terminal:** Connect to `WS /ws/sessions/{id}?token={wsToken}` using
+    the `wsUrl` and `wsToken` from a session object. All frames are plain UTF-8 text
+    (raw terminal I/O). The server sends a ping every 25 s; two missed pongs close
+    the connection.
+
+servers:
+  - url: /api/v1
+
+tags:
+  - name: health
+    description: Liveness and readiness probes
+  - name: auth
+    description: Google Sign-In and session management
+  - name: users
+    description: Authenticated user profile and history
+  - name: scenarios
+    description: Scenario catalog
+  - name: sessions
+    description: Challenge session lifecycle
+
+components:
+  securitySchemes:
+    sessionCookie:
+      type: apiKey
+      in: cookie
+      name: gitarena_session
+    csrfHeader:
+      type: apiKey
+      in: header
+      name: x-gitarena-csrf
+
+  schemas:
+    UserProfile:
+      type: object
+      required: [id, email, displayName, avatarUrl, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        displayName:
+          type: string
+        avatarUrl:
+          type: string
+          format: uri
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    Difficulty:
+      type: string
+      enum: [beginner, intermediate, advanced]
+
+    ScenarioStatus:
+      type: string
+      enum: [draft, testing, published, deprecated]
+
+    ScenarioCommonality:
+      type: string
+      enum: [very_common, common, occasional, rare]
+
+    Scenario:
+      type: object
+      required:
+        - id
+        - title
+        - description
+        - objective
+        - difficulty
+        - commonality
+        - estimatedTimeMinutes
+        - tags
+        - hints
+        - status
+        - workspaceType
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+        objective:
+          type: string
+          description: Goal shown to the user in the workspace panel
+        difficulty:
+          $ref: '#/components/schemas/Difficulty'
+        commonality:
+          $ref: '#/components/schemas/ScenarioCommonality'
+        estimatedTimeMinutes:
+          type: integer
+        tags:
+          type: array
+          items:
+            type: string
+        hints:
+          type: array
+          items:
+            type: string
+        status:
+          $ref: '#/components/schemas/ScenarioStatus'
+        workspaceType:
+          type: string
+
+    SessionStatus:
+      type: string
+      enum: [pending, active, submitted, evaluated, terminated]
+
+    Session:
+      type: object
+      required:
+        - id
+        - userId
+        - scenarioId
+        - status
+        - startedAt
+        - wsUrl
+        - wsToken
+        - expiresAt
+        - hintCount
+      properties:
+        id:
+          type: string
+          format: uuid
+        userId:
+          type: string
+          format: uuid
+        scenarioId:
+          type: string
+        status:
+          $ref: '#/components/schemas/SessionStatus'
+        startedAt:
+          type: string
+          format: date-time
+        wsUrl:
+          type: string
+          description: WebSocket URL for the terminal connection
+          example: ws://localhost:3001/ws/sessions/abc-123
+        wsToken:
+          type: string
+          description: Token required as the `token` query parameter when connecting to wsUrl
+        expiresAt:
+          type: string
+          format: date-time
+          description: Hard expiry enforced by the session monitor
+        hintCount:
+          type: integer
+          description: Number of hints used so far
+
+    AssertionResult:
+      type: object
+      required: [checkId, passed, explanation, weight]
+      properties:
+        checkId:
+          type: string
+          description: Check identifier defined by the scenario evaluator
+        passed:
+          type: boolean
+        explanation:
+          type: string
+          description: Human-readable result message shown to the user
+        weight:
+          type: integer
+          description: Contribution to total score (0–100)
+
+    Attempt:
+      type: object
+      required:
+        - id
+        - sessionId
+        - userId
+        - scenarioId
+        - score
+        - baseScore
+        - passed
+        - assertions
+        - evaluatedAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        sessionId:
+          type: string
+          format: uuid
+        userId:
+          type: string
+          format: uuid
+        scenarioId:
+          type: string
+        score:
+          type: integer
+          description: Number of passed assertions (clamped to 100)
+        baseScore:
+          type: integer
+          description: Total number of assertions (clamped to 100)
+        passed:
+          type: boolean
+          description: True when all required assertions pass
+        assertions:
+          type: array
+          items:
+            $ref: '#/components/schemas/AssertionResult'
+        evaluatedAt:
+          type: string
+          format: date-time
+
+    Error:
+      type: object
+      required: [message]
+      properties:
+        message:
+          type: string
+
+    ValidationError:
+      type: object
+      required: [message, issues]
+      properties:
+        message:
+          type: string
+          example: Validation failed
+        issues:
+          type: array
+          items:
+            type: object
+            properties:
+              code:
+                type: string
+              path:
+                type: array
+                items:
+                  type: string
+              message:
+                type: string
+
+paths:
+  /health:
+    get:
+      tags: [health]
+      summary: General health check
+      description: Returns 200 when the API is running and the database is reachable.
+      operationId: getHealth
+      responses:
+        '200':
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+        '503':
+          description: Database unreachable
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: error
+
+  /health/live:
+    get:
+      tags: [health]
+      summary: Liveness probe
+      description: Returns 200 as long as the process is running.
+      operationId: getLive
+      responses:
+        '200':
+          description: Process alive
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+                  service:
+                    type: string
+                    example: api
+
+  /health/ready:
+    get:
+      tags: [health]
+      summary: Readiness probe
+      description: Returns 200 when the API is ready to serve traffic (database connected).
+      operationId: getReady
+      responses:
+        '200':
+          description: Ready
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+                  db:
+                    type: string
+                    example: up
+        '503':
+          description: Not ready
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: error
+                  db:
+                    type: string
+                    example: down
+
+  /auth/google:
+    post:
+      tags: [auth]
+      summary: Sign in with Google
+      description: |
+        Exchange a Google ID token (from Google Sign-In) for a GitArena session.
+        Sets an `httpOnly` session cookie and returns a CSRF token.
+      operationId: authGoogle
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [idToken]
+              properties:
+                idToken:
+                  type: string
+                  description: Google Sign-In ID token obtained from the browser
+      responses:
+        '200':
+          description: Authenticated
+          headers:
+            Set-Cookie:
+              description: httpOnly session cookie (`gitarena_session`)
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [user, csrfToken]
+                properties:
+                  user:
+                    $ref: '#/components/schemas/UserProfile'
+                  csrfToken:
+                    type: string
+                    description: Include in all subsequent mutating requests as `x-gitarena-csrf`
+        '401':
+          description: Invalid or expired Google ID token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Email not on the allowlist (invite-only / test-mode environments)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /auth/logout:
+    post:
+      tags: [auth]
+      summary: Sign out
+      description: Invalidates the current session and clears the session cookie.
+      operationId: authLogout
+      security:
+        - sessionCookie: []
+          csrfHeader: []
+      responses:
+        '200':
+          description: Signed out
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                    example: true
+
+  /users/me:
+    get:
+      tags: [users]
+      summary: Get current user
+      description: |
+        Returns the authenticated user and their CSRF token.
+        Returns `null` fields when called unauthenticated — safe to call on page load
+        to determine auth state.
+      operationId: getMe
+      security:
+        - sessionCookie: []
+      responses:
+        '200':
+          description: Current user (or null if unauthenticated)
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [user, csrfToken]
+                properties:
+                  user:
+                    nullable: true
+                    allOf:
+                      - $ref: '#/components/schemas/UserProfile'
+                  csrfToken:
+                    type: string
+                    nullable: true
+
+  /users/me/active-session:
+    get:
+      tags: [users]
+      summary: Get active session
+      description: Returns the caller's current active session, or null if none exists.
+      operationId: getActiveSession
+      security:
+        - sessionCookie: []
+      responses:
+        '200':
+          description: Active session or null
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [session]
+                properties:
+                  session:
+                    nullable: true
+                    allOf:
+                      - $ref: '#/components/schemas/Session'
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /users/me/history:
+    get:
+      tags: [users]
+      summary: Get attempt history
+      description: Lists all past attempts for the authenticated user, newest first.
+      operationId: getHistory
+      security:
+        - sessionCookie: []
+      responses:
+        '200':
+          description: Attempt list
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [attempts]
+                properties:
+                  attempts:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Attempt'
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /scenarios:
+    get:
+      tags: [scenarios]
+      summary: List scenarios
+      description: Returns all published scenarios. No authentication required.
+      operationId: listScenarios
+      responses:
+        '200':
+          description: Scenario list
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [scenarios]
+                properties:
+                  scenarios:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Scenario'
+
+  /scenarios/{id}:
+    get:
+      tags: [scenarios]
+      summary: Get scenario
+      description: Fetch a single published scenario by ID. No authentication required.
+      operationId: getScenario
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Scenario
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [scenario]
+                properties:
+                  scenario:
+                    $ref: '#/components/schemas/Scenario'
+        '404':
+          description: Scenario not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /scenarios/{id}/attempts:
+    get:
+      tags: [scenarios]
+      summary: Get attempts for a scenario
+      description: Lists all attempts the authenticated user has made on a specific scenario.
+      operationId: getScenarioAttempts
+      security:
+        - sessionCookie: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Attempt list
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [attempts]
+                properties:
+                  attempts:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Attempt'
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Scenario not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /sessions:
+    post:
+      tags: [sessions]
+      summary: Start a session
+      description: |
+        Creates a new challenge session and provisions a sandboxed workspace container.
+        Returns 409 if the user already has an active or submitted session.
+      operationId: createSession
+      security:
+        - sessionCookie: []
+          csrfHeader: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [scenarioId]
+              properties:
+                scenarioId:
+                  type: string
+      responses:
+        '201':
+          description: Session created
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [session]
+                properties:
+                  session:
+                    $ref: '#/components/schemas/Session'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Scenario not found or not published
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: User already has an active session
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [message, session]
+                properties:
+                  message:
+                    type: string
+                    example: Finish or quit your active session before starting another.
+                  session:
+                    $ref: '#/components/schemas/Session'
+        '503':
+          description: Workspace container could not be provisioned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /sessions/{id}:
+    get:
+      tags: [sessions]
+      summary: Get session
+      description: Fetches a session by ID. Ensures the workspace container is running if the session is active.
+      operationId: getSession
+      security:
+        - sessionCookie: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Session
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [session]
+                properties:
+                  session:
+                    $ref: '#/components/schemas/Session'
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Session not found or belongs to another user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '503':
+          description: Workspace unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    delete:
+      tags: [sessions]
+      summary: Quit session
+      description: Terminates an active session without scoring it. Stops and removes the workspace container.
+      operationId: deleteSession
+      security:
+        - sessionCookie: []
+          csrfHeader: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Session terminated
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [session]
+                properties:
+                  session:
+                    $ref: '#/components/schemas/Session'
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Session not found or already closed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /sessions/{id}/submit:
+    post:
+      tags: [sessions]
+      summary: Submit session
+      description: |
+        Runs the scenario evaluator inside the workspace, computes a score, stores the
+        attempt, and stops the container.
+      operationId: submitSession
+      security:
+        - sessionCookie: []
+          csrfHeader: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Evaluation result
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [attempt, session]
+                properties:
+                  attempt:
+                    $ref: '#/components/schemas/Attempt'
+                  session:
+                    $ref: '#/components/schemas/Session'
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Session not found or belongs to another user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '503':
+          description: Workspace or evaluator unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /sessions/{id}/result:
+    get:
+      tags: [sessions]
+      summary: Get session result
+      description: Fetches the evaluation result for a previously submitted session.
+      operationId: getSessionResult
+      security:
+        - sessionCookie: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Evaluation result
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [attempt, session]
+                properties:
+                  attempt:
+                    $ref: '#/components/schemas/Attempt'
+                  session:
+                    $ref: '#/components/schemas/Session'
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Result not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /sessions/{id}/hint:
+    post:
+      tags: [sessions]
+      summary: Request a hint
+      description: |
+        Returns the next hint for the session. Each hint increments `session.hintCount`
+        and reduces the final score.
+      operationId: requestHint
+      security:
+        - sessionCookie: []
+          csrfHeader: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Hint
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [hintIndex, hint, session]
+                properties:
+                  hintIndex:
+                    type: integer
+                    description: Zero-based index of the hint returned
+                  hint:
+                    type: string
+                  session:
+                    $ref: '#/components/schemas/Session'
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Session not found, inactive, or no more hints available
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'

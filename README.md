@@ -10,6 +10,7 @@ Initial implementation scaffold based on `git-arena-designdoc.md`.
 
 ## Docs
 
+- API reference (OpenAPI 3.0): [`docs/openapi.yaml`](docs/openapi.yaml)
 - Design doc: [`docs/git-arena-designdoc.md`](docs/git-arena-designdoc.md)
 - Data model and scoring: [`docs/data-model-and-scoring.md`](docs/data-model-and-scoring.md)
 - GCP & K8s CLI reference: [`docs/gcp-reference.md`](docs/gcp-reference.md)
@@ -153,27 +154,13 @@ This is a bootstrap foundation with:
 - Google Sign-In with server-side session cookies and per-user API isolation
 - CSRF tokens enforced for mutating authenticated API routes
 
-## API routes (current)
+## API reference
 
-- `GET /api/v1/health/live`
-- `GET /api/v1/health/ready`
-- `GET /api/v1/health`
-- `POST /api/v1/auth/google`
-- `POST /api/v1/auth/logout`
-- `GET /api/v1/users/me`
-- `GET /api/v1/scenarios`
-- `GET /api/v1/scenarios/:id`
-- `GET /api/v1/scenarios/:id/attempts`
-- `GET /api/v1/users/me/active-session`
-- `POST /api/v1/sessions`
-  - Returns `409` if user already has an `active`/`submitted` session.
-- `GET /api/v1/sessions/:id`
-- `DELETE /api/v1/sessions/:id`
-- `POST /api/v1/sessions/:id/hint`
-- `POST /api/v1/sessions/:id/submit`
-- `GET /api/v1/sessions/:id/result`
-- `GET /api/v1/users/me/history`
-- `WS /ws/sessions/:id?token=<wsToken>`
+See [`docs/openapi.yaml`](docs/openapi.yaml) for the full OpenAPI 3.0 spec, including
+request/response schemas, authentication requirements, and error shapes.
+
+The WebSocket terminal endpoint (`WS /ws/sessions/:id?token=<wsToken>`) is documented
+in the spec's `info.description` block.
 
 ## Workspace Runtime Notes
 
