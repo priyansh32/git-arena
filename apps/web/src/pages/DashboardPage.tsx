@@ -16,6 +16,8 @@ import {
   PlayCircle,
   RotateCcw,
   Search,
+  Sparkles,
+  Star,
   Tags,
   TerminalSquare,
   Trophy
@@ -551,6 +553,7 @@ export function DashboardPage({ mode = "dashboard" }: DashboardPageProps) {
   const solvedCount = solvedEntries.length;
   const solvedLibraryCount = solvedScenarioIds.size;
   const unsolvedLibraryCount = Math.max(0, scenarios.length - solvedLibraryCount);
+  const allSolved = scenarios.length > 0 && unsolvedLibraryCount === 0;
 
   const showFilterControls = activeTab !== "activity";
   const totalVisibleCount =
@@ -605,7 +608,66 @@ export function DashboardPage({ mode = "dashboard" }: DashboardPageProps) {
     setOpenMenu(null);
   };
 
-  const recommendedNextCard = (
+  const recommendedNextCard = allSolved ? (
+    <article className="relative overflow-hidden rounded-xl p-6 h-full flex flex-col w-full border border-status-pass/40 bg-gradient-to-br from-status-pass/10 via-bg-surface to-accent-primary/10 shadow-lg shadow-status-pass/10">
+      {/* Background shimmer */}
+      <div aria-hidden="true" className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(16,185,129,0.12),transparent_60%)]" />
+      <div aria-hidden="true" className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_left,rgba(6,182,212,0.10),transparent_60%)]" />
+
+      <h3 className="relative m-0 text-lg font-bold flex items-center gap-2 text-status-pass">
+        <Sparkles aria-hidden="true" className="shrink-0" size={18} />
+        Catalog Complete
+      </h3>
+
+      <div className="relative mt-6 flex-1 flex flex-col items-center justify-center gap-5 text-center">
+        {/* Trophy with orbiting stars */}
+        <div className="relative">
+          <div className="w-20 h-20 rounded-full bg-gradient-to-br from-status-pass to-accent-primary flex items-center justify-center shadow-xl shadow-status-pass/30 ring-4 ring-status-pass/20">
+            <Trophy size={32} className="text-white drop-shadow" />
+          </div>
+          <Star
+            aria-hidden="true"
+            className="absolute -top-2 -right-2 text-status-warn animate-pulse"
+            fill="currentColor"
+            size={14}
+          />
+          <Sparkles
+            aria-hidden="true"
+            className="absolute -bottom-1 -left-3 text-accent-primary animate-pulse"
+            size={14}
+            style={{ animationDelay: "0.4s" }}
+          />
+          <Star
+            aria-hidden="true"
+            className="absolute top-1 -left-4 text-status-pass animate-pulse"
+            fill="currentColor"
+            size={10}
+            style={{ animationDelay: "0.8s" }}
+          />
+        </div>
+
+        {/* Message */}
+        <div className="flex flex-col gap-1.5">
+          <p className="text-base font-bold text-text-primary">
+            You've solved every scenario!
+          </p>
+          <p className="text-sm text-text-secondary max-w-[200px] mx-auto leading-relaxed">
+            Every Git challenge in the catalog is complete.
+          </p>
+        </div>
+
+        {/* Stats pill */}
+        <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-status-pass/10 border border-status-pass/30 text-status-pass text-xs font-mono font-bold">
+          <Check size={12} />
+          {solvedLibraryCount} / {scenarios.length} scenarios
+        </div>
+
+        <p className="text-xs text-text-secondary italic">
+          New challenges added regularly — check back soon.
+        </p>
+      </div>
+    </article>
+  ) : (
     <article className="bg-bg-surface border border-accent-primary/20 bg-accent-primary/5 rounded-xl p-6 h-full flex flex-col group w-full">
       <h3 className="m-0 text-lg font-bold flex items-center gap-2 text-accent-primary">
         <Trophy aria-hidden="true" className="shrink-0" size={18} />
