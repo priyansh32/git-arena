@@ -64,10 +64,11 @@ export function SessionResultPage() {
         setScenario(loadedScenario);
 
         if (result.attempt.passed) {
-          const [allScenarios, history] = await Promise.all([
-            fetchScenarios(),
+          const [scenarioResult, history] = await Promise.all([
+            fetchScenarios(100, 0),
             fetchUserHistory()
           ]);
+          const allScenarios = scenarioResult.scenarios;
           const solvedScenarioIds = new Set(
             history.filter((item) => item.passed).map((item) => item.scenarioId)
           );

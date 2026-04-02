@@ -6,6 +6,7 @@ import type {
   GoogleAuthRequest,
   RequestHintResponse,
   Scenario,
+  ScenariosListResponse,
   Session,
   SubmitSessionResponse
 } from "@gitarena/shared";
@@ -108,9 +109,24 @@ export async function logoutUser(): Promise<void> {
   }
 }
 
-export async function fetchScenarios(): Promise<Scenario[]> {
-  const payload = await request<{ scenarios: Scenario[] }>("/scenarios");
-  return payload.scenarios;
+let scenariosCache: ScenariosListResponse | null = null;
+
+export function invalidateScenariosCache(): void {
+  scenariosCache = null;
+}
+
+export async function fetchScenarios(
+  limit = 50,
+  offset = 0
+): Promise<ScenariosListResponse> {
+  if (scenariosCache && scenariosCache.limit === limit && scenariosCache.offset === offset) {
+    return scenariosCache;
+  }
+  const payload = await request<ScenariosListResponse>(
+    `/scenarios?limit=${limit}&offset=${offset}`
+  );
+  scenariosCache = payload;
+  return payload;
 }
 
 export async function fetchScenario(id: string): Promise<Scenario> {

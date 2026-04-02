@@ -457,7 +457,15 @@ export class Repository {
     );
   }
 
-  async listPublishedScenarios(): Promise<Scenario[]> {
+  async listPublishedScenarios(
+    limit: number,
+    offset: number
+  ): Promise<{ scenarios: Scenario[]; total: number }> {
+    const countResult = await this.pool.query<{ count: string }>(
+      `SELECT COUNT(*)::text AS count FROM scenarios WHERE status = 'published'`
+    );
+    const total = parseInt(countResult.rows[0]?.count ?? "0", 10);
+
     const result = await this.pool.query<ScenarioRow>(
       `
       SELECT
@@ -478,10 +486,12 @@ export class Repository {
        AND sr.version = sc.active_revision
       WHERE sc.status = 'published'
       ORDER BY title ASC
-      `
+      LIMIT $1 OFFSET $2
+      `,
+      [limit, offset]
     );
 
-    return result.rows.map(mapScenario);
+    return { scenarios: result.rows.map(mapScenario), total };
   }
 
   async getScenarioById(id: string): Promise<Scenario | null> {

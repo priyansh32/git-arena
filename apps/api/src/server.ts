@@ -475,9 +475,16 @@ app.get("/api/v1/users/me", async (request) => {
   return response;
 });
 
-app.get("/api/v1/scenarios", async () => {
-  const scenarios = await repository.listPublishedScenarios();
-  return { scenarios };
+const scenarioListQuerySchema = z.object({
+  limit: z.coerce.number().int().min(1).max(100).default(50),
+  offset: z.coerce.number().int().min(0).default(0)
+});
+
+app.get("/api/v1/scenarios", async (request, reply) => {
+  reply.header("Cache-Control", "public, max-age=300, stale-while-revalidate=60");
+  const { limit, offset } = scenarioListQuerySchema.parse(request.query);
+  const { scenarios, total } = await repository.listPublishedScenarios(limit, offset);
+  return { scenarios, total, limit, offset };
 });
 
 app.get("/api/v1/scenarios/:id", async (request, reply) => {
@@ -488,6 +495,7 @@ app.get("/api/v1/scenarios/:id", async (request, reply) => {
     return reply.code(404).send({ message: "Scenario not found" });
   }
 
+  reply.header("Cache-Control", "public, max-age=300, stale-while-revalidate=60");
   return { scenario };
 });
 

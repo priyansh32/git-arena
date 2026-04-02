@@ -33,7 +33,7 @@ export function LandingPage() {
             </a>
             <a
               className="inline-flex h-9 items-center justify-center rounded-lg border border-accent-primary bg-accent-primary/10 px-4 text-sm font-bold text-accent-primary transition-all hover:bg-accent-primary hover:text-bg-base shadow-[0_0_15px_rgba(6,182,212,0.15)] hover:shadow-[0_0_20px_rgba(6,182,212,0.3)]"
-              href="/start"
+              href="/library"
             >
               Get Started
             </a>
@@ -81,7 +81,7 @@ export function LandingPage() {
               <div className="flex flex-col sm:flex-row items-center justify-center gap-4 w-full sm:w-auto pt-4">
                 <a
                   className="inline-flex w-full sm:w-auto h-12 items-center justify-center gap-2 rounded-lg bg-accent-primary px-8 text-sm font-bold text-bg-base transition-all hover:bg-accent-hover hover:scale-[1.02] active:scale-[0.98] shadow-[0_0_20px_rgba(6,182,212,0.2)]"
-                  href="/start"
+                  href="/library"
                 >
                   Start Training Now
                   <ArrowRight size={16} strokeWidth={2.5} />
@@ -259,7 +259,7 @@ export function LandingPage() {
             <div className="pt-4">
               <a
                 className="inline-flex h-14 items-center justify-center gap-3 rounded-lg bg-accent-primary px-10 text-base font-bold text-bg-base transition-all hover:bg-accent-hover hover:scale-[1.02] active:scale-[0.98] shadow-[0_0_30px_rgba(6,182,212,0.3)]"
-                href="/start"
+                href="/library"
               >
                 <Play size={18} className="fill-bg-base" />
                 Launch First Workspace
@@ -312,7 +312,7 @@ export function LandingPage() {
           </div>
 
           <div className="flex items-center gap-6 text-sm font-semibold text-text-secondary">
-            <a className="hover:text-accent-primary transition-colors" href="/start">
+            <a className="hover:text-accent-primary transition-colors" href="/library">
               Get Started
             </a>
             <a className="hover:text-accent-primary transition-colors" href="/login">

@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 
 import { createSession, fetchScenario, fetchScenarioAttempts, isApiError } from "../api/client";
+import { useAuth } from "../auth/AuthContext";
 
 function getDifficultyLabel(difficulty: Scenario["difficulty"]): string {
   if (difficulty === "beginner") return "Beginner";
@@ -31,6 +32,7 @@ function getCommonalityLabel(commonality: Scenario["commonality"]): string {
 export function ScenarioDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { user } = useAuth();
 
   const [scenario, setScenario] = useState<Scenario | null>(null);
   const [attempts, setAttempts] = useState<Attempt[]>([]);
@@ -47,11 +49,11 @@ export function ScenarioDetailPage() {
 
     const run = async () => {
       try {
-        const [scenarioData, attemptData] = await Promise.all([
+        const fetches: [Promise<Scenario>, Promise<Attempt[]>] = [
           fetchScenario(id),
-          fetchScenarioAttempts(id)
-        ]);
-
+          user ? fetchScenarioAttempts(id) : Promise.resolve([])
+        ];
+        const [scenarioData, attemptData] = await Promise.all(fetches);
         setScenario(scenarioData);
         setAttempts(attemptData);
       } catch (err) {
@@ -62,7 +64,7 @@ export function ScenarioDetailPage() {
     };
 
     void run();
-  }, [id]);
+  }, [id, user]);
 
   const handleStart = async () => {
     if (!scenario) {
@@ -207,15 +209,25 @@ export function ScenarioDetailPage() {
               Session
             </h2>
             <p className="m-0 text-text-secondary text-sm leading-relaxed">Start a new terminal session for this scenario.</p>
-            <button
-              className="inline-flex w-full items-center justify-center gap-2 px-4 py-2 bg-accent-primary text-bg-base hover:bg-accent-hover rounded-md text-sm font-bold min-h-[44px] transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed mt-2"
-              disabled={starting}
-              onClick={() => void handleStart()}
-              type="button"
-            >
-              {starting ? "Provisioning..." : "Start Session"}
-              {!starting && <PlayCircle aria-hidden="true" className="shrink-0" size={16} />}
-            </button>
+            {user ? (
+              <button
+                className="inline-flex w-full items-center justify-center gap-2 px-4 py-2 bg-accent-primary text-bg-base hover:bg-accent-hover rounded-md text-sm font-bold min-h-[44px] transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed mt-2"
+                disabled={starting}
+                onClick={() => void handleStart()}
+                type="button"
+              >
+                {starting ? "Provisioning..." : "Start Session"}
+                {!starting && <PlayCircle aria-hidden="true" className="shrink-0" size={16} />}
+              </button>
+            ) : (
+              <Link
+                className="inline-flex w-full items-center justify-center gap-2 px-4 py-2 bg-accent-primary text-bg-base hover:bg-accent-hover rounded-md text-sm font-bold min-h-[44px] transition-colors shadow-sm mt-2"
+                to={`/login?next=${encodeURIComponent(`/scenarios/${id}`)}`}
+              >
+                Login to Start
+                <PlayCircle aria-hidden="true" className="shrink-0" size={16} />
+              </Link>
+            )}
             {error && <p className="m-0 text-status-fail bg-status-fail-bg border border-status-fail-border p-3 rounded-lg text-sm mt-2">{error}</p>}
           </div>
 
@@ -225,7 +237,9 @@ export function ScenarioDetailPage() {
               Recent Attempts
             </h3>
 
-            {attempts.length === 0 ? (
+            {!user ? (
+              <p className="m-0 text-text-secondary text-sm">Sign in to track your attempts.</p>
+            ) : attempts.length === 0 ? (
               <p className="m-0 text-text-secondary text-sm">No attempts yet.</p>
             ) : (
               <div className="flex flex-col gap-2 max-h-[300px] overflow-y-auto scrollbar-hide pr-1">

@@ -92,6 +92,13 @@ export interface AuthUserResponse {
   csrfToken: string;
 }
 
+export interface ScenariosListResponse {
+  scenarios: Scenario[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
 export interface CurrentUserResponse {
   user: UserProfile | null;
   csrfToken: string | null;

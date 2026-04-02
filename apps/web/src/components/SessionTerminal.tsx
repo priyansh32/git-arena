@@ -228,15 +228,17 @@ export function SessionTerminal({ wsUrl, wsToken, onStateChange }: SessionTermin
 
     socket.onerror = () => {
       updateConnectionState("error");
-      terminal.writeln("\r\nConnection error.");
+      terminal.writeln("\r\n\x1b[1;31mConnection error.\x1b[0m Check your internet connection and try reconnecting.");
     };
 
     socket.onclose = (event) => {
       updateConnectionState("closed");
       const reason = event.reason?.trim();
-      terminal.writeln(
-        `\r\nConnection closed (${event.code}${reason ? `: ${reason}` : ""}).`
-      );
+      const friendly =
+        event.code === 1000 ? "Session ended." :
+        event.code === 1006 ? "Connection lost. Check your internet and try reconnecting." :
+        reason || "Connection closed unexpectedly.";
+      terminal.writeln(`\r\n\x1b[1;33m${friendly}\x1b[0m`);
     };
 
     return () => {

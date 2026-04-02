@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import type { ReactElement } from "react";
 import {
   BrowserRouter,
@@ -111,19 +111,11 @@ function LoginRoute() {
   );
 }
 
-function AuthenticatedLayout() {
+function AppShell() {
   const { user, logout } = useAuth();
   const location = useLocation();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const isWorkspaceRoute = Boolean(useMatch({ path: "/sessions/:id", end: true }));
-
-  useEffect(() => {
-    setMobileNavOpen(false);
-  }, [location.pathname]);
-
-  if (!user) {
-    return null;
-  }
 
   return (
     <div className="flex flex-col lg:flex-row min-h-screen">
@@ -170,23 +162,31 @@ function AuthenticatedLayout() {
                 <BookOpen aria-hidden="true" className="shrink-0" size={16} />
                 Library
               </NavLink>
-              <div className="mt-4 pt-4 border-t border-border-subtle flex items-center gap-4 px-2">
-                {user.avatarUrl ? (
-                  <img alt="" className="w-8 h-8 rounded-full border border-border-strong shrink-0" src={user.avatarUrl} />
-                ) : (
-                  <span className="w-8 h-8 rounded-full border border-border-strong shrink-0 flex items-center justify-center bg-accent-primary/10 text-accent-primary font-mono text-xs font-bold" aria-hidden="true">
-                    {userInitial(user.displayName)}
-                  </span>
-                )}
-                <div className="min-w-0">
-                  <p className="m-0 text-sm font-semibold whitespace-nowrap overflow-hidden text-ellipsis">{user.displayName}</p>
-                  <p className="m-0 text-xs text-text-secondary font-mono whitespace-nowrap overflow-hidden text-ellipsis">{user.email}</p>
-                </div>
-              </div>
-              <button className="mt-4 inline-flex w-full items-center justify-center gap-2 px-4 py-2 bg-transparent border border-border-strong text-text-primary hover:border-accent-primary hover:bg-bg-surface-hover rounded-lg text-sm font-semibold transition-colors min-h-[40px]" onClick={() => void logout()} type="button">
-                <LogOut aria-hidden="true" className="shrink-0" size={15} />
-                Logout
-              </button>
+              {user ? (
+                <>
+                  <div className="mt-4 pt-4 border-t border-border-subtle flex items-center gap-4 px-2">
+                    {user.avatarUrl ? (
+                      <img alt="" className="w-8 h-8 rounded-full border border-border-strong shrink-0" src={user.avatarUrl} />
+                    ) : (
+                      <span className="w-8 h-8 rounded-full border border-border-strong shrink-0 flex items-center justify-center bg-accent-primary/10 text-accent-primary font-mono text-xs font-bold" aria-hidden="true">
+                        {userInitial(user.displayName)}
+                      </span>
+                    )}
+                    <div className="min-w-0">
+                      <p className="m-0 text-sm font-semibold whitespace-nowrap overflow-hidden text-ellipsis">{user.displayName}</p>
+                      <p className="m-0 text-xs text-text-secondary font-mono whitespace-nowrap overflow-hidden text-ellipsis">{user.email}</p>
+                    </div>
+                  </div>
+                  <button className="mt-4 inline-flex w-full items-center justify-center gap-2 px-4 py-2 bg-transparent border border-border-strong text-text-primary hover:border-accent-primary hover:bg-bg-surface-hover rounded-lg text-sm font-semibold transition-colors min-h-[40px]" onClick={() => void logout()} type="button">
+                    <LogOut aria-hidden="true" className="shrink-0" size={15} />
+                    Logout
+                  </button>
+                </>
+              ) : (
+                <Link className="mt-4 inline-flex w-full items-center justify-center gap-2 px-4 py-2 bg-accent-primary text-bg-base hover:bg-accent-hover rounded-lg text-sm font-bold transition-colors min-h-[40px]" to={`/login?next=${encodeURIComponent(location.pathname)}`}>
+                  Login
+                </Link>
+              )}
             </nav>
           )}
         </>
@@ -215,23 +215,31 @@ function AuthenticatedLayout() {
           </nav>
 
           <div className="mt-auto border-t border-border-subtle pt-6 flex flex-col gap-4">
-            <div className="flex items-center gap-4 px-2">
-              {user.avatarUrl ? (
-                <img alt="" className="w-8 h-8 rounded-full border border-border-strong shrink-0" src={user.avatarUrl} />
-              ) : (
-                <span className="w-8 h-8 rounded-full border border-border-strong shrink-0 flex items-center justify-center bg-accent-primary/10 text-accent-primary font-mono text-xs font-bold" aria-hidden="true">
-                  {userInitial(user.displayName)}
-                </span>
-              )}
-              <div className="min-w-0">
-                <p className="m-0 text-sm font-semibold whitespace-nowrap overflow-hidden text-ellipsis">{user.displayName}</p>
-                <p className="m-0 text-xs text-text-secondary font-mono whitespace-nowrap overflow-hidden text-ellipsis">{user.email}</p>
-              </div>
-            </div>
-            <button className="inline-flex w-full items-center justify-center gap-2 px-4 py-2 bg-transparent border border-border-strong text-text-primary hover:border-accent-primary hover:bg-bg-surface-hover rounded-lg text-sm font-semibold transition-colors min-h-[40px]" onClick={() => void logout()} type="button">
-              <LogOut aria-hidden="true" className="shrink-0" size={15} />
-              Logout
-            </button>
+            {user ? (
+              <>
+                <div className="flex items-center gap-4 px-2">
+                  {user.avatarUrl ? (
+                    <img alt="" className="w-8 h-8 rounded-full border border-border-strong shrink-0" src={user.avatarUrl} />
+                  ) : (
+                    <span className="w-8 h-8 rounded-full border border-border-strong shrink-0 flex items-center justify-center bg-accent-primary/10 text-accent-primary font-mono text-xs font-bold" aria-hidden="true">
+                      {userInitial(user.displayName)}
+                    </span>
+                  )}
+                  <div className="min-w-0">
+                    <p className="m-0 text-sm font-semibold whitespace-nowrap overflow-hidden text-ellipsis">{user.displayName}</p>
+                    <p className="m-0 text-xs text-text-secondary font-mono whitespace-nowrap overflow-hidden text-ellipsis">{user.email}</p>
+                  </div>
+                </div>
+                <button className="inline-flex w-full items-center justify-center gap-2 px-4 py-2 bg-transparent border border-border-strong text-text-primary hover:border-accent-primary hover:bg-bg-surface-hover rounded-lg text-sm font-semibold transition-colors min-h-[40px]" onClick={() => void logout()} type="button">
+                  <LogOut aria-hidden="true" className="shrink-0" size={15} />
+                  Logout
+                </button>
+              </>
+            ) : (
+              <Link className="inline-flex w-full items-center justify-center gap-2 px-4 py-2 bg-accent-primary text-bg-base hover:bg-accent-hover rounded-lg text-sm font-bold transition-colors min-h-[40px]" to={`/login?next=${encodeURIComponent(location.pathname)}`}>
+                Login
+              </Link>
+            )}
           </div>
         </aside>
       )}
@@ -259,17 +267,22 @@ export function AppRoutes() {
       <Route element={<TermsPage />} path="/terms" />
       <Route element={<LoginRoute />} path="/login" />
 
+      {/* Public routes — accessible without login */}
+      <Route element={<AppShell />}>
+        <Route element={<DashboardPage />} path="/dashboard" />
+        <Route element={<LibraryPage />} path="/library" />
+        <Route element={<ScenarioDetailPage />} path="/scenarios/:id" />
+        <Route element={<Navigate replace to="/dashboard" />} path="/history" />
+      </Route>
+
+      {/* Protected routes — require login */}
       <Route
         element={
           <ProtectedRoute>
-            <AuthenticatedLayout />
+            <AppShell />
           </ProtectedRoute>
         }
       >
-        <Route element={<DashboardPage />} path="/dashboard" />
-        <Route element={<LibraryPage />} path="/library" />
-        <Route element={<Navigate replace to="/dashboard" />} path="/history" />
-        <Route element={<ScenarioDetailPage />} path="/scenarios/:id" />
         <Route element={<SessionWorkspacePage />} path="/sessions/:id" />
         <Route element={<SessionResultPage />} path="/sessions/:id/result" />
       </Route>

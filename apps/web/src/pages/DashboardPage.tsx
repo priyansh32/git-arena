@@ -24,6 +24,8 @@ import {
 } from "lucide-react";
 
 import { fetchActiveSession, fetchScenarios, fetchUserHistory } from "../api/client";
+import { useAuth } from "../auth/AuthContext";
+import { LoginWidget } from "../components/LoginWidget";
 
 type DashboardTab = "overview" | "solved" | "inProgress" | "activity";
 type ScenarioSort = "default" | "timeAsc" | "timeDesc" | "difficulty";
@@ -229,6 +231,7 @@ function buildAttemptsByScenario(attempts: Attempt[]): Map<string, Attempt[]> {
 export function DashboardPage({ mode = "dashboard" }: DashboardPageProps) {
   const isLibraryMode = mode === "library";
   const HeaderIcon = isLibraryMode ? BookOpen : LayoutDashboard;
+  const { user } = useAuth();
 
   const [scenarios, setScenarios] = useState<Scenario[]>([]);
   const [attempts, setAttempts] = useState<Attempt[]>([]);
@@ -252,13 +255,13 @@ export function DashboardPage({ mode = "dashboard" }: DashboardPageProps) {
   useEffect(() => {
     const run = async () => {
       try {
-        const [scenarioData, activeSessionData, historyData] = await Promise.all([
-          fetchScenarios(),
-          fetchActiveSession(),
-          fetchUserHistory()
+        const [scenarioResult, activeSessionData, historyData] = await Promise.all([
+          fetchScenarios(100, 0),
+          user ? fetchActiveSession() : Promise.resolve(null),
+          user ? fetchUserHistory() : Promise.resolve([])
         ]);
 
-        setScenarios(scenarioData);
+        setScenarios(scenarioResult.scenarios);
         setActiveSession(activeSessionData);
         setAttempts(historyData);
       } catch (err) {
@@ -269,7 +272,7 @@ export function DashboardPage({ mode = "dashboard" }: DashboardPageProps) {
     };
 
     void run();
-  }, []);
+  }, [user]);
 
   useEffect(() => {
     const handlePointerDown = (event: MouseEvent) => {
@@ -764,7 +767,15 @@ export function DashboardPage({ mode = "dashboard" }: DashboardPageProps) {
         </p>
       </header>
 
-      {!isLibraryMode && (
+      {!user && (
+        <article className="bg-bg-surface border border-border-subtle rounded-xl p-6 flex flex-col items-center gap-4 text-center shadow-sm">
+          <p className="m-0 text-text-primary font-semibold text-base">Sign in to track your progress</p>
+          <p className="m-0 text-text-secondary text-sm max-w-[40ch]">Your solved challenges, active sessions, and attempt history will appear here once you log in.</p>
+          <LoginWidget nextPath="/dashboard" />
+        </article>
+      )}
+
+      {!isLibraryMode && user && (
         <>
           <nav className="flex flex-wrap gap-2" aria-label="Dashboard sections">
             <button
@@ -1123,6 +1134,13 @@ export function DashboardPage({ mode = "dashboard" }: DashboardPageProps) {
           {visibleOverviewScenarios.length === 0 ? (
             <article className="md:col-span-1 xl:col-span-2 2xl:col-span-3 flex flex-col items-center justify-center gap-4 min-h-[120px] p-8 text-center bg-bg-surface border border-border-subtle rounded-xl">
               <p className="m-0 text-text-secondary">No scenarios match your current filters.</p>
+              <button
+                className="text-accent-primary text-sm font-semibold hover:underline"
+                onClick={() => { setSearchQuery(""); setDifficultyFilter("all"); setCommonalityFilter("all"); setSelectedTags([]); }}
+                type="button"
+              >
+                Reset all filters
+              </button>
             </article>
           ) : (
             visibleOverviewScenarios.map((scenario) => (
