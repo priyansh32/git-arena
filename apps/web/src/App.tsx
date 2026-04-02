@@ -14,6 +14,7 @@ import {
 } from "react-router-dom";
 import { BookOpen, GitBranch, LayoutDashboard, LogOut, Menu, X } from "lucide-react";
 import { Analytics } from "@vercel/analytics/react";
+import { SpeedInsights } from "@vercel/speed-insights/react";
 
 import { useAuth } from "./auth/AuthContext";
 import { DashboardPage } from "./pages/DashboardPage";
@@ -284,6 +285,7 @@ export default function App() {
     <BrowserRouter>
       <AppRoutes />
       <Analytics />
+      <SpeedInsights />
     </BrowserRouter>
   );
 }
