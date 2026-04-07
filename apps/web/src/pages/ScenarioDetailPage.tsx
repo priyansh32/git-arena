@@ -13,6 +13,7 @@ import {
 
 import { createSession, fetchScenario, fetchScenarioAttempts, isApiError } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
+import { buildThumbnailUrl, useSeo } from "../seo";
 
 function getDifficultyLabel(difficulty: Scenario["difficulty"]): string {
   if (difficulty === "beginner") return "Beginner";
@@ -93,6 +94,19 @@ export function ScenarioDetailPage() {
   };
 
   const isSolved = attempts.some((attempt) => attempt.passed);
+
+  const scenarioTitle = scenario?.title ?? "Scenario";
+  const scenarioDescription = scenario?.description ?? "Hands-on Git challenge scenario on GitArena.";
+
+  useSeo({
+    title: `${scenarioTitle} | GitArena`,
+    description: scenarioDescription,
+    path: id ? `/scenarios/${id}` : "/library",
+    image: buildThumbnailUrl({
+      title: scenarioTitle,
+      subtitle: `${scenario?.difficulty ?? "git"} · ${scenario?.commonality ?? "practice"}`
+    })
+  });
 
   if (loading) {
     return (
