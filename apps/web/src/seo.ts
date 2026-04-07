@@ -45,7 +45,7 @@ function resolveAbsoluteUrl(path: string): string {
 export function buildThumbnailUrl({ title, subtitle }: { title: string; subtitle: string }): string {
   const text = encodeURIComponent(title);
   const sub = encodeURIComponent(subtitle);
-  return `https://og-image.vercel.app/${text}.png?theme=dark&md=0&fontSize=96px&images=https%3A%2F%2Fgit-arena.hellopriyansh.xyz%2Ffavicon.svg&heights=120&widths=120&caption=${sub}`;
+  return `${BASE_URL}/api/og?title=${text}&subtitle=${sub}`;
 }
 
 export function useSeo(config: SeoConfig): void {
@@ -69,6 +69,7 @@ export function useSeo(config: SeoConfig): void {
     upsertMetaTag("property", "og:url", pageUrl);
     upsertMetaTag("property", "og:image", image);
     upsertMetaTag("property", "og:image:alt", title);
+    upsertMetaTag("property", "og:image:type", "image/svg+xml");
 
     upsertMetaTag("name", "twitter:card", "summary_large_image");
     upsertMetaTag("name", "twitter:title", title);
