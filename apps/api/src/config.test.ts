@@ -3,10 +3,13 @@ import test from "node:test";
 
 import { loadConfig } from "./config.js";
 
+const BASE_ENV = {
+  GOOGLE_CLIENT_ID: "client-id.apps.googleusercontent.com",
+  SESSION_SECRET: "test-secret-that-is-at-least-32-characters-long"
+};
+
 test("loadConfig keeps test-mode gate disabled by default", () => {
-  const config = loadConfig({
-    GOOGLE_CLIENT_ID: "client-id.apps.googleusercontent.com"
-  });
+  const config = loadConfig(BASE_ENV);
 
   assert.equal(config.auth.testMode, false);
   assert.deepEqual(config.auth.testAllowedEmails, []);
@@ -14,7 +17,7 @@ test("loadConfig keeps test-mode gate disabled by default", () => {
 
 test("loadConfig enables test-mode gate with normalized allowlist", () => {
   const config = loadConfig({
-    GOOGLE_CLIENT_ID: "client-id.apps.googleusercontent.com",
+    ...BASE_ENV,
     AUTH_TEST_MODE: "true",
     AUTH_TEST_ALLOWED_EMAILS: " One@Example.com, two@example.com ,one@example.com "
   });
@@ -29,7 +32,7 @@ test("loadConfig enables test-mode gate with normalized allowlist", () => {
 test("loadConfig rejects AUTH_TEST_MODE=true without allowlist", () => {
   assert.throws(() =>
     loadConfig({
-      GOOGLE_CLIENT_ID: "client-id.apps.googleusercontent.com",
+      ...BASE_ENV,
       AUTH_TEST_MODE: "true",
       AUTH_TEST_ALLOWED_EMAILS: ""
     }));
