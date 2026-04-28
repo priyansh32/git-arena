@@ -978,6 +978,8 @@ app.addHook("onClose", async () => {
   await repository.close();
 });
 
+const AUTH_SESSION_PURGE_INTERVAL_MS = 60 * 60 * 1000;
+
 async function start(): Promise<void> {
   try {
     await repository.init();
@@ -986,6 +988,11 @@ async function start(): Promise<void> {
       port: config.port
     });
     sessionMonitor.start();
+    setInterval(() => {
+      void repository.purgeExpiredAuthSessions().catch((err) => {
+        app.log.error(err, "Failed to purge expired auth sessions");
+      });
+    }, AUTH_SESSION_PURGE_INTERVAL_MS);
   } catch (error) {
     app.log.error(error);
     process.exit(1);

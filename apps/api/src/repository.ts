@@ -308,7 +308,7 @@ export class Repository {
   }
 
   async init(): Promise<void> {
-    await runStartupMaintenance(this.pool);
+    await runStartupMaintenance(this.pool, this);
   }
 
   async upsertGoogleUser(input: {
@@ -455,6 +455,13 @@ export class Repository {
       `,
       [tokenHash]
     );
+  }
+
+  async purgeExpiredAuthSessions(): Promise<number> {
+    const result = await this.pool.query(
+      `DELETE FROM auth_sessions WHERE expires_at < NOW()`
+    );
+    return result.rowCount ?? 0;
   }
 
   async listPublishedScenarios(

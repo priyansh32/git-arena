@@ -1,4 +1,5 @@
 import type { Pool } from "pg";
+import type { Repository } from "./repository.js";
 
 /**
  * Run startup maintenance tasks in a single transaction.
@@ -7,7 +8,7 @@ import type { Pool } from "pg";
  * Schema DDL lives in sql/schema.sql and numbered migration files.
  * This file only handles runtime data normalization.
  */
-export async function runStartupMaintenance(pool: Pool): Promise<void> {
+export async function runStartupMaintenance(pool: Pool, repository: Repository): Promise<void> {
   const client = await pool.connect();
 
   try {
@@ -40,4 +41,6 @@ export async function runStartupMaintenance(pool: Pool): Promise<void> {
   } finally {
     client.release();
   }
+
+  await repository.purgeExpiredAuthSessions();
 }
