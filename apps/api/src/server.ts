@@ -1,5 +1,7 @@
 import cookie from "@fastify/cookie";
 import cors from "@fastify/cors";
+import helmet from "@fastify/helmet";
+import rateLimit from "@fastify/rate-limit";
 import websocket from "@fastify/websocket";
 import Fastify, { type FastifyReply, type FastifyRequest } from "fastify";
 import {
@@ -289,6 +291,16 @@ const sessionCookieOptions = {
 };
 const sessionCookieMaxAgeSeconds = config.auth.sessionTtlHours * 60 * 60;
 
+await app.register(helmet, {
+  crossOriginEmbedderPolicy: false,
+  contentSecurityPolicy: false
+});
+await app.register(rateLimit, {
+  global: true,
+  max: 120,
+  timeWindow: 60_000,
+  keyGenerator: (request) => request.ip
+});
 await app.register(cors, {
   origin: config.corsOrigins,
   credentials: true,
@@ -313,7 +325,7 @@ app.addHook("onRequest", async (request, reply) => {
     return;
   }
 
-  const tokenHash = hashSessionToken(sessionToken);
+  const tokenHash = hashSessionToken(sessionToken, config.auth.sessionSecret);
   const authSession = await repository.getAuthSessionByTokenHash(tokenHash);
   if (!authSession) {
     reply.clearCookie(config.auth.sessionCookieName, sessionCookieOptions);
@@ -411,7 +423,7 @@ app.get("/api/v1/health", async (_request, reply) => {
   }
 });
 
-app.post("/api/v1/auth/google", async (request, reply) => {
+app.post("/api/v1/auth/google", { config: { rateLimit: { max: 10, timeWindow: 60_000 } } }, async (request, reply) => {
   const payload = googleLoginSchema.parse(request.body);
 
   let identity;
@@ -436,7 +448,7 @@ app.post("/api/v1/auth/google", async (request, reply) => {
   const user = await repository.upsertGoogleUser(identity);
   const sessionToken = createSessionToken();
   const csrfToken = createSessionToken();
-  const tokenHash = hashSessionToken(sessionToken);
+  const tokenHash = hashSessionToken(sessionToken, config.auth.sessionSecret);
   const expiresAt = new Date(Date.now() + sessionCookieMaxAgeSeconds * 1000);
 
   await repository.createAuthSession({
@@ -536,7 +548,7 @@ app.get("/api/v1/users/me/history", async (request, reply) => {
   return { attempts };
 });
 
-app.post("/api/v1/sessions", async (request, reply) => {
+app.post("/api/v1/sessions", { config: { rateLimit: { max: 20, timeWindow: 60_000 } } }, async (request, reply) => {
   const user = requireUser(request, reply);
   if (!user) {
     return;
@@ -649,7 +661,7 @@ app.get("/ws/sessions/:id", { websocket: true } as any, (connection: any, reques
     }
 
     const authSession = await repository.getAuthSessionByTokenHash(
-      hashSessionToken(sessionToken)
+      hashSessionToken(sessionToken, config.auth.sessionSecret)
     );
     if (!authSession) {
       socket.close(1008, "Authentication required");

@@ -1,0 +1,631 @@
+diff --git a/.env.example b/.env.example
+index b2ca2d1..8a9e2a5 100644
+--- a/.env.example
++++ b/.env.example
+@@ -5,6 +5,17 @@
+ GOOGLE_CLIENT_ID=your-google-web-client-id.apps.googleusercontent.com
+ VITE_GOOGLE_CLIENT_ID=your-google-web-client-id.apps.googleusercontent.com
+ 
++# Database password (used by postgres + api in docker compose)
++# Generate: openssl rand -hex 24
++POSTGRES_PASSWORD=
++
++# Session signing secret — must be at least 32 chars
++# Generate: openssl rand -hex 32
++SESSION_SECRET=
++
++# CORS origin(s) for the API (comma-separated)
++CORS_ORIGINS=
++
+ # Test stack ports (docker compose up --build)
+ TEST_API_PORT=3001
+ TEST_WEB_PORT=5173
+@@ -17,8 +28,6 @@ DEV_WEB_PORT=5174
+ DATABASE_URL=postgres://gitarena:gitarena@localhost:5432/gitarena
+ 
+ # Optional (defaults apply if unset)
+-# Leave empty to auto-allow http://localhost:<active WEB_PORT>
+-CORS_ORIGINS=
+ SESSION_COOKIE_NAME=gitarena_session
+ SESSION_TTL_HOURS=168
+ # Test-only login gate (optional):
+diff --git a/.gitignore b/.gitignore
+index a94593e..40fea2d 100644
+--- a/.gitignore
++++ b/.gitignore
+@@ -12,6 +12,7 @@ coverage
+ .dev-runtime/
+ deploy/k8s/*.env
+ deploy/*.env
++certbot/
+ 
+ # https://github.com/priyansh32/local-doc-renderer/releases/tag/v1.1.1
+ local-doc-renderer-linux-amd64 
+diff --git a/apps/api/Dockerfile b/apps/api/Dockerfile
+index c5c3ed6..e62cab8 100644
+--- a/apps/api/Dockerfile
++++ b/apps/api/Dockerfile
+@@ -28,5 +28,8 @@ RUN npm ci --omit=dev --workspace @gitarena/api --workspace @gitarena/shared --i
+ COPY --from=build /app/apps/api/dist ./apps/api/dist
+ COPY --from=build /app/packages/shared/dist ./packages/shared/dist
+ 
++RUN addgroup -g 1001 apiuser && adduser -D -u 1001 -G apiuser apiuser
++USER apiuser
++
+ EXPOSE 3001
+ CMD ["node", "apps/api/dist/server.js"]
+diff --git a/apps/api/package.json b/apps/api/package.json
+index c69e7bc..444f88a 100644
+--- a/apps/api/package.json
++++ b/apps/api/package.json
+@@ -13,6 +13,8 @@
+   "dependencies": {
+     "@fastify/cookie": "^11.0.2",
+     "@fastify/cors": "^11.2.0",
++    "@fastify/helmet": "^13.0.2",
++    "@fastify/rate-limit": "^10.3.0",
+     "@fastify/websocket": "^11.2.0",
+     "@gitarena/shared": "0.1.0",
+     "fastify": "^5.8.2",
+diff --git a/apps/api/src/auth.ts b/apps/api/src/auth.ts
+index 6822345..e0301c6 100644
+--- a/apps/api/src/auth.ts
++++ b/apps/api/src/auth.ts
+@@ -1,4 +1,4 @@
+-import { createHash, randomBytes, timingSafeEqual, webcrypto } from "node:crypto";
++import { createHmac, randomBytes, timingSafeEqual, webcrypto } from "node:crypto";
+ 
+ import { createRemoteJWKSet, jwtVerify } from "jose";
+ 
+@@ -26,8 +26,8 @@ export function createSessionToken(): string {
+   return randomBytes(32).toString("base64url");
+ }
+ 
+-export function hashSessionToken(sessionToken: string): string {
+-  return createHash("sha256").update(sessionToken, "utf8").digest("hex");
++export function hashSessionToken(sessionToken: string, secret: string): string {
++  return createHmac("sha256", secret).update(sessionToken, "utf8").digest("hex");
+ }
+ 
+ export function tokenEquals(expected: string, received: string): boolean {
+diff --git a/apps/api/src/config.ts b/apps/api/src/config.ts
+index b432214..9eb73b8 100644
+--- a/apps/api/src/config.ts
++++ b/apps/api/src/config.ts
+@@ -57,7 +57,8 @@ const envSchema = z.object({
+   AUTH_TEST_MODE: z.string().default("false"),
+   AUTH_TEST_ALLOWED_EMAILS: z.string().optional(),
+   SESSION_COOKIE_NAME: z.string().default("gitarena_session"),
+-  SESSION_TTL_HOURS: z.coerce.number().int().min(1).max(24 * 30).default(24 * 7)
++  SESSION_TTL_HOURS: z.coerce.number().int().min(1).max(24 * 30).default(24 * 7),
++  SESSION_SECRET: z.string().min(32)
+ });
+ 
+ export type WorkspaceProvider = z.infer<typeof workspaceProviderSchema>;
+@@ -93,6 +94,7 @@ export interface AppConfig {
+     testAllowedEmails: string[];
+     sessionCookieName: string;
+     sessionTtlHours: number;
++    sessionSecret: string;
+   };
+ }
+ 
+@@ -153,7 +155,8 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
+       testMode: authTestMode,
+       testAllowedEmails,
+       sessionCookieName: parsed.SESSION_COOKIE_NAME,
+-      sessionTtlHours: parsed.SESSION_TTL_HOURS
++      sessionTtlHours: parsed.SESSION_TTL_HOURS,
++      sessionSecret: parsed.SESSION_SECRET
+     }
+   };
+ }
+diff --git a/apps/api/src/server.ts b/apps/api/src/server.ts
+index fb01457..20a368f 100644
+--- a/apps/api/src/server.ts
++++ b/apps/api/src/server.ts
+@@ -1,5 +1,7 @@
+ import cookie from "@fastify/cookie";
+ import cors from "@fastify/cors";
++import helmet from "@fastify/helmet";
++import rateLimit from "@fastify/rate-limit";
+ import websocket from "@fastify/websocket";
+ import Fastify, { type FastifyReply, type FastifyRequest } from "fastify";
+ import {
+@@ -289,6 +291,16 @@ const sessionCookieOptions = {
+ };
+ const sessionCookieMaxAgeSeconds = config.auth.sessionTtlHours * 60 * 60;
+ 
++await app.register(helmet, {
++  crossOriginEmbedderPolicy: false,
++  contentSecurityPolicy: false
++});
++await app.register(rateLimit, {
++  global: true,
++  max: 120,
++  timeWindow: 60_000,
++  keyGenerator: (request) => request.ip
++});
+ await app.register(cors, {
+   origin: config.corsOrigins,
+   credentials: true,
+@@ -313,7 +325,7 @@ app.addHook("onRequest", async (request, reply) => {
+     return;
+   }
+ 
+-  const tokenHash = hashSessionToken(sessionToken);
++  const tokenHash = hashSessionToken(sessionToken, config.auth.sessionSecret);
+   const authSession = await repository.getAuthSessionByTokenHash(tokenHash);
+   if (!authSession) {
+     reply.clearCookie(config.auth.sessionCookieName, sessionCookieOptions);
+@@ -411,7 +423,7 @@ app.get("/api/v1/health", async (_request, reply) => {
+   }
+ });
+ 
+-app.post("/api/v1/auth/google", async (request, reply) => {
++app.post("/api/v1/auth/google", { config: { rateLimit: { max: 10, timeWindow: 60_000 } } }, async (request, reply) => {
+   const payload = googleLoginSchema.parse(request.body);
+ 
+   let identity;
+@@ -436,7 +448,7 @@ app.post("/api/v1/auth/google", async (request, reply) => {
+   const user = await repository.upsertGoogleUser(identity);
+   const sessionToken = createSessionToken();
+   const csrfToken = createSessionToken();
+-  const tokenHash = hashSessionToken(sessionToken);
++  const tokenHash = hashSessionToken(sessionToken, config.auth.sessionSecret);
+   const expiresAt = new Date(Date.now() + sessionCookieMaxAgeSeconds * 1000);
+ 
+   await repository.createAuthSession({
+@@ -536,7 +548,7 @@ app.get("/api/v1/users/me/history", async (request, reply) => {
+   return { attempts };
+ });
+ 
+-app.post("/api/v1/sessions", async (request, reply) => {
++app.post("/api/v1/sessions", { config: { rateLimit: { max: 20, timeWindow: 60_000 } } }, async (request, reply) => {
+   const user = requireUser(request, reply);
+   if (!user) {
+     return;
+@@ -649,7 +661,7 @@ app.get("/ws/sessions/:id", { websocket: true } as any, (connection: any, reques
+     }
+ 
+     const authSession = await repository.getAuthSessionByTokenHash(
+-      hashSessionToken(sessionToken)
++      hashSessionToken(sessionToken, config.auth.sessionSecret)
+     );
+     if (!authSession) {
+       socket.close(1008, "Authentication required");
+diff --git a/deploy/DEPLOYMENT.md b/deploy/DEPLOYMENT.md
+new file mode 100644
+index 0000000..9ced043
+--- /dev/null
++++ b/deploy/DEPLOYMENT.md
+@@ -0,0 +1,154 @@
++# Deployment Guide
++
++## Architecture
++
++- **API + DB**: Hetzner server (this repo, Docker Compose)
++- **Web frontend**: Vercel (separate deployment)
++- **Domain**: `api.git-arena.hellopriyansh.xyz` → this server
++
++### Services (docker-compose)
++| Service | Role |
++|---|---|
++| `postgres` | Database (internal only) |
++| `api` | Fastify API server on port 3001 (internal only) |
++| `nginx` | Reverse proxy, terminates TLS on 80/443 |
++| `socket-proxy` | Docker socket proxy (limits API's Docker access) |
++| `certbot` | Used for cert renewal (run via cron) |
++
++---
++
++## First-time Setup
++
++### 1. Firewall
++```bash
++ufw allow 22/tcp
++ufw allow 80/tcp
++ufw allow 443/tcp
++ufw enable
++```
++
++### 2. Environment variables
++Copy `.env.example` to `.env` and fill in:
++```bash
++cp .env.example .env
++```
++
++Generate secrets:
++```bash
++echo "POSTGRES_PASSWORD=$(openssl rand -hex 24)" >> .env
++echo "SESSION_SECRET=$(openssl rand -hex 32)" >> .env
++```
++
++Set the remaining values in `.env`:
++```
++GOOGLE_CLIENT_ID=          # from Google Cloud Console
++VITE_GOOGLE_CLIENT_ID=     # same value
++CORS_ORIGINS=https://git-arena.hellopriyansh.xyz
++```
++
++### 3. Point DNS
++Add an **A record** in your DNS provider:
++```
++api.git-arena.hellopriyansh.xyz → <server-ip>
++```
++
++### 4. Get SSL certificate
++Make sure all containers are stopped and port 80 is free, then:
++```bash
++docker run --rm \
++  -p 80:80 \
++  -v /root/git-arena/certbot/conf:/etc/letsencrypt \
++  certbot/certbot certonly --standalone \
++  --email your@email.com \
++  --agree-tos --no-eff-email \
++  -d api.git-arena.hellopriyansh.xyz
++```
++
++Download nginx TLS params (required once):
++```bash
++curl -fsSL https://raw.githubusercontent.com/certbot/certbot/master/certbot-nginx/certbot_nginx/_internal/tls_configs/options-ssl-nginx.conf \
++  -o /root/git-arena/certbot/conf/options-ssl-nginx.conf
++
++curl -fsSL https://raw.githubusercontent.com/certbot/certbot/master/certbot/certbot/ssl-dhparams.pem \
++  -o /root/git-arena/certbot/conf/ssl-dhparams.pem
++```
++
++### 5. Build workspace image
++```bash
++docker build -t gitarena-base:v2 -f apps/workspace/Dockerfile apps/workspace/
++```
++
++### 6. Start everything
++```bash
++docker compose up -d --build
++```
++
++### 7. Set up cert renewal (cron)
++```bash
++(crontab -l 2>/dev/null; echo "0 3 * * * cd /root/git-arena && docker compose run --rm certbot renew --quiet && docker compose exec nginx nginx -s reload") | crontab -
++```
++
++### 8. Run database migrations
++```bash
++docker compose exec api node apps/api/dist/migrate.js
++# or however migrations are run in this project
++```
++
++---
++
++## Updating
++
++```bash
++git pull
++docker compose up -d --build
++```
++
++If the workspace image changed:
++```bash
++docker build -t gitarena-base:v2 -f apps/workspace/Dockerfile apps/workspace/
++```
++
++---
++
++## Vercel (Frontend)
++
++Set these environment variables in the Vercel project settings:
++```
++VITE_GOOGLE_CLIENT_ID=<your-google-client-id>
++VITE_API_BASE_URL=https://api.git-arena.hellopriyansh.xyz/api/v1
++VITE_WS_BASE_URL=wss://api.git-arena.hellopriyansh.xyz
++```
++
++---
++
++## Useful Commands
++
++```bash
++# View logs
++docker compose logs -f api
++docker compose logs -f nginx
++
++# Health check
++curl https://api.git-arena.hellopriyansh.xyz/api/v1/health
++
++# Restart a service
++docker compose restart api
++
++# Check cert expiry
++openssl x509 -in certbot/conf/live/api.git-arena.hellopriyansh.xyz/fullchain.pem -noout -dates
++
++# Manual cert renewal
++docker compose run --rm certbot renew --quiet
++docker compose exec nginx nginx -s reload
++```
++
++---
++
++## Security Notes
++
++- Postgres is not exposed to the host (internal Docker network only)
++- API container runs as non-root (`apiuser`, UID 1001)
++- Docker socket is proxied via `tecnativa/docker-socket-proxy` (containers/exec only)
++- Rate limiting: 120 req/min global, 10 req/min on auth, 20 req/min on session create
++- Sessions use HMAC-SHA256 signed tokens (`SESSION_SECRET`)
++- HSTS enabled via nginx (`max-age=31536000`)
+diff --git a/deploy/nginx/app.conf b/deploy/nginx/app.conf
+new file mode 100644
+index 0000000..59ecec3
+--- /dev/null
++++ b/deploy/nginx/app.conf
+@@ -0,0 +1,51 @@
++server {
++    listen 80;
++    server_name api.git-arena.hellopriyansh.xyz;
++
++    location /.well-known/acme-challenge/ {
++        root /var/www/certbot;
++    }
++
++    location / {
++        return 301 https://$host$request_uri;
++    }
++}
++
++server {
++    listen 443 ssl;
++    http2 on;
++    server_name api.git-arena.hellopriyansh.xyz;
++
++    ssl_certificate /etc/letsencrypt/live/api.git-arena.hellopriyansh.xyz/fullchain.pem;
++    ssl_certificate_key /etc/letsencrypt/live/api.git-arena.hellopriyansh.xyz/privkey.pem;
++    include /etc/letsencrypt/options-ssl-nginx.conf;
++    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
++
++    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
++    add_header X-Frame-Options DENY always;
++    add_header X-Content-Type-Options nosniff always;
++
++    client_max_body_size 2m;
++
++    location /api/ {
++        proxy_pass http://api:3001;
++        proxy_http_version 1.1;
++        proxy_set_header Host $host;
++        proxy_set_header X-Real-IP $remote_addr;
++        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
++        proxy_set_header X-Forwarded-Proto $scheme;
++        proxy_read_timeout 30s;
++    }
++
++    location /ws/ {
++        proxy_pass http://api:3001;
++        proxy_http_version 1.1;
++        proxy_set_header Upgrade $http_upgrade;
++        proxy_set_header Connection "upgrade";
++        proxy_set_header Host $host;
++        proxy_set_header X-Real-IP $remote_addr;
++        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
++        proxy_read_timeout 3600s;
++        proxy_send_timeout 3600s;
++    }
++}
+diff --git a/docker-compose.yml b/docker-compose.yml
+index 7a03beb..66e690c 100644
+--- a/docker-compose.yml
++++ b/docker-compose.yml
+@@ -4,16 +4,30 @@ services:
+     environment:
+       POSTGRES_DB: gitarena
+       POSTGRES_USER: gitarena
+-      POSTGRES_PASSWORD: gitarena
+-    ports:
+-      - "5432:5432"
++      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+     volumes:
+-      - postgres_data:/var/lib/postgresql/data
++      - gitarenadb:/var/lib/postgresql/data
+     healthcheck:
+       test: ["CMD-SHELL", "pg_isready -U gitarena -d gitarena"]
+       interval: 10s
+       timeout: 5s
+       retries: 5
++    networks:
++      - db-net
++    restart: unless-stopped
++
++  socket-proxy:
++    image: tecnativa/docker-socket-proxy
++    volumes:
++      - /var/run/docker.sock:/var/run/docker.sock:ro
++    environment:
++      CONTAINERS: 1
++      EXEC: 1
++      POST: 1
++      DELETE: 1
++    networks:
++      - proxy-net
++    restart: unless-stopped
+ 
+   api:
+     build:
+@@ -22,23 +36,20 @@ services:
+     environment:
+       HOST: 0.0.0.0
+       PORT: 3001
+-      WEB_PORT: ${TEST_WEB_PORT:-5173}
+-      DATABASE_URL: postgres://gitarena:gitarena@postgres:5432/gitarena
++      DATABASE_URL: postgres://gitarena:${POSTGRES_PASSWORD}@postgres:5432/gitarena
+       CORS_ORIGINS: ${CORS_ORIGINS:-}
+       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+-      AUTH_TEST_MODE: ${AUTH_TEST_MODE:-true}
++      AUTH_TEST_MODE: ${AUTH_TEST_MODE:-false}
+       AUTH_TEST_ALLOWED_EMAILS: ${AUTH_TEST_ALLOWED_EMAILS:-}
+       SESSION_COOKIE_NAME: ${SESSION_COOKIE_NAME:-gitarena_session}
+       SESSION_TTL_HOURS: ${SESSION_TTL_HOURS:-168}
++      SESSION_SECRET: ${SESSION_SECRET}
+       WORKSPACE_PROVIDER: docker
+       WORKSPACE_CONTAINER_PREFIX: gitarena-ws
++      DOCKER_HOST: tcp://socket-proxy:2375
+     depends_on:
+       postgres:
+         condition: service_healthy
+-    ports:
+-      - "${TEST_API_PORT:-3001}:3001"
+-    volumes:
+-      - /var/run/docker.sock:/var/run/docker.sock
+     healthcheck:
+       test:
+         [
+@@ -50,20 +61,38 @@ services:
+       interval: 10s
+       timeout: 5s
+       retries: 5
++    networks:
++      - db-net
++      - proxy-net
++      - app-net
++    restart: unless-stopped
+ 
+-  web:
+-    build:
+-      context: .
+-      dockerfile: apps/web/Dockerfile
+-      args:
+-        VITE_GOOGLE_CLIENT_ID: ${VITE_GOOGLE_CLIENT_ID}
+-        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-/api/v1}
+-        VITE_WS_BASE_URL: ${VITE_WS_BASE_URL:-}
++  nginx:
++    image: nginx:alpine
++    ports:
++      - "80:80"
++      - "443:443"
++    volumes:
++      - ./deploy/nginx/app.conf:/etc/nginx/conf.d/default.conf:ro
++      - ./certbot/www:/var/www/certbot:ro
++      - ./certbot/conf:/etc/letsencrypt:ro
+     depends_on:
+       api:
+         condition: service_healthy
+-    ports:
+-      - "${TEST_WEB_PORT:-5173}:80"
+-      
++    networks:
++      - app-net
++    restart: unless-stopped
++
++  certbot:
++    image: certbot/certbot
++    volumes:
++      - ./certbot/www:/var/www/certbot
++      - ./certbot/conf:/etc/letsencrypt
++
++networks:
++  app-net:
++  db-net:
++  proxy-net:
++
+ volumes:
+-  postgres_data:
++  gitarenadb:
+diff --git a/package-lock.json b/package-lock.json
+index 5323a6b..8f6afb6 100644
+--- a/package-lock.json
++++ b/package-lock.json
+@@ -22,6 +22,8 @@
+       "dependencies": {
+         "@fastify/cookie": "^11.0.2",
+         "@fastify/cors": "^11.2.0",
++        "@fastify/helmet": "^13.0.2",
++        "@fastify/rate-limit": "^10.3.0",
+         "@fastify/websocket": "^11.2.0",
+         "@gitarena/shared": "0.1.0",
+         "fastify": "^5.8.2",
+@@ -785,6 +787,26 @@
+       ],
+       "license": "MIT"
+     },
++    "node_modules/@fastify/helmet": {
++      "version": "13.0.2",
++      "resolved": "https://registry.npmjs.org/@fastify/helmet/-/helmet-13.0.2.tgz",
++      "integrity": "sha512-tO1QMkOfNeCt9l4sG/FiWErH4QMm+RjHzbMTrgew1DYOQ2vb/6M1G2iNABBrD7Xq6dUk+HLzWW8u+rmmhQHifA==",
++      "funding": [
++        {
++          "type": "github",
++          "url": "https://github.com/sponsors/fastify"
++        },
++        {
++          "type": "opencollective",
++          "url": "https://opencollective.com/fastify"
++        }
++      ],
++      "license": "MIT",
++      "dependencies": {
++        "fastify-plugin": "^5.0.0",
++        "helmet": "^8.0.0"
++      }
++    },
+     "node_modules/@fastify/merge-json-schemas": {
+       "version": "0.2.1",
+       "resolved": "https://registry.npmjs.org/@fastify/merge-json-schemas/-/merge-json-schemas-0.2.1.tgz",
+@@ -824,6 +846,27 @@
+         "ipaddr.js": "^2.1.0"
+       }
+     },
++    "node_modules/@fastify/rate-limit": {
++      "version": "10.3.0",
++      "resolved": "https://registry.npmjs.org/@fastify/rate-limit/-/rate-limit-10.3.0.tgz",
++      "integrity": "sha512-eIGkG9XKQs0nyynatApA3EVrojHOuq4l6fhB4eeCk4PIOeadvOJz9/4w3vGI44Go17uaXOWEcPkaD8kuKm7g6Q==",
++      "funding": [
++        {
++          "type": "github",
++          "url": "https://github.com/sponsors/fastify"
++        },
++        {
++          "type": "opencollective",
++          "url": "https://opencollective.com/fastify"
++        }
++      ],
++      "license": "MIT",
++      "dependencies": {
++        "@lukeed/ms": "^2.0.2",
++        "fastify-plugin": "^5.0.0",
++        "toad-cache": "^3.7.0"
++      }
++    },
+     "node_modules/@fastify/websocket": {
+       "version": "11.2.0",
+       "resolved": "https://registry.npmjs.org/@fastify/websocket/-/websocket-11.2.0.tgz",
+@@ -892,6 +935,15 @@
+         "@jridgewell/sourcemap-codec": "^1.4.14"
+       }
+     },
++    "node_modules/@lukeed/ms": {
++      "version": "2.0.2",
++      "resolved": "https://registry.npmjs.org/@lukeed/ms/-/ms-2.0.2.tgz",
++      "integrity": "sha512-9I2Zn6+NJLfaGoz9jN3lpwDgAYvfGeNYdbAIjJOqzs4Tpc+VU3Jqq4IofSUBKajiDS8k9fZIg18/z13mpk1bsA==",
++      "license": "MIT",
++      "engines": {
++        "node": ">=8"
++      }
++    },
+     "node_modules/@napi-rs/wasm-runtime": {
+       "version": "1.1.1",
+       "resolved": "https://registry.npmjs.org/@napi-rs/wasm-runtime/-/wasm-runtime-1.1.1.tgz",
+@@ -2020,6 +2072,15 @@
+         "node": ">= 0.4"
+       }
+     },
++    "node_modules/helmet": {
++      "version": "8.1.0",
++      "resolved": "https://registry.npmjs.org/helmet/-/helmet-8.1.0.tgz",
++      "integrity": "sha512-jOiHyAZsmnr8LqoPGmCjYAaiuWwjAPLgY8ZX2XrmHawt99/u1y6RgrZMTeoPfpUbV96HOalYgz1qzkRbw54Pmg==",
++      "license": "MIT",
++      "engines": {
++        "node": ">=18.0.0"
++      }
++    },
+     "node_modules/inherits": {
+       "version": "2.0.4",
+       "resolved": "https://registry.npmjs.org/inherits/-/inherits-2.0.4.tgz",

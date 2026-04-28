@@ -28,5 +28,8 @@ RUN npm ci --omit=dev --workspace @gitarena/api --workspace @gitarena/shared --i
 COPY --from=build /app/apps/api/dist ./apps/api/dist
 COPY --from=build /app/packages/shared/dist ./packages/shared/dist
 
+RUN addgroup -g 1001 apiuser && adduser -D -u 1001 -G apiuser apiuser
+USER apiuser
+
 EXPOSE 3001
 CMD ["node", "apps/api/dist/server.js"]

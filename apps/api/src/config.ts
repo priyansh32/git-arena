@@ -57,7 +57,8 @@ const envSchema = z.object({
   AUTH_TEST_MODE: z.string().default("false"),
   AUTH_TEST_ALLOWED_EMAILS: z.string().optional(),
   SESSION_COOKIE_NAME: z.string().default("gitarena_session"),
-  SESSION_TTL_HOURS: z.coerce.number().int().min(1).max(24 * 30).default(24 * 7)
+  SESSION_TTL_HOURS: z.coerce.number().int().min(1).max(24 * 30).default(24 * 7),
+  SESSION_SECRET: z.string().min(32)
 });
 
 export type WorkspaceProvider = z.infer<typeof workspaceProviderSchema>;
@@ -93,6 +94,7 @@ export interface AppConfig {
     testAllowedEmails: string[];
     sessionCookieName: string;
     sessionTtlHours: number;
+    sessionSecret: string;
   };
 }
 
@@ -153,7 +155,8 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
       testMode: authTestMode,
       testAllowedEmails,
       sessionCookieName: parsed.SESSION_COOKIE_NAME,
-      sessionTtlHours: parsed.SESSION_TTL_HOURS
+      sessionTtlHours: parsed.SESSION_TTL_HOURS,
+      sessionSecret: parsed.SESSION_SECRET
     }
   };
 }

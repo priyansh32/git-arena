@@ -1,4 +1,4 @@
-import { createHash, randomBytes, timingSafeEqual, webcrypto } from "node:crypto";
+import { createHmac, randomBytes, timingSafeEqual, webcrypto } from "node:crypto";
 
 import { createRemoteJWKSet, jwtVerify } from "jose";
 
@@ -26,8 +26,8 @@ export function createSessionToken(): string {
   return randomBytes(32).toString("base64url");
 }
 
-export function hashSessionToken(sessionToken: string): string {
-  return createHash("sha256").update(sessionToken, "utf8").digest("hex");
+export function hashSessionToken(sessionToken: string, secret: string): string {
+  return createHmac("sha256", secret).update(sessionToken, "utf8").digest("hex");
 }
 
 export function tokenEquals(expected: string, received: string): boolean {

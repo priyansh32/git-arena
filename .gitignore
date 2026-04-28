@@ -12,6 +12,7 @@ coverage
 .dev-runtime/
 deploy/k8s/*.env
 deploy/*.env
+certbot/
 
 # https://github.com/priyansh32/local-doc-renderer/releases/tag/v1.1.1
 local-doc-renderer-linux-amd64 
