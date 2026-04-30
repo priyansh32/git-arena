@@ -26,6 +26,7 @@ import { SessionResultPage } from "./pages/SessionResultPage";
 import { StartRoute } from "./pages/StartRoute";
 import { SessionWorkspacePage } from "./pages/SessionWorkspacePage";
 import { TermsPage } from "./pages/TermsPage";
+import { buildThumbnailUrl, seoDefaults, useSeo } from "./seo";
 
 function userInitial(displayName: string): string {
   const trimmed = displayName.trim();
@@ -111,11 +112,68 @@ function LoginRoute() {
   );
 }
 
+
+function resolveSeoByPath(pathname: string): { title: string; description: string; image?: string } {
+  if (pathname === "/") {
+    return {
+      title: seoDefaults.DEFAULT_TITLE,
+      description: seoDefaults.DEFAULT_DESCRIPTION,
+      image: seoDefaults.DEFAULT_IMAGE
+    };
+  }
+
+  if (pathname === "/dashboard" || pathname === "/library") {
+    return {
+      title: "Scenario Library | GitArena",
+      description: "Browse real-world Git incident scenarios and practice hands-on recovery in isolated containers.",
+      image: buildThumbnailUrl({ title: "GitArena Library", subtitle: "Train on real Git incidents" })
+    };
+  }
+
+  if (pathname === "/privacy") {
+    return {
+      title: "Privacy Policy | GitArena",
+      description: "Read how GitArena handles account data, sessions, and analytics.",
+      image: buildThumbnailUrl({ title: "GitArena", subtitle: "Privacy Policy" })
+    };
+  }
+
+  if (pathname === "/terms") {
+    return {
+      title: "Terms of Service | GitArena",
+      description: "Review the terms and acceptable use policies for GitArena.",
+      image: buildThumbnailUrl({ title: "GitArena", subtitle: "Terms of Service" })
+    };
+  }
+
+  if (pathname.startsWith("/sessions/")) {
+    return {
+      title: "Live Git Session | GitArena",
+      description: "Work through Git recovery exercises in a real terminal workspace.",
+      image: buildThumbnailUrl({ title: "GitArena Session", subtitle: "Live terminal challenge" })
+    };
+  }
+
+  return {
+    title: seoDefaults.DEFAULT_TITLE,
+    description: seoDefaults.DEFAULT_DESCRIPTION,
+    image: seoDefaults.DEFAULT_IMAGE
+  };
+}
+
 function AppShell() {
   const { user, logout } = useAuth();
   const location = useLocation();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const isWorkspaceRoute = Boolean(useMatch({ path: "/sessions/:id", end: true }));
+  const seo = resolveSeoByPath(location.pathname);
+
+  useSeo({
+    title: seo.title,
+    description: seo.description,
+    image: seo.image,
+    path: `${location.pathname}${location.search}`
+  });
 
   return (
     <div className="flex flex-col lg:flex-row min-h-screen">
